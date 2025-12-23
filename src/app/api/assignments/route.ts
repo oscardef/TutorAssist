@@ -193,8 +193,8 @@ export async function PATCH(request: Request) {
   }
   
   const context = await getUserContext()
-  if (!context || context.role === 'student') {
-    return NextResponse.json({ error: 'Only tutors can update assignments' }, { status: 403 })
+  if (!context) {
+    return NextResponse.json({ error: 'No workspace context' }, { status: 403 })
   }
   
   try {
@@ -207,6 +207,44 @@ export async function PATCH(request: Request) {
     
     const supabase = await createServerClient()
     
+    // Students can only update status to 'completed' or 'active' (for redo)
+    if (context.role === 'student') {
+      if (status && !['completed', 'active'].includes(status)) {
+        return NextResponse.json({ error: 'Students can only complete assignments' }, { status: 403 })
+      }
+      
+      // Verify the assignment belongs to this student
+      const { data: existingAssignment } = await supabase
+        .from('assignments')
+        .select('assigned_student_user_id')
+        .eq('id', id)
+        .eq('workspace_id', context.workspaceId)
+        .single()
+      
+      if (!existingAssignment || existingAssignment.assigned_student_user_id !== user.id) {
+        return NextResponse.json({ error: 'Assignment not found or not assigned to you' }, { status: 404 })
+      }
+      
+      // Only allow status update for students
+      const { data: assignment, error } = await supabase
+        .from('assignments')
+        .update({ 
+          status, 
+          updated_at: new Date().toISOString(),
+          ...(status === 'completed' ? { completed_at: new Date().toISOString() } : {})
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+      
+      return NextResponse.json({ assignment })
+    }
+    
+    // Tutors can update everything
     const updateData: Record<string, unknown> = {}
     if (title !== undefined) updateData.title = title
     if (description !== undefined) updateData.description = description

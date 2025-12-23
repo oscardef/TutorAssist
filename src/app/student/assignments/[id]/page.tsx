@@ -47,6 +47,51 @@ interface AttemptResult {
   questionId: string
   isCorrect: boolean
   answer: string
+  usedHints?: boolean
+}
+
+// Normalize answer by converting math symbols to their standard forms
+function normalizeAnswer(answer: string): string {
+  return answer
+    .trim()
+    .toLowerCase()
+    // Remove all whitespace
+    .replace(/\s+/g, '')
+    // Convert common math symbols to standard form
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/')
+    .replace(/−/g, '-')
+    .replace(/√/g, 'sqrt')
+    .replace(/π/g, 'pi')
+    .replace(/∞/g, 'infinity')
+    // Handle LaTeX commands
+    .replace(/\\times/g, '*')
+    .replace(/\\div/g, '/')
+    .replace(/\\pm/g, '+-')
+    .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
+    .replace(/\\sqrt/g, 'sqrt')
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
+    .replace(/\\pi/g, 'pi')
+    .replace(/\\infty/g, 'infinity')
+    .replace(/\^/g, '^')
+    // Remove remaining backslashes
+    .replace(/\\/g, '')
+    // Remove braces
+    .replace(/[{}]/g, '')
+}
+
+// Format answer for display (convert LaTeX to delimited format for rendering)
+function formatAnswerForDisplay(answer: string): string {
+  // If it already has delimiters, return as-is
+  if (/\$|\\\(|\\\[/.test(answer)) {
+    return answer
+  }
+  // If it looks like it has LaTeX commands, wrap it
+  if (/\\[a-zA-Z]+/.test(answer) || /[_^]/.test(answer)) {
+    return `\\(${answer}\\)`
+  }
+  // Otherwise return as-is
+  return answer
 }
 
 export default function StudentAssignmentDetailPage() {
@@ -148,9 +193,15 @@ export default function StudentAssignmentDetailPage() {
       const tolerance = correctAnswer.tolerance || 0.01
       isCorrect = Math.abs(numAnswer - numCorrect) <= tolerance
     } else {
-      // Exact match (case insensitive, trim whitespace)
-      isCorrect = answer.trim().toLowerCase() === String(correctAnswer.value).trim().toLowerCase()
+      // Normalize answer for comparison - handle math symbols
+      const normalizedUserAnswer = normalizeAnswer(answer)
+      const normalizedCorrectAnswer = normalizeAnswer(String(correctAnswer.value))
+      isCorrect = normalizedUserAnswer === normalizedCorrectAnswer
     }
+
+    // If hints were used, mark as incorrect (no credit for using hints)
+    const usedHints = showHints && visibleHintCount > 0
+    const finalIsCorrect = usedHints ? false : isCorrect
 
     try {
       await fetch('/api/attempts', {
@@ -160,8 +211,8 @@ export default function StudentAssignmentDetailPage() {
           questionId: currentQuestion.id,
           assignmentId,
           answerLatex: userAnswer,
-          isCorrect,
-          hintsUsed: showHints ? visibleHintCount : 0,
+          isCorrect: finalIsCorrect,
+          hintsUsed: usedHints ? visibleHintCount : 0,
         }),
       })
 
@@ -169,36 +220,18 @@ export default function StudentAssignmentDetailPage() {
         ...prev,
         [currentQuestion.id]: {
           questionId: currentQuestion.id,
-          isCorrect,
+          isCorrect: finalIsCorrect,
           answer: userAnswer,
+          usedHints,
         },
       }))
 
       setFeedback({
-        correct: isCorrect,
-        message: isCorrect 
-          ? getRandomCorrectMessage() 
-          : getRandomIncorrectMessage(),
+        correct: isCorrect, // Show if answer was mathematically correct
+        message: usedHints 
+          ? (isCorrect ? 'Correct answer, but no credit for using hints.' : getRandomIncorrectMessage())
+          : (isCorrect ? getRandomCorrectMessage() : getRandomIncorrectMessage()),
       })
-
-      // Check if assignment is complete
-      const newAttempts = {
-        ...attempts,
-        [currentQuestion.id]: { questionId: currentQuestion.id, isCorrect, answer: userAnswer },
-      }
-      const allAnswered = items.every(item => newAttempts[item.question_id])
-      
-      if (allAnswered && isCorrect) {
-        // Mark assignment as complete
-        await fetch('/api/assignments', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: assignmentId,
-            status: 'completed',
-          }),
-        })
-      }
     } catch (err) {
       console.error('Failed to submit answer:', err)
     } finally {
@@ -438,16 +471,19 @@ export default function StudentAssignmentDetailPage() {
                 Use the math symbols button or type normally. Common notations: × ÷ √ π
               </p>
               {currentAttempt && (
-                <p className="mt-2 text-sm text-gray-600">
+                <div className="mt-2 text-sm text-gray-600">
                   Your answer: <span className="font-medium">{currentAttempt.answer}</span>
-                  {!currentAttempt.isCorrect && (
+                  {!currentAttempt.isCorrect && currentQuestion?.correct_answer_json.value && (
                     <span className="ml-2">
                       | Correct: <span className="font-medium text-green-600">
-                        {String(currentQuestion?.correct_answer_json.value)}
+                        <LatexRenderer content={formatAnswerForDisplay(String(currentQuestion.correct_answer_json.value))} />
                       </span>
                     </span>
                   )}
-                </p>
+                  {currentAttempt.usedHints && (
+                    <span className="ml-2 text-orange-600">(hints used - no credit)</span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -466,18 +502,21 @@ export default function StudentAssignmentDetailPage() {
            assignment.settings_json.showHints !== false && (
             <div className="mt-6">
               {!showHints ? (
-                <button
-                  onClick={() => {
-                    setShowHints(true)
-                    setVisibleHintCount(1)
-                  }}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                  </svg>
-                  Show Hint ({currentQuestion.hints_json.length} available)
-                </button>
+                <div>
+                  <button
+                    onClick={() => {
+                      setShowHints(true)
+                      setVisibleHintCount(1)
+                    }}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                    </svg>
+                    Show Hint ({currentQuestion.hints_json.length} available)
+                  </button>
+                  <p className="text-xs text-orange-600 mt-1">⚠️ Using hints means no credit for this question</p>
+                </div>
               ) : (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
                   <p className="text-sm font-medium text-yellow-800">

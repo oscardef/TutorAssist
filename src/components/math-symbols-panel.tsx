@@ -157,13 +157,13 @@ export default function MathSymbolsPanel({ onInsert }: MathSymbolsPanelProps) {
 
       {isOpen && (
         <div className="absolute right-0 bottom-full mb-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 w-80">
-          {/* Category tabs */}
-          <div className="flex overflow-x-auto border-b border-gray-200 p-1 gap-1">
+          {/* Category tabs - grid layout instead of horizontal scroll */}
+          <div className="grid grid-cols-4 gap-1 p-2 border-b border-gray-200">
             {SYMBOL_CATEGORIES.map((category, idx) => (
               <button
                 key={category.name}
                 onClick={() => setActiveCategory(idx)}
-                className={`px-3 py-1.5 text-xs font-medium rounded whitespace-nowrap transition-colors ${
+                className={`px-2 py-1.5 text-xs font-medium rounded text-center transition-colors ${
                   activeCategory === idx
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-600 hover:bg-gray-100'

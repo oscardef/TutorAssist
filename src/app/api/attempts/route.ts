@@ -53,11 +53,11 @@ export async function POST(request: Request) {
         workspace_id: context.workspaceId,
         question_id: questionId,
         assignment_id: assignmentId || null,
-        student_id: user.id,
-        answer_latex: answerLatex,
+        student_user_id: user.id,
+        answer_raw: answerLatex,
         is_correct: isCorrect,
         time_spent_seconds: timeSpentSeconds || null,
-        hints_used: hintsUsed,
+        hints_viewed: hintsUsed,
         submitted_at: new Date().toISOString(),
       })
       .select()
