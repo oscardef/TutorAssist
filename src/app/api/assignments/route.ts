@@ -17,8 +17,45 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const studentId = searchParams.get('studentId')
   const status = searchParams.get('status')
+  const id = searchParams.get('id')
   
   const supabase = await createServerClient()
+  
+  // If specific ID is requested, get full details
+  if (id) {
+    const { data: assignment, error } = await supabase
+      .from('assignments')
+      .select(`
+        *,
+        student_profiles(id, name, user_id),
+        assignment_items(
+          id,
+          question_id,
+          order_index,
+          points,
+          question:questions(
+            id,
+            prompt_text,
+            prompt_latex,
+            difficulty,
+            answer_type,
+            correct_answer_json,
+            hints_json,
+            solution_steps_json,
+            topics(id, name)
+          )
+        )
+      `)
+      .eq('id', id)
+      .eq('workspace_id', context.workspaceId)
+      .single()
+    
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    return NextResponse.json({ assignment })
+  }
   
   let query = supabase
     .from('assignments')

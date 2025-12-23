@@ -100,19 +100,29 @@ export async function GET(request: Request) {
   
   const { searchParams } = new URL(request.url)
   const questionId = searchParams.get('questionId')
+  const assignmentId = searchParams.get('assignmentId')
   const limit = parseInt(searchParams.get('limit') || '50')
   
   const supabase = await createServerClient()
   
   let query = supabase
     .from('attempts')
-    .select('*, questions(question_latex, topics(name))')
-    .eq('student_id', user.id)
+    .select('*, questions(prompt_text, topics(name))')
+    .eq('workspace_id', context.workspaceId)
     .order('submitted_at', { ascending: false })
     .limit(limit)
   
+  // For students, only show their own attempts
+  if (context.role === 'student') {
+    query = query.eq('student_user_id', user.id)
+  }
+  
   if (questionId) {
     query = query.eq('question_id', questionId)
+  }
+  
+  if (assignmentId) {
+    query = query.eq('assignment_id', assignmentId)
   }
   
   const { data: attempts, error } = await query
