@@ -18,12 +18,13 @@ export default async function AssignmentsPage() {
     .eq('workspace_id', context.workspaceId)
     .order('created_at', { ascending: false })
 
-  // Get students for assignment creation
-  const { data: students } = await supabase
+  // Get students for assignment creation - available for future dropdown
+  const { data: _students } = await supabase
     .from('student_profiles')
     .select('id, name')
     .eq('workspace_id', context.workspaceId)
     .order('name')
+  void _students // Reserved for student dropdown feature
 
   // Get questions count
   const { count: questionCount } = await supabase

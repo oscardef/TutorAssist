@@ -10,12 +10,14 @@ DROP POLICY IF EXISTS "members_insert_tutor" ON workspace_members;
 DROP POLICY IF EXISTS "members_update_tutor" ON workspace_members;
 DROP POLICY IF EXISTS "members_delete_tutor" ON workspace_members;
 DROP POLICY IF EXISTS "invites_select_tutor" ON invite_tokens;
+DROP POLICY IF EXISTS "invites_select_public" ON invite_tokens;
 DROP POLICY IF EXISTS "invites_insert_tutor" ON invite_tokens;
 DROP POLICY IF EXISTS "invites_update_tutor" ON invite_tokens;
 DROP POLICY IF EXISTS "invites_delete_tutor" ON invite_tokens;
 DROP POLICY IF EXISTS "profiles_select" ON student_profiles;
 DROP POLICY IF EXISTS "profiles_insert_tutor" ON student_profiles;
 DROP POLICY IF EXISTS "profiles_update_tutor" ON student_profiles;
+DROP POLICY IF EXISTS "profiles_delete_tutor" ON student_profiles;
 DROP POLICY IF EXISTS "topics_select_member" ON topics;
 DROP POLICY IF EXISTS "topics_insert_tutor" ON topics;
 DROP POLICY IF EXISTS "topics_update_tutor" ON topics;
@@ -147,6 +149,10 @@ CREATE POLICY "members_delete_tutor" ON workspace_members
 -- INVITE TOKENS
 -- ============================================
 
+-- Public can view invite tokens (needed for unauthenticated users to accept invites)
+CREATE POLICY "invites_select_public" ON invite_tokens
+    FOR SELECT USING (true);
+
 -- Tutors can view their workspace invites
 CREATE POLICY "invites_select_tutor" ON invite_tokens
     FOR SELECT USING (
@@ -193,6 +199,12 @@ CREATE POLICY "profiles_insert_tutor" ON student_profiles
 
 CREATE POLICY "profiles_update_tutor" ON student_profiles
     FOR UPDATE USING (
+        user_workspace_role(auth.uid(), workspace_id) = 'tutor'
+        OR is_platform_owner(auth.uid())
+    );
+
+CREATE POLICY "profiles_delete_tutor" ON student_profiles
+    FOR DELETE USING (
         user_workspace_role(auth.uid(), workspace_id) = 'tutor'
         OR is_platform_owner(auth.uid())
     );

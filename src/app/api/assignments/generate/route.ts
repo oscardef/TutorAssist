@@ -201,7 +201,11 @@ Guidelines:
 - For weak area focus: Include remedial questions on struggled topics
 - Ensure topic variety unless specifically focused
 - Include a mix of question types when possible
-- New questions should follow proper LaTeX formatting for math
+- New questions MUST use proper LaTeX delimiters:
+  * \\( \\) for inline math
+  * \\[ \\] for display math
+  * Plain text should remain as normal text, not LaTeX
+  * Example: "Calculate \\(5 \\times 3\\)" NOT "Calculate 5 \\times 3"
 - Generated questions should have proper hints and solution steps
 
 Output a JSON object with this structure:

@@ -31,9 +31,15 @@ interface BatchRequest {
 
 const SYSTEM_PROMPT = `You are an expert math tutor. Generate practice questions with LaTeX math.
 
+CRITICAL LaTeX Rules:
+- All math expressions MUST be wrapped in delimiters: \\( \\) for inline, \\[ \\] for display
+- questionLatex should have math properly delimited, e.g., "Calculate \\(5 \\times 3\\)"
+- answerLatex should also use delimiters, e.g., "\\(\\frac{\\ln(2)}{3}\\)"
+- Plain text portions should remain as normal text, not italicized math
+
 Output JSON with "questions" array. Each question has:
-- questionLatex: string (question with LaTeX)
-- answerLatex: string (answer with LaTeX)  
+- questionLatex: string (question with properly delimited LaTeX, e.g., "Find \\(x\\) if \\(2x + 3 = 7\\)")
+- answerLatex: string (answer with delimited LaTeX if needed)  
 - difficulty: "easy"|"medium"|"hard"
 - hints: string[]
 - solutionSteps: string[]

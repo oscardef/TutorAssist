@@ -120,12 +120,8 @@ export async function handleGeneratePdf(job: Job): Promise<void> {
     })
     yPosition -= 40
     
-    // Draw date
-    const dateStr = new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
+    // Draw date in DD/MM/YYYY format
+    const dateStr = new Date().toLocaleDateString('en-GB')
     currentPage.drawText(dateStr, {
       x: MARGIN,
       y: yPosition,

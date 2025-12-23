@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import LatexRenderer from '@/components/latex-renderer'
 
 interface Topic {
   id: string
@@ -40,6 +42,7 @@ export default function QuestionBankClient({
   initialQuestions: Question[]
   initialTopics: Topic[]
 }) {
+  const router = useRouter()
   const [questions, setQuestions] = useState<Question[]>(initialQuestions)
   const [topics] = useState<Topic[]>(initialTopics)
   const [searchQuery, setSearchQuery] = useState('')
@@ -185,6 +188,13 @@ export default function QuestionBankClient({
   // Bulk actions
   const handleBulkAction = async (action: 'archive' | 'delete' | 'assign') => {
     if (selectedQuestions.size === 0) return
+    
+    // For assign, redirect to new assignment page with selected questions
+    if (action === 'assign') {
+      const questionIds = Array.from(selectedQuestions).join(',')
+      router.push(`/tutor/assignments/new?questions=${questionIds}`)
+      return
+    }
     
     if (action === 'delete' && !confirm(`Delete ${selectedQuestions.size} questions? This cannot be undone.`)) {
       return
@@ -387,9 +397,12 @@ export default function QuestionBankClient({
           <div className="flex gap-2">
             <button
               onClick={() => handleBulkAction('assign')}
-              className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+              className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center gap-1"
             >
-              Add to Assignment
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Create Assignment
             </button>
             <button
               onClick={() => handleBulkAction('archive')}
@@ -480,14 +493,18 @@ export default function QuestionBankClient({
                       )}
                     </div>
                     
-                    {/* Question text */}
-                    <p className="text-gray-900 font-medium line-clamp-2">{question.prompt_text}</p>
+                    {/* Question text with LaTeX rendering */}
+                    <div className="text-gray-900 font-medium line-clamp-2">
+                      <LatexRenderer content={question.prompt_latex || question.prompt_text} />
+                    </div>
                     
                     {/* Answer preview */}
                     <div className="mt-2 text-sm text-gray-500">
-                      Answer: {typeof question.correct_answer_json?.value === 'object'
-                        ? JSON.stringify(question.correct_answer_json.value)
-                        : String(question.correct_answer_json?.value || 'N/A')}
+                      Answer: <LatexRenderer content={
+                        typeof question.correct_answer_json?.value === 'object'
+                          ? JSON.stringify(question.correct_answer_json.value)
+                          : String(question.correct_answer_json?.value || 'N/A')
+                      } />
                       {successRate !== null && (
                         <span className="ml-3">
                           • {successRate}% success ({question.times_correct}/{question.times_attempted})

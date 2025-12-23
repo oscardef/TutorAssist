@@ -8,6 +8,11 @@ export default function NewStudentPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [inviteToken, setInviteToken] = useState<string | null>(null)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -45,6 +50,11 @@ export default function NewStudentPage() {
 
       if (data.inviteLink) {
         setInviteLink(data.inviteLink)
+        // Extract token from invite link
+        const token = data.inviteLink.split('/invite/')[1]
+        if (token) {
+          setInviteToken(token)
+        }
       } else {
         router.push('/tutor/students')
       }
@@ -76,6 +86,46 @@ export default function NewStudentPage() {
     }))
   }
 
+  const handleCopyLink = async () => {
+    if (inviteLink) {
+      await navigator.clipboard.writeText(inviteLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const handleSendEmail = async () => {
+    if (!inviteToken || !formData.email) return
+    
+    setSendingEmail(true)
+    setEmailError(null)
+
+    try {
+      const response = await fetch('/api/invite/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: inviteToken,
+          email: formData.email,
+          studentName: formData.name,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setEmailError(data.error || 'Failed to send email')
+        return
+      }
+
+      setEmailSent(true)
+    } catch {
+      setEmailError('Failed to send email. Please try again.')
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
   if (inviteLink) {
     return (
       <div className="mx-auto max-w-lg">
@@ -88,10 +138,11 @@ export default function NewStudentPage() {
             </div>
             <h2 className="mt-4 text-lg font-semibold text-gray-900">Student Created!</h2>
             <p className="mt-2 text-sm text-gray-500">
-              Share this invite link with {formData.name} to let them join.
+              Share the invite link with {formData.name} to let them join.
             </p>
           </div>
 
+          {/* Invite Link Section */}
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700">Invite Link</label>
             <div className="mt-1 flex rounded-lg border border-gray-300 bg-gray-50">
@@ -103,16 +154,89 @@ export default function NewStudentPage() {
               />
               <button
                 type="button"
-                onClick={() => navigator.clipboard.writeText(inviteLink)}
-                className="rounded-r-lg border-l border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                onClick={handleCopyLink}
+                className="rounded-r-lg border-l border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 min-w-[70px]"
               >
-                Copy
+                {copied ? (
+                  <span className="text-green-600">Copied!</span>
+                ) : (
+                  'Copy'
+                )}
               </button>
             </div>
             <p className="mt-2 text-xs text-gray-500">
               This link expires in 7 days.
             </p>
           </div>
+
+          {/* Email Invite Section */}
+          {formData.email && (
+            <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-gray-900">Send Invite Email</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Send a professional invite email to {formData.email}
+                  </p>
+                  
+                  {emailError && (
+                    <p className="mt-2 text-sm text-red-600">{emailError}</p>
+                  )}
+                  
+                  {emailSent ? (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                      Email sent successfully!
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail}
+                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                    >
+                      {sendingEmail ? (
+                        <>
+                          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                          </svg>
+                          Send Invite Email
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!formData.email && (
+            <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+              <div className="flex items-start gap-3">
+                <svg className="h-5 w-5 text-yellow-600 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                </svg>
+                <p className="text-sm text-yellow-800">
+                  No email address was provided. You&apos;ll need to share the invite link manually.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 flex gap-3">
             <button
@@ -124,6 +248,10 @@ export default function NewStudentPage() {
             <button
               onClick={() => {
                 setInviteLink(null)
+                setInviteToken(null)
+                setEmailSent(false)
+                setEmailError(null)
+                setCopied(false)
                 setFormData({
                   name: '',
                   email: '',

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import LatexRenderer from '@/components/latex-renderer'
 
 interface Student {
   id: string
@@ -39,11 +40,29 @@ interface StudentHistory {
   topicsStruggled: { topicId: string; topicName: string; errorRate: number }[]
 }
 
+// Preset configurations for common use cases
+const _PRESETS = [
+  { name: 'Quick Practice', questions: 5, description: '~15 min, good for daily warmup' },
+  { name: 'Homework', questions: 10, description: '~30 min, standard homework length' },
+  { name: 'Unit Review', questions: 20, description: '~1 hour, comprehensive review' },
+  { name: 'Holiday Problem Set', questions: 50, description: '~2-3 hours, split into 10 sub-assignments' },
+  { name: 'Extended Practice', questions: 100, description: '~5-6 hours, split into 20 sub-assignments' },
+  { name: 'Full Course Review', questions: 200, description: '~10+ hours, split into 40 sub-assignments' },
+]
+void _PRESETS // Used for future preset selection feature
+
+interface StudentHistory {
+  totalAttempts: number
+  overallAccuracy: number
+  topicsStruggled: { topicId: string; topicName: string; errorRate: number }[]
+}
+
 export default function AIAssignmentPage() {
   const router = useRouter()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0 })
   const [refining, setRefining] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,10 +71,14 @@ export default function AIAssignmentPage() {
   const [selectedStudent, setSelectedStudent] = useState('')
   const [prompt, setPrompt] = useState('')
   const [questionCount, setQuestionCount] = useState(10)
+  const [customQuestionCount, setCustomQuestionCount] = useState('')
+  const [questionsPerChunk, setQuestionsPerChunk] = useState(5)
+  const [splitIntoSubAssignments, setSplitIntoSubAssignments] = useState(false)
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed' | 'adaptive'>('adaptive')
   const [includeMarkscheme, setIncludeMarkscheme] = useState(true)
   const [includeSolutionSteps, setIncludeSolutionSteps] = useState(true)
   const [focusOnWeakAreas, setFocusOnWeakAreas] = useState(false)
+  const [notifyStudent, setNotifyStudent] = useState(true)
 
   // Generated assignment state
   const [assignment, setAssignment] = useState<GeneratedAssignment | null>(null)
@@ -101,37 +124,95 @@ export default function AIAssignmentPage() {
       return
     }
 
+    const totalQuestions = questionCount === -1 ? parseInt(customQuestionCount) || 10 : questionCount
+
     setGenerating(true)
     setError(null)
     setAssignment(null)
+    setGenerationProgress({ current: 0, total: totalQuestions })
 
     try {
-      const response = await fetch('/api/assignments/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentId: selectedStudent || undefined,
-          prompt,
-          questionCount,
-          difficulty,
-          includeMarkscheme,
-          includeSolutionSteps,
-          focusOnWeakAreas,
-        }),
-      })
+      // For large question sets, generate in batches
+      if (totalQuestions > 20) {
+        const batchSize = 10
+        const allQuestions: Question[] = []
+        let assignmentData: GeneratedAssignment | null = null
 
-      const data = await response.json()
+        const numBatches = Math.ceil(totalQuestions / batchSize)
+        for (let batchIdx = 0; batchIdx < numBatches; batchIdx++) {
+          const startIdx = batchIdx * batchSize
+          const batchCount = Math.min(batchSize, totalQuestions - startIdx)
+          setGenerationProgress({ current: startIdx, total: totalQuestions })
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate assignment')
+          const batchRes: Response = await fetch('/api/assignments/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: selectedStudent || undefined,
+              prompt: batchIdx === 0 ? prompt : `Continue generating more questions in the same style: ${prompt}`,
+              questionCount: batchCount,
+              difficulty,
+              includeMarkscheme,
+              includeSolutionSteps,
+              focusOnWeakAreas,
+              batchIndex: batchIdx,
+              existingTopics: assignmentData?.topicsCovered || [],
+            }),
+          })
+
+          const batchJson: { assignment: GeneratedAssignment; studentHistory: StudentHistory; error?: string } = await batchRes.json()
+
+          if (!batchRes.ok) {
+            throw new Error(batchJson.error || 'Failed to generate assignment')
+          }
+
+          if (batchIdx === 0) {
+            assignmentData = batchJson.assignment
+            setStudentHistory(batchJson.studentHistory)
+          }
+          
+          // Ensure each question has a unique ID by regenerating them
+          const questionsWithUniqueIds = batchJson.assignment.questions.map(q => ({
+            ...q,
+            id: crypto.randomUUID()
+          }))
+          allQuestions.push(...questionsWithUniqueIds)
+        }
+
+        if (assignmentData) {
+          assignmentData.questions = allQuestions
+          setAssignment(assignmentData)
+        }
+      } else {
+        // Normal generation for smaller sets
+        const response = await fetch('/api/assignments/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentId: selectedStudent || undefined,
+            prompt,
+            questionCount: totalQuestions,
+            difficulty,
+            includeMarkscheme,
+            includeSolutionSteps,
+            focusOnWeakAreas,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to generate assignment')
+        }
+
+        setAssignment(data.assignment)
+        setStudentHistory(data.studentHistory)
       }
-
-      setAssignment(data.assignment)
-      setStudentHistory(data.studentHistory)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate assignment')
     } finally {
       setGenerating(false)
+      setGenerationProgress({ current: 0, total: 0 })
     }
   }
 
@@ -243,7 +324,73 @@ export default function AIAssignmentPage() {
         }
       }
 
-      // Create the assignment
+      // Validate we have questions to assign
+      if (questionIds.length === 0) {
+        throw new Error('No questions were created. Please try again.')
+      }
+
+      // Check if we need to split into sub-assignments
+      if (splitIntoSubAssignments && questionIds.length > questionsPerChunk) {
+        // Create multiple assignments - ensure no empty chunks
+        const chunks: string[][] = []
+        for (let i = 0; i < questionIds.length; i += questionsPerChunk) {
+          const chunk = questionIds.slice(i, i + questionsPerChunk)
+          if (chunk.length > 0) {
+            chunks.push(chunk)
+          }
+        }
+
+        // Filter out any empty chunks (shouldn't happen, but safety check)
+        const validChunks = chunks.filter(chunk => chunk.length > 0)
+        
+        if (validChunks.length === 0) {
+          throw new Error('No valid question groups could be created.')
+        }
+
+        for (let i = 0; i < validChunks.length; i++) {
+          const chunkTitle = `${editTitle || assignment.title} - Part ${i + 1} of ${validChunks.length}`
+          
+          const response = await fetch('/api/assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: chunkTitle,
+              description: `${editDescription || assignment.description}\n\nPart ${i + 1} of ${validChunks.length}`,
+              studentProfileId: selectedStudent || null,
+              questionIds: validChunks[i],
+              dueAt: dueDate || null,
+              settings: {
+                showHints: true,
+                showSolutions: includeMarkscheme,
+              },
+            }),
+          })
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            throw new Error(data.error || `Failed to save assignment part ${i + 1}`)
+          }
+
+          // If not draft, activate it and optionally notify student
+          if (!asDraft && data.assignment?.id) {
+            await fetch('/api/assignments', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: data.assignment.id,
+                status: 'active',
+                notifyStudent: notifyStudent && selectedStudent && i === 0, // Only notify once for first part
+              }),
+            })
+          }
+        }
+        
+        router.push('/tutor/assignments')
+        return
+      }
+
+      // Create single assignment
       const response = await fetch('/api/assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,7 +413,7 @@ export default function AIAssignmentPage() {
         throw new Error(data.error || 'Failed to save assignment')
       }
 
-      // If not draft, activate it
+      // If not draft, activate it and optionally notify student
       if (!asDraft && data.assignment?.id) {
         await fetch('/api/assignments', {
           method: 'PATCH',
@@ -274,6 +421,7 @@ export default function AIAssignmentPage() {
           body: JSON.stringify({
             id: data.assignment.id,
             status: 'active',
+            notifyStudent: notifyStudent && selectedStudent,
           }),
         })
       }
@@ -375,14 +523,37 @@ export default function AIAssignmentPage() {
                     </label>
                     <select
                       value={questionCount}
-                      onChange={(e) => setQuestionCount(parseInt(e.target.value))}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value)
+                        setQuestionCount(val)
+                        // Auto-enable sub-assignments for large sets
+                        if (val > 20) {
+                          setSplitIntoSubAssignments(true)
+                        }
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
                       <option value={5}>5 questions (~15 min)</option>
                       <option value={10}>10 questions (~30 min)</option>
                       <option value={15}>15 questions (~45 min)</option>
-                      <option value={20}>20 questions (~60 min)</option>
+                      <option value={20}>20 questions (~1 hour)</option>
+                      <option value={30}>30 questions (~1.5 hours)</option>
+                      <option value={50}>50 questions - Holiday Pack (~3 hours)</option>
+                      <option value={100}>100 questions - Extended Practice (~6 hours)</option>
+                      <option value={200}>200 questions - Full Course Review (~12 hours)</option>
+                      <option value={-1}>Custom amount...</option>
                     </select>
+                    {questionCount === -1 && (
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={customQuestionCount}
+                        onChange={(e) => setCustomQuestionCount(e.target.value)}
+                        className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Enter number (1-500)"
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -425,17 +596,72 @@ export default function AIAssignmentPage() {
                   </label>
 
                   {selectedStudent && (
+                    <>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={focusOnWeakAreas}
+                          onChange={(e) => setFocusOnWeakAreas(e.target.checked)}
+                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-sm text-gray-700">Focus on weak areas</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={notifyStudent}
+                          onChange={(e) => setNotifyStudent(e.target.checked)}
+                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-sm text-gray-700">Notify student via email</span>
+                      </label>
+                    </>
+                  )}
+                </div>
+
+                {/* Sub-assignment options for large sets */}
+                {(questionCount > 20 || (questionCount === -1 && parseInt(customQuestionCount) > 20)) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
+                      </svg>
+                      <h4 className="font-medium text-blue-900">Large Problem Set Options</h4>
+                    </div>
+                    
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={focusOnWeakAreas}
-                        onChange={(e) => setFocusOnWeakAreas(e.target.checked)}
-                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        checked={splitIntoSubAssignments}
+                        onChange={(e) => setSplitIntoSubAssignments(e.target.checked)}
+                        className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700">Focus on weak areas</span>
+                      <span className="text-sm text-blue-800">
+                        Split into smaller sub-assignments (like Khan Academy)
+                      </span>
                     </label>
-                  )}
-                </div>
+
+                    {splitIntoSubAssignments && (
+                      <div>
+                        <label className="block text-sm text-blue-700 mb-1">
+                          Questions per sub-assignment:
+                        </label>
+                        <select
+                          value={questionsPerChunk}
+                          onChange={(e) => setQuestionsPerChunk(parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        >
+                          <option value={5}>5 questions (~15 min each)</option>
+                          <option value={10}>10 questions (~30 min each)</option>
+                          <option value={15}>15 questions (~45 min each)</option>
+                        </select>
+                        <p className="text-xs text-blue-600 mt-1">
+                          This will create {Math.ceil((questionCount === -1 ? parseInt(customQuestionCount) || 0 : questionCount) / questionsPerChunk)} separate assignments
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button
@@ -446,14 +672,16 @@ export default function AIAssignmentPage() {
                 {generating ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                    Generating...
+                    {generationProgress.total > 0 
+                      ? `Generating... (${generationProgress.current}/${generationProgress.total} questions)`
+                      : 'Generating...'}
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
                     </svg>
-                    Generate Assignment
+                    Generate {splitIntoSubAssignments ? 'Problem Set' : 'Assignment'}
                   </>
                 )}
               </button>
@@ -638,7 +866,9 @@ export default function AIAssignmentPage() {
                         rows={3}
                       />
                     ) : (
-                      <p className="text-gray-800 whitespace-pre-wrap">{question.promptText}</p>
+                      <div className="text-gray-800">
+                        <LatexRenderer content={question.promptText} />
+                      </div>
                     )}
 
                     {question.hints && question.hints.length > 0 && (
@@ -648,7 +878,7 @@ export default function AIAssignmentPage() {
                         </summary>
                         <ul className="mt-1 text-sm text-gray-600 list-disc list-inside">
                           {question.hints.map((hint, i) => (
-                            <li key={i}>{hint}</li>
+                            <li key={i}><LatexRenderer content={hint} /></li>
                           ))}
                         </ul>
                       </details>

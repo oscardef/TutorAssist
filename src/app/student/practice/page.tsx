@@ -4,10 +4,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import type { MathfieldElement } from 'mathlive'
+import LatexRenderer from '@/components/latex-renderer'
 
 interface Question {
   id: string
-  question_latex: string
+  prompt_text: string
+  prompt_latex: string | null
   answer_latex: string
   difficulty: 'easy' | 'medium' | 'hard'
   hints_json: string[] | null
@@ -245,9 +247,9 @@ export default function PracticePage() {
             </div>
             
             <div className="text-lg text-gray-900 mb-6">
-              {/* Render LaTeX - in production use KaTeX */}
+              {/* Render LaTeX with KaTeX */}
               <div className="math-content">
-                {question.question_latex}
+                <LatexRenderer content={question.prompt_latex || question.prompt_text} />
               </div>
             </div>
             

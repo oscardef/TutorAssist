@@ -15,11 +15,11 @@ export default async function StudentAssignmentsPage() {
       assignment_items(count),
       attempts:attempts(count)
     `)
-    .eq('student_id', user?.id)
+    .eq('assigned_student_user_id', user?.id)
     .eq('workspace_id', context?.workspaceId)
     .order('created_at', { ascending: false })
   
-  const pendingAssignments = assignments?.filter((a) => a.status === 'assigned') || []
+  const pendingAssignments = assignments?.filter((a) => a.status === 'active') || []
   const completedAssignments = assignments?.filter((a) => a.status === 'completed') || []
   
   return (
@@ -40,7 +40,7 @@ export default async function StudentAssignmentsPage() {
         {pendingAssignments.length > 0 ? (
           <div className="grid gap-4">
             {pendingAssignments.map((assignment) => {
-              const dueDate = assignment.due_date ? new Date(assignment.due_date) : null
+              const dueDate = assignment.due_at ? new Date(assignment.due_at) : null
               const isOverdue = dueDate && dueDate < new Date()
               const totalQuestions = (assignment.assignment_items as { count: number }[])?.[0]?.count || 0
               const completedQuestions = (assignment.attempts as { count: number }[])?.[0]?.count || 0
@@ -65,7 +65,7 @@ export default async function StudentAssignmentsPage() {
                     </div>
                     {dueDate && (
                       <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                        {isOverdue ? 'Overdue' : `Due ${dueDate.toLocaleDateString()}`}
+                        {isOverdue ? 'Overdue' : `Due ${dueDate.toLocaleDateString('en-GB')}`}
                       </span>
                     )}
                   </div>
@@ -122,7 +122,7 @@ export default async function StudentAssignmentsPage() {
                         <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
                       </div>
                       <p className="text-sm text-gray-500 mt-1">
-                        {totalQuestions} questions • Completed {new Date(assignment.completed_at!).toLocaleDateString()}
+                        {totalQuestions} questions • Completed {new Date(assignment.completed_at!).toLocaleDateString('en-GB')}
                       </p>
                     </div>
                     <span className="text-gray-400 text-sm">

@@ -79,15 +79,16 @@ export async function GET() {
 
     const { data: students, error } = await supabase
       .from('student_profiles')
-      .select('*, user:users(email)')
+      .select('*')
       .eq('workspace_id', context.workspaceId)
       .order('name')
 
     if (error) {
+      console.error('Error fetching students:', error)
       return NextResponse.json({ error: 'Failed to fetch students' }, { status: 500 })
     }
 
-    return NextResponse.json({ students })
+    return NextResponse.json({ students: students || [] })
   } catch (error) {
     console.error('Error fetching students:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

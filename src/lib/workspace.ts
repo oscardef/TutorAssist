@@ -153,11 +153,20 @@ export async function createInviteToken(
   email?: string,
   expiresInDays: number = 7
 ): Promise<InviteToken | null> {
-  const supabase = await createServerClient()
+  const supabase = await createAdminClient()
   
   const token = uuidv4()
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + expiresInDays)
+  
+  console.log('[createInviteToken] Creating token:', {
+    workspace_id: workspaceId,
+    token: token.substring(0, 8) + '...',
+    student_profile_id: studentProfileId,
+    email,
+    expires_at: expiresAt.toISOString(),
+    created_by: createdBy,
+  })
   
   const { data, error } = await supabase
     .from('invite_tokens')
@@ -173,10 +182,11 @@ export async function createInviteToken(
     .single()
   
   if (error || !data) {
-    console.error('Failed to create invite token:', error)
+    console.error('[createInviteToken] Failed to create invite token:', error)
     return null
   }
   
+  console.log('[createInviteToken] Successfully created token:', data.token.substring(0, 8) + '...')
   return data
 }
 

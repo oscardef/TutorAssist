@@ -118,7 +118,8 @@ export async function POST(request: Request) {
     
     const supabase = await createServerClient()
     
-    // If student profile is specified, verify it belongs to workspace
+    // If student profile is specified, verify it belongs to workspace and get user_id
+    let assignedStudentUserId: string | null = null
     if (studentProfileId) {
       const { data: profile, error: profileError } = await supabase
         .from('student_profiles')
@@ -130,6 +131,9 @@ export async function POST(request: Request) {
       if (profileError || !profile) {
         return NextResponse.json({ error: 'Student not found' }, { status: 404 })
       }
+      
+      // Set the user_id for the assignment so students can see it
+      assignedStudentUserId = profile.user_id
     }
     
     // Create assignment
@@ -139,6 +143,7 @@ export async function POST(request: Request) {
         workspace_id: context.workspaceId,
         created_by: user.id,
         student_profile_id: studentProfileId || null,
+        assigned_student_user_id: assignedStudentUserId,
         title,
         description: description || null,
         due_at: dueAt || null,
@@ -194,7 +199,7 @@ export async function PATCH(request: Request) {
   
   try {
     const body = await request.json()
-    const { id, title, description, dueAt, status, settings } = body
+    const { id, title, description, dueAt, status, settings, notifyStudent } = body
     
     if (!id) {
       return NextResponse.json({ error: 'Assignment ID required' }, { status: 400 })
@@ -215,11 +220,86 @@ export async function PATCH(request: Request) {
       .update(updateData)
       .eq('id', id)
       .eq('workspace_id', context.workspaceId)
-      .select()
+      .select(`
+        *,
+        student_profiles(id, name, user_id)
+      `)
       .single()
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    // Send notification email if requested and assignment is being activated
+    if (notifyStudent && status === 'active' && assignment.student_profile_id) {
+      try {
+        // Get student email from auth.users via student_profile
+        const { data: studentProfile } = await supabase
+          .from('student_profiles')
+          .select('user_id, name')
+          .eq('id', assignment.student_profile_id)
+          .single()
+        
+        if (studentProfile?.user_id) {
+          // Get the user's email from auth
+          const { data: { users } } = await supabase.auth.admin.listUsers()
+          const studentUser = users?.find(u => u.id === studentProfile.user_id)
+          const studentEmail = studentUser?.email
+          
+          if (studentEmail) {
+            // Get workspace name
+            const { data: workspace } = await supabase
+              .from('workspaces')
+              .select('name')
+              .eq('id', context.workspaceId)
+              .single()
+            
+            // Send email notification
+            const nodemailer = await import('nodemailer')
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: {
+                user: process.env.SMTP_EMAIL,
+                pass: process.env.SMTP_PASSWORD,
+              },
+            })
+            
+            const dueText = assignment.due_at 
+              ? `Due: ${new Date(assignment.due_at).toLocaleDateString('en-GB')}`
+              : ''
+            
+            await transporter.sendMail({
+              from: `"${workspace?.name || 'TutorAssist'}" <${process.env.SMTP_EMAIL}>`,
+              to: studentEmail,
+              subject: `New Assignment: ${assignment.title}`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #2563eb;">New Assignment Available</h2>
+                  <p>Hi ${studentProfile.name || 'there'},</p>
+                  <p>You have a new assignment waiting for you:</p>
+                  <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                    <h3 style="margin: 0 0 8px 0;">${assignment.title}</h3>
+                    ${assignment.description ? `<p style="color: #6b7280; margin: 0;">${assignment.description}</p>` : ''}
+                    ${dueText ? `<p style="color: #dc2626; margin: 8px 0 0 0; font-weight: 500;">${dueText}</p>` : ''}
+                  </div>
+                  <p>
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/assignments/${assignment.id}" 
+                       style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+                      View Assignment
+                    </a>
+                  </p>
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                    - ${workspace?.name || 'Your Tutor'}
+                  </p>
+                </div>
+              `,
+            })
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send assignment notification email:', emailError)
+        // Don't fail the request if email fails
+      }
     }
     
     return NextResponse.json({ assignment })

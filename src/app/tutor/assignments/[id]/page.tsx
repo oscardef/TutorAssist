@@ -3,11 +3,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { LatexRenderer } from '@/components/latex-renderer'
 
 interface Question {
   id: string
   prompt_text: string
+  prompt_latex?: string
   difficulty: number
+  hints_json?: string[]
+  solution_steps_json?: string[]
+  correct_answer_json?: Record<string, unknown>
   topics?: { name: string }
 }
 
@@ -51,6 +56,20 @@ export default function TutorAssignmentDetailPage() {
   const [items, setItems] = useState<AssignmentItem[]>([])
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [updating, setUpdating] = useState(false)
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set())
+  const [generatingPdf, setGeneratingPdf] = useState(false)
+
+  const toggleExpanded = (questionId: string) => {
+    setExpandedQuestions(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId)
+      } else {
+        newSet.add(questionId)
+      }
+      return newSet
+    })
+  }
 
   const fetchData = useCallback(async () => {
     try {
@@ -106,6 +125,49 @@ export default function TutorAssignmentDetailPage() {
       router.push('/tutor/assignments')
     } catch (err) {
       console.error('Failed to delete:', err)
+    }
+  }
+
+  async function handleGeneratePdf() {
+    if (items.length === 0) return
+    
+    setGeneratingPdf(true)
+    try {
+      const questionIds = items.map(item => item.question_id)
+      
+      const response = await fetch('/api/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: assignment?.title || 'Assignment',
+          questionIds,
+          includeAnswers: false,
+          includeHints: false,
+          assignmentId,
+          immediate: true, // Generate immediately for small PDFs
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to generate PDF')
+      }
+      
+      // Download the PDF
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${assignment?.title || 'assignment'}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      console.error('Failed to generate PDF:', err)
+      alert(err instanceof Error ? err.message : 'Failed to generate PDF')
+    } finally {
+      setGeneratingPdf(false)
     }
   }
 
@@ -179,7 +241,7 @@ export default function TutorAssignmentDetailPage() {
               )}
               {assignment.due_at && (
                 <span className="text-sm text-gray-500">
-                  Due: {new Date(assignment.due_at).toLocaleDateString()}
+                  Due: {new Date(assignment.due_at).toLocaleDateString('en-GB')}
                 </span>
               )}
             </div>
@@ -269,77 +331,163 @@ export default function TutorAssignmentDetailPage() {
       <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
         <div className="p-4 bg-gray-50 flex justify-between items-center">
           <h3 className="font-medium text-gray-900">Questions ({items.length})</h3>
-          <Link
-            href={`/api/pdf?assignmentId=${assignmentId}`}
-            target="_blank"
-            className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          <button
+            onClick={handleGeneratePdf}
+            disabled={generatingPdf}
+            className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:opacity-50"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-            </svg>
-            Generate PDF
-          </Link>
+            {generatingPdf ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Generating...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
+                Generate PDF
+              </>
+            )}
+          </button>
         </div>
-        {questionAttempts.map(({ item, attempt, totalAttempts }, idx) => (
-          <div key={item.id} className="p-4">
-            <div className="flex items-start gap-4">
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                attempt 
-                  ? attempt.is_correct 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
-                {idx + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  {item.question.topics?.name && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
-                      {item.question.topics.name}
-                    </span>
-                  )}
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    item.question.difficulty <= 2 ? 'bg-green-100 text-green-700' :
-                    item.question.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {item.question.difficulty <= 2 ? 'Easy' : 
-                     item.question.difficulty <= 3 ? 'Medium' : 'Hard'}
-                  </span>
-                </div>
-                <p className="text-gray-800 line-clamp-2">{item.question.prompt_text}</p>
-                {attempt && (
-                  <div className="mt-2 text-sm">
-                    <span className={attempt.is_correct ? 'text-green-600' : 'text-red-600'}>
-                      {attempt.is_correct ? '✓ Correct' : '✗ Incorrect'}
-                    </span>
-                    <span className="text-gray-400 mx-2">•</span>
-                    <span className="text-gray-500">
-                      Answer: &quot;{attempt.answer_raw}&quot;
-                    </span>
-                    {attempt.hints_viewed > 0 && (
-                      <>
-                        <span className="text-gray-400 mx-2">•</span>
-                        <span className="text-yellow-600">
-                          {attempt.hints_viewed} hint(s) used
-                        </span>
-                      </>
+        {questionAttempts.map(({ item, attempt, totalAttempts }, idx) => {
+          const isExpanded = expandedQuestions.has(item.question.id)
+          const hints = item.question.hints_json || []
+          const solutionSteps = item.question.solution_steps_json || []
+          const correctAnswer = item.question.correct_answer_json
+          
+          return (
+            <div key={item.id} className="p-4">
+              <div className="flex items-start gap-4">
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                  attempt 
+                    ? attempt.is_correct 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {idx + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    {item.question.topics?.name && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                        {item.question.topics.name}
+                      </span>
                     )}
-                    {totalAttempts > 1 && (
-                      <>
-                        <span className="text-gray-400 mx-2">•</span>
-                        <span className="text-gray-500">
-                          {totalAttempts} attempts
-                        </span>
-                      </>
-                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      item.question.difficulty <= 2 ? 'bg-green-100 text-green-700' :
+                      item.question.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {item.question.difficulty <= 2 ? 'Easy' : 
+                       item.question.difficulty <= 3 ? 'Medium' : 'Hard'}
+                    </span>
+                    <button
+                      onClick={() => toggleExpanded(item.question.id)}
+                      className="ml-auto text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      {isExpanded ? 'Hide Details' : 'Show Details'}
+                    </button>
                   </div>
-                )}
+                  
+                  {/* Question Text with LaTeX */}
+                  <div className="text-gray-800 mb-2">
+                    <LatexRenderer content={item.question.prompt_latex || item.question.prompt_text} />
+                  </div>
+                  
+                  {/* Student Attempt Info */}
+                  {attempt && (
+                    <div className="mt-2 text-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className={attempt.is_correct ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                        {attempt.is_correct ? '✓ Correct' : '✗ Incorrect'}
+                      </span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-gray-600">
+                        Answer: <LatexRenderer content={attempt.answer_raw} className="inline" />
+                      </span>
+                      {attempt.hints_viewed > 0 && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          <span className="text-yellow-600">
+                            {attempt.hints_viewed} hint(s) used
+                          </span>
+                        </>
+                      )}
+                      {totalAttempts > 1 && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          <span className="text-gray-500">
+                            {totalAttempts} attempts
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Expanded Section */}
+                  {isExpanded && (
+                    <div className="mt-4 space-y-4 border-t pt-4">
+                      {/* Correct Answer */}
+                      {correctAnswer && (
+                        <div className="bg-green-50 p-3 rounded-lg">
+                          <div className="text-xs font-medium text-green-800 mb-1">Correct Answer</div>
+                          <div className="text-green-900">
+                            <LatexRenderer content={
+                              typeof correctAnswer === 'object' && 'value' in correctAnswer 
+                                ? String(correctAnswer.value) 
+                                : JSON.stringify(correctAnswer)
+                            } />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Hints */}
+                      {hints.length > 0 && (
+                        <div className="bg-yellow-50 p-3 rounded-lg">
+                          <div className="text-xs font-medium text-yellow-800 mb-2">Hints ({hints.length})</div>
+                          <ol className="space-y-2">
+                            {hints.map((hint, hintIdx) => (
+                              <li key={hintIdx} className="text-sm text-yellow-900 flex gap-2">
+                                <span className="font-medium text-yellow-700">{hintIdx + 1}.</span>
+                                <LatexRenderer content={hint} />
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                      
+                      {/* Solution Steps */}
+                      {solutionSteps.length > 0 && (
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="text-xs font-medium text-blue-800 mb-2">Solution Steps</div>
+                          <ol className="space-y-2">
+                            {solutionSteps.map((step, stepIdx) => (
+                              <li key={stepIdx} className="text-sm text-blue-900 flex gap-2">
+                                <span className="font-medium text-blue-700">{stepIdx + 1}.</span>
+                                <LatexRenderer content={step} />
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                      
+                      {!correctAnswer && hints.length === 0 && solutionSteps.length === 0 && (
+                        <div className="text-sm text-gray-500 italic">
+                          No hints or solution available for this question.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

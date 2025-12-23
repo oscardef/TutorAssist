@@ -202,7 +202,7 @@ async function generatePdfImmediate(options: {
   yPosition -= 40
   
   // Date
-  currentPage.drawText(new Date().toLocaleDateString(), {
+  currentPage.drawText(new Date().toLocaleDateString('en-GB'), {
     x: MARGIN,
     y: yPosition,
     size: 10,

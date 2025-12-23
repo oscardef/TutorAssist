@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import LatexRenderer from '@/components/latex-renderer'
+import MathSymbolsPanel from '@/components/math-symbols-panel'
 
 interface Question {
   id: string
@@ -61,11 +63,12 @@ export default function StudentAssignmentDetailPage() {
   // Current question state
   const [answer, setAnswer] = useState('')
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null)
-  const [showHint, setShowHint] = useState(false)
-  const [hintIndex, setHintIndex] = useState(0)
+  const [showHints, setShowHints] = useState(false)
+  const [visibleHintCount, setVisibleHintCount] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string } | null>(null)
   const [showSolution, setShowSolution] = useState(false)
+  const [showCompletionModal, setShowCompletionModal] = useState(false)
 
   const fetchAssignment = useCallback(async () => {
     try {
@@ -120,8 +123,8 @@ export default function StudentAssignmentDetailPage() {
   useEffect(() => {
     setAnswer('')
     setSelectedChoice(null)
-    setShowHint(false)
-    setHintIndex(0)
+    setShowHints(false)
+    setVisibleHintCount(0)
     setFeedback(null)
     setShowSolution(false)
   }, [currentIndex])
@@ -158,7 +161,7 @@ export default function StudentAssignmentDetailPage() {
           assignmentId,
           answerLatex: userAnswer,
           isCorrect,
-          hintsUsed: showHint ? hintIndex + 1 : 0,
+          hintsUsed: showHints ? visibleHintCount : 0,
         }),
       })
 
@@ -212,6 +215,44 @@ export default function StudentAssignmentDetailPage() {
   function nextQuestion() {
     if (currentIndex < items.length - 1) {
       setCurrentIndex(currentIndex + 1)
+    }
+  }
+
+  async function handleCompleteAssignment() {
+    // Mark assignment as completed
+    try {
+      await fetch('/api/assignments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: assignmentId,
+          status: 'completed',
+        }),
+      })
+      setShowCompletionModal(true)
+    } catch (err) {
+      console.error('Failed to complete assignment:', err)
+    }
+  }
+
+  async function handleRedoAssignment() {
+    // Clear local attempts state but keep history in database
+    setAttempts({})
+    setCurrentIndex(0)
+    setShowCompletionModal(false)
+    
+    // Update assignment status back to active for redo
+    try {
+      await fetch('/api/assignments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: assignmentId,
+          status: 'active',
+        }),
+      })
+    } catch (err) {
+      console.error('Failed to reset assignment:', err)
     }
   }
 
@@ -338,14 +379,9 @@ export default function StudentAssignmentDetailPage() {
         {/* Question Content */}
         <div className="p-6">
           <div className="prose max-w-none mb-6">
-            <p className="text-lg text-gray-800 whitespace-pre-wrap">
-              {currentQuestion?.prompt_text}
-            </p>
-            {currentQuestion?.prompt_latex && (
-              <div className="mt-2 p-4 bg-gray-50 rounded-lg font-mono text-sm">
-                {currentQuestion.prompt_latex}
-              </div>
-            )}
+            <div className="text-lg text-gray-800">
+              <LatexRenderer content={currentQuestion?.prompt_latex || currentQuestion?.prompt_text || ''} />
+            </div>
           </div>
 
           {/* Answer Input */}
@@ -369,7 +405,7 @@ export default function StudentAssignmentDetailPage() {
                   }`}
                 >
                   <span className="font-medium mr-3">{String.fromCharCode(65 + idx)}.</span>
-                  {choice.text}
+                  <LatexRenderer content={choice.text} />
                 </button>
               ))}
             </div>
@@ -378,19 +414,29 @@ export default function StudentAssignmentDetailPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Your Answer
               </label>
-              <input
-                type={currentQuestion?.answer_type === 'numeric' ? 'number' : 'text'}
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                disabled={!!currentAttempt}
-                className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
-                placeholder={currentQuestion?.answer_type === 'numeric' ? 'Enter a number' : 'Type your answer'}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !currentAttempt) {
-                    handleSubmit()
-                  }
-                }}
-              />
+              <div className="flex gap-2">
+                <input
+                  type={currentQuestion?.answer_type === 'numeric' ? 'number' : 'text'}
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  disabled={!!currentAttempt}
+                  className="flex-1 px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                  placeholder={currentQuestion?.answer_type === 'numeric' ? 'Enter a number' : 'Type your answer'}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !currentAttempt) {
+                      handleSubmit()
+                    }
+                  }}
+                />
+                {!currentAttempt && (
+                  <MathSymbolsPanel
+                    onInsert={(symbol) => setAnswer(prev => prev + symbol)}
+                  />
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Use the math symbols button or type normally. Common notations: × ÷ √ π
+              </p>
               {currentAttempt && (
                 <p className="mt-2 text-sm text-gray-600">
                   Your answer: <span className="font-medium">{currentAttempt.answer}</span>
@@ -415,32 +461,46 @@ export default function StudentAssignmentDetailPage() {
             </div>
           )}
 
-          {/* Hints */}
+          {/* Hints - Display cumulatively */}
           {currentQuestion?.hints_json && currentQuestion.hints_json.length > 0 && 
            assignment.settings_json.showHints !== false && (
             <div className="mt-6">
-              {!showHint ? (
+              {!showHints ? (
                 <button
-                  onClick={() => setShowHint(true)}
+                  onClick={() => {
+                    setShowHints(true)
+                    setVisibleHintCount(1)
+                  }}
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
                   </svg>
-                  Show Hint
+                  Show Hint ({currentQuestion.hints_json.length} available)
                 </button>
               ) : (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-yellow-800 mb-2">
-                    Hint {hintIndex + 1} of {currentQuestion.hints_json.length}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+                  <p className="text-sm font-medium text-yellow-800">
+                    Hints ({visibleHintCount} of {currentQuestion.hints_json.length})
                   </p>
-                  <p className="text-yellow-800">{currentQuestion.hints_json[hintIndex]}</p>
-                  {hintIndex < currentQuestion.hints_json.length - 1 && (
+                  {/* Display all visible hints */}
+                  {currentQuestion.hints_json.slice(0, visibleHintCount).map((hint, idx) => (
+                    <div key={idx} className="pl-4 border-l-2 border-yellow-300">
+                      <p className="text-xs text-yellow-600 mb-1">Hint {idx + 1}</p>
+                      <p className="text-yellow-800">
+                        <LatexRenderer content={hint} />
+                      </p>
+                    </div>
+                  ))}
+                  {visibleHintCount < currentQuestion.hints_json.length && (
                     <button
-                      onClick={() => setHintIndex(hintIndex + 1)}
-                      className="mt-2 text-yellow-700 hover:text-yellow-900 text-sm font-medium"
+                      onClick={() => setVisibleHintCount(prev => prev + 1)}
+                      className="text-yellow-700 hover:text-yellow-900 text-sm font-medium flex items-center gap-1"
                     >
-                      Show next hint →
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Show next hint
                     </button>
                   )}
                 </div>
@@ -466,9 +526,13 @@ export default function StudentAssignmentDetailPage() {
                   <ol className="list-decimal list-inside space-y-2">
                     {currentQuestion.solution_steps_json.map((step, idx) => (
                       <li key={idx} className="text-purple-800">
-                        <span className="font-medium">{step.step}</span>
+                        <span className="font-medium">
+                          <LatexRenderer content={step.step} />
+                        </span>
                         {step.result && (
-                          <span className="ml-2 text-purple-600">→ {step.result}</span>
+                          <span className="ml-2 text-purple-600">
+                            → <LatexRenderer content={step.result} />
+                          </span>
                         )}
                       </li>
                     ))}
@@ -514,7 +578,7 @@ export default function StudentAssignmentDetailPage() {
               </button>
             ) : (
               <button
-                onClick={() => router.push('/student/assignments')}
+                onClick={handleCompleteAssignment}
                 className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
               >
                 Complete Assignment ✓
@@ -531,6 +595,64 @@ export default function StudentAssignmentDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* Completion Modal */}
+      {showCompletionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Assignment Complete!
+              </h3>
+              <p className="text-gray-600 mb-4">
+                You scored {correctCount} out of {items.length} ({Math.round((correctCount / items.length) * 100)}%)
+              </p>
+              
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Correct</p>
+                    <p className="text-xl font-bold text-green-600">{correctCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Incorrect</p>
+                    <p className="text-xl font-bold text-red-600">{items.length - correctCount}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setShowCompletionModal(false)
+                    router.push('/student/assignments')
+                  }}
+                  className="w-full px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                >
+                  Back to Assignments
+                </button>
+                <button
+                  onClick={handleRedoAssignment}
+                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+                >
+                  Redo Assignment
+                </button>
+                <button
+                  onClick={() => setShowCompletionModal(false)}
+                  className="w-full px-4 py-2 text-gray-500 hover:text-gray-700"
+                >
+                  Review Answers
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

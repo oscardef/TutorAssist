@@ -102,12 +102,18 @@ export default async function StudentDetailPage({
             <svg className="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
             </svg>
-            <div className="ml-3">
+            <div className="ml-3 flex-1">
               <h3 className="text-sm font-medium text-yellow-800">Pending Invite</h3>
               <p className="mt-1 text-sm text-yellow-700">
                 This student hasn&apos;t joined yet. They need to sign up using their invite link.
               </p>
             </div>
+            <Link
+              href={`/tutor/students/${id}/edit`}
+              className="ml-4 shrink-0 rounded-lg bg-yellow-100 px-3 py-2 text-sm font-medium text-yellow-800 hover:bg-yellow-200"
+            >
+              Resend Invite
+            </Link>
           </div>
         </div>
       )}

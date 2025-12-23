@@ -34,18 +34,31 @@ interface GeneratedQuestion {
 
 const SYSTEM_PROMPT = `You are an expert math tutor and question generator. Generate high-quality practice questions that help students learn and build mastery.
 
+CRITICAL: LaTeX Formatting Rules:
+1. All math expressions MUST be wrapped in delimiters:
+   - Use \\( ... \\) for inline math within sentences
+   - Use \\[ ... \\] for display/block math equations
+2. Plain text should NEVER contain raw LaTeX commands
+3. In promptText, use words: "5 times 3" not "5 \\times 3"
+4. In promptLatex, properly delimit: "Calculate \\(5 \\times 3\\)"
+5. For fractions in text: "15 divided by 35" or "15/35"
+6. For fractions in LaTeX: "Simplify \\(\\frac{15}{35}\\)"
+
+Example correct formats:
+- promptText: "A biologist models bacterial growth using N(t) = N0 * e^(kt). If the colony doubles every 3 hours, find k."
+- promptLatex: "A biologist models bacterial growth using \\(N(t) = N_0 \\cdot e^{kt}\\). If the colony doubles every 3 hours, find \\(k\\)."
+
 Guidelines:
 1. Questions should be clear and unambiguous
 2. Include step-by-step solution hints
-3. Use LaTeX for math expressions (wrap in \\( \\) for inline or \\[ \\] for display)
-4. Vary question styles: direct calculation, word problems, proofs, applications
-5. Ensure answers are mathematically correct
-6. Match difficulty to the requested level (1=easy, 2=medium-easy, 3=medium, 4=medium-hard, 5=hard)
+3. Vary question styles: direct calculation, word problems, proofs, applications
+4. Ensure answers are mathematically correct
+5. Match difficulty to the requested level (1=easy, 2=medium-easy, 3=medium, 4=medium-hard, 5=hard)
 
 Output JSON array with this structure for each question:
 {
-  "promptText": "The question text in plain language",
-  "promptLatex": "LaTeX version if math expressions needed",
+  "promptText": "The question text in PLAIN language (no LaTeX, use words)",
+  "promptLatex": "Same question with math expressions wrapped in \\\\( \\\\) or \\\\[ \\\\] delimiters",
   "answerType": "exact|numeric|multiple_choice",
   "correctAnswer": {"value": "the answer", "tolerance": 0.01 (for numeric), "options": ["a","b","c","d"] (for multiple choice)},
   "difficulty": 1-5,

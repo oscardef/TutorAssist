@@ -19,7 +19,7 @@ export default async function StudentDashboard() {
   const { data: recentAttempts } = await supabase
     .from('attempts')
     .select('*, questions(question_latex, topics(name))')
-    .eq('student_id', user?.id)
+    .eq('student_user_id', user?.id)
     .order('submitted_at', { ascending: false })
     .limit(5)
   
@@ -27,30 +27,30 @@ export default async function StudentDashboard() {
   const { data: assignments } = await supabase
     .from('assignments')
     .select('*, assignment_items(count)')
-    .eq('student_id', user?.id)
-    .eq('status', 'assigned')
-    .order('due_date', { ascending: true })
+    .eq('assigned_student_user_id', user?.id)
+    .eq('status', 'active')
+    .order('due_at', { ascending: true })
     .limit(5)
   
   // Get spaced repetition items due
   const { data: dueItems } = await supabase
     .from('spaced_repetition')
     .select('*, questions(question_latex, topics(name))')
-    .eq('student_id', user?.id)
-    .lte('next_review_date', new Date().toISOString())
-    .order('next_review_date')
+    .eq('student_user_id', user?.id)
+    .lte('next_due', new Date().toISOString())
+    .order('next_due')
     .limit(10)
   
   // Calculate stats
   const { count: totalAttempts } = await supabase
     .from('attempts')
     .select('*', { count: 'exact', head: true })
-    .eq('student_id', user?.id)
+    .eq('student_user_id', user?.id)
   
   const { count: correctAttempts } = await supabase
     .from('attempts')
     .select('*', { count: 'exact', head: true })
-    .eq('student_id', user?.id)
+    .eq('student_user_id', user?.id)
     .eq('is_correct', true)
   
   const accuracy = totalAttempts && totalAttempts > 0
@@ -136,7 +136,7 @@ export default async function StudentDashboard() {
           {assignments && assignments.length > 0 ? (
             <ul className="space-y-3">
               {assignments.map((assignment) => {
-                const dueDate = assignment.due_date ? new Date(assignment.due_date) : null
+                const dueDate = assignment.due_at ? new Date(assignment.due_at) : null
                 const isOverdue = dueDate && dueDate < new Date()
                 
                 return (
@@ -154,7 +154,7 @@ export default async function StudentDashboard() {
                         </span>
                         {dueDate && (
                           <span className={`text-sm ${isOverdue ? 'text-red-600' : 'text-gray-500'}`}>
-                            • Due {dueDate.toLocaleDateString()}
+                            • Due {dueDate.toLocaleDateString('en-GB')}
                           </span>
                         )}
                       </div>
@@ -195,7 +195,7 @@ export default async function StudentDashboard() {
                       {question?.topics?.name || 'Question'}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {new Date(attempt.submitted_at!).toLocaleDateString()}
+                      {new Date(attempt.submitted_at!).toLocaleDateString('en-GB')}
                     </div>
                   </div>
                   <div className="text-sm text-gray-500">
