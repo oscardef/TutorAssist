@@ -15,7 +15,7 @@ interface AttemptData {
 
 export default async function StudentProgressPage() {
   const user = await requireUser()
-  const context = await getUserContext()
+  await getUserContext() // Validate context but don't need the value
   const supabase = await createServerClient()
   
   // Get all attempts for charts
@@ -212,9 +212,9 @@ export default async function StudentProgressPage() {
       </div>
       
       {/* Recommendations */}
-      <div className="mt-6 bg-blue-50 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-blue-900 mb-3">💡 Recommendations</h2>
-        <ul className="space-y-2 text-blue-800">
+      <div className="mt-6 bg-blue-50 rounded-lg border border-blue-100 p-6">
+        <h2 className="text-lg font-semibold text-blue-900 mb-3">Recommendations</h2>
+        <ul className="space-y-2 text-blue-800 text-sm">
           {totalAttempts < 10 && (
             <li>• Practice more questions to get accurate progress insights</li>
           )}

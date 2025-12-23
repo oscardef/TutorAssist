@@ -27,6 +27,7 @@ export default function NewQuestionPage() {
   const [multipleChoiceOptions, setMultipleChoiceOptions] = useState(['', '', '', ''])
   const [correctChoiceIndex, setCorrectChoiceIndex] = useState(0)
   const [difficulty, setDifficulty] = useState(3)
+  const [gradeLevel, setGradeLevel] = useState<number | null>(null)
   const [hints, setHints] = useState<string[]>([''])
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
   const [tags, setTags] = useState('')
@@ -188,6 +189,7 @@ export default function NewQuestionPage() {
           answerType,
           tolerance: answerType === 'numeric' && answerTolerance ? parseFloat(answerTolerance) : null,
           difficulty,
+          gradeLevel,
           hints: hints.filter(h => h.trim()),
           solutionSteps: solutionSteps.filter(s => s.trim()).map(s => ({ step: s })),
           tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -403,28 +405,67 @@ export default function NewQuestionPage() {
           )}
         </div>
         
-        {/* Difficulty */}
+        {/* Difficulty & Grade Level */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Difficulty</h2>
-          
-          <div className="flex items-center gap-4">
-            <input
-              type="range"
-              min="1"
-              max="5"
-              value={difficulty}
-              onChange={(e) => setDifficulty(parseInt(e.target.value))}
-              className="flex-1"
-            />
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              difficulty === 1 ? 'bg-green-100 text-green-700' :
-              difficulty === 2 ? 'bg-lime-100 text-lime-700' :
-              difficulty === 3 ? 'bg-yellow-100 text-yellow-700' :
-              difficulty === 4 ? 'bg-orange-100 text-orange-700' :
-              'bg-red-100 text-red-700'
-            }`}>
-              {['Easy', 'Medium-Easy', 'Medium', 'Medium-Hard', 'Hard'][difficulty - 1]}
-            </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Difficulty */}
+            <div>
+              <h2 className="font-semibold text-gray-900 mb-4">Difficulty</h2>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(parseInt(e.target.value))}
+                  className="flex-1"
+                />
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  difficulty === 1 ? 'bg-green-100 text-green-700' :
+                  difficulty === 2 ? 'bg-lime-100 text-lime-700' :
+                  difficulty === 3 ? 'bg-yellow-100 text-yellow-700' :
+                  difficulty === 4 ? 'bg-orange-100 text-orange-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {['Easy', 'Medium-Easy', 'Medium', 'Medium-Hard', 'Hard'][difficulty - 1]}
+                </span>
+              </div>
+            </div>
+            
+            {/* Grade Level */}
+            <div>
+              <h2 className="font-semibold text-gray-900 mb-4">Grade Level</h2>
+              <select
+                value={gradeLevel || ''}
+                onChange={(e) => setGradeLevel(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Not specified</option>
+                <optgroup label="Primary">
+                  <option value="1">Year 1</option>
+                  <option value="2">Year 2</option>
+                  <option value="3">Year 3</option>
+                  <option value="4">Year 4</option>
+                  <option value="5">Year 5</option>
+                  <option value="6">Year 6</option>
+                </optgroup>
+                <optgroup label="Secondary">
+                  <option value="7">Year 7</option>
+                  <option value="8">Year 8</option>
+                  <option value="9">Year 9</option>
+                  <option value="10">Year 10</option>
+                  <option value="11">Year 11</option>
+                </optgroup>
+                <optgroup label="Post-16">
+                  <option value="12">Year 12 (AS)</option>
+                  <option value="13">Year 13 (A-Level)</option>
+                </optgroup>
+                <optgroup label="Higher Education">
+                  <option value="14">University</option>
+                  <option value="15">Postgraduate</option>
+                </optgroup>
+              </select>
+            </div>
           </div>
         </div>
         

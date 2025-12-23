@@ -61,10 +61,10 @@ export default async function StudentDashboard() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
-          Welcome back, {profile?.display_name || user?.email?.split('@')[0]}! 👋
+          Welcome back, {profile?.display_name || user?.email?.split('@')[0]}
         </h1>
         <p className="text-gray-600 mt-1">
-          Ready to practice? Let&apos;s improve your math skills today.
+          Track your progress and continue learning.
         </p>
       </div>
       
@@ -165,7 +165,7 @@ export default async function StudentDashboard() {
             </ul>
           ) : (
             <p className="text-gray-500 text-center py-4">
-              No pending assignments 🎉
+              No pending assignments.
             </p>
           )}
         </div>

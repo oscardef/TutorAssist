@@ -101,9 +101,49 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const questionId = searchParams.get('questionId')
   const assignmentId = searchParams.get('assignmentId')
+  const stats = searchParams.get('stats')
   const limit = parseInt(searchParams.get('limit') || '50')
   
   const supabase = await createServerClient()
+  
+  // Return topic statistics for the student
+  if (stats === 'byTopic') {
+    const { data: attempts, error } = await supabase
+      .from('attempts')
+      .select('is_correct, questions(topic_id, topics(id, name))')
+      .eq('workspace_id', context.workspaceId)
+      .eq('student_user_id', user.id)
+    
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    // Aggregate by topic
+    const topicMap = new Map<string, { topicId: string; topicName: string; total: number; correct: number }>()
+    
+    for (const attempt of attempts || []) {
+      const questions = attempt.questions as unknown as { topic_id: string; topics: { id: string; name: string } | { id: string; name: string }[] | null } | null
+      if (!questions?.topics) continue
+      
+      const topics = Array.isArray(questions.topics) ? questions.topics[0] : questions.topics
+      if (!topics) continue
+      
+      const topicId = topics.id
+      const topicName = topics.name
+      
+      const existing = topicMap.get(topicId) || { topicId, topicName, total: 0, correct: 0 }
+      existing.total += 1
+      if (attempt.is_correct) existing.correct += 1
+      topicMap.set(topicId, existing)
+    }
+    
+    const topicStats = Array.from(topicMap.values()).map(s => ({
+      ...s,
+      accuracy: s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0
+    })).sort((a, b) => b.total - a.total)
+    
+    return NextResponse.json({ topicStats })
+  }
   
   let query = supabase
     .from('attempts')

@@ -93,7 +93,7 @@ export default async function StudentAssignmentsPage() {
           </div>
         ) : (
           <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
-            No pending assignments! 🎉
+            No pending assignments.
           </div>
         )}
       </div>

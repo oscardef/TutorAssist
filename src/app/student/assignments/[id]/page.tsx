@@ -80,17 +80,43 @@ function normalizeAnswer(answer: string): string {
     .replace(/[{}]/g, '')
 }
 
-// Format answer for display (convert LaTeX to delimited format for rendering)
+// Format answer for display (convert symbols/LaTeX to proper rendered format)
 function formatAnswerForDisplay(answer: string): string {
+  if (!answer) return ''
+  
   // If it already has delimiters, return as-is
   if (/\$|\\\(|\\\[/.test(answer)) {
     return answer
   }
-  // If it looks like it has LaTeX commands, wrap it
-  if (/\\[a-zA-Z]+/.test(answer) || /[_^]/.test(answer)) {
-    return `\\(${answer}\\)`
+  
+  // Convert Unicode math symbols to LaTeX for display
+  let latex = answer
+    .replace(/√/g, '\\sqrt{')
+    .replace(/×/g, '\\times ')
+    .replace(/÷/g, '\\div ')
+    .replace(/−/g, '-')
+    .replace(/π/g, '\\pi ')
+    .replace(/∞/g, '\\infty ')
+    .replace(/≤/g, '\\leq ')
+    .replace(/≥/g, '\\geq ')
+    .replace(/≠/g, '\\neq ')
+    .replace(/±/g, '\\pm ')
+    .replace(/°/g, '^\\circ ')
+  
+  // Close any opened sqrt braces (simple case: √2 -> \sqrt{2})
+  // Count opening \sqrt{ and add closing } at the end for each unmatched
+  const sqrtCount = (latex.match(/\\sqrt\{/g) || []).length
+  const closeBraceCount = (latex.match(/\}/g) || []).length
+  const unclosedSqrt = sqrtCount - closeBraceCount
+  if (unclosedSqrt > 0) {
+    latex += '}'.repeat(unclosedSqrt)
   }
-  // Otherwise return as-is
+  
+  // If it has any LaTeX commands or math content, wrap it
+  if (/\\[a-zA-Z]+/.test(latex) || /[_^]/.test(latex) || /\d/.test(latex)) {
+    return `$${latex}$`
+  }
+  
   return answer
 }
 
@@ -290,12 +316,12 @@ export default function StudentAssignmentDetailPage() {
   }
 
   function getRandomCorrectMessage() {
-    const messages = ['Correct! 🎉', 'Well done! ✨', 'Perfect! 💯', 'Great job! 🌟', 'Nailed it! 🎯']
+    const messages = ['Correct!', 'Well done!', 'Perfect!', 'Great job!', 'Excellent!']
     return messages[Math.floor(Math.random() * messages.length)]
   }
 
   function getRandomIncorrectMessage() {
-    const messages = ["Not quite, try again!", "That's not right. Review the hint?", "Keep trying!", "Almost there!"]
+    const messages = ['Not quite right.', 'Try again.', 'Keep going!', 'Almost there!']
     return messages[Math.floor(Math.random() * messages.length)]
   }
 
@@ -472,16 +498,13 @@ export default function StudentAssignmentDetailPage() {
               </p>
               {currentAttempt && (
                 <div className="mt-2 text-sm text-gray-600">
-                  Your answer: <span className="font-medium">{currentAttempt.answer}</span>
+                  Your answer: <span className="font-medium"><LatexRenderer content={formatAnswerForDisplay(currentAttempt.answer)} /></span>
                   {!currentAttempt.isCorrect && currentQuestion?.correct_answer_json.value && (
                     <span className="ml-2">
                       | Correct: <span className="font-medium text-green-600">
                         <LatexRenderer content={formatAnswerForDisplay(String(currentQuestion.correct_answer_json.value))} />
                       </span>
                     </span>
-                  )}
-                  {currentAttempt.usedHints && (
-                    <span className="ml-2 text-orange-600">(hints used - no credit)</span>
                   )}
                 </div>
               )}
@@ -502,21 +525,18 @@ export default function StudentAssignmentDetailPage() {
            assignment.settings_json.showHints !== false && (
             <div className="mt-6">
               {!showHints ? (
-                <div>
-                  <button
-                    onClick={() => {
-                      setShowHints(true)
-                      setVisibleHintCount(1)
-                    }}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                    </svg>
-                    Show Hint ({currentQuestion.hints_json.length} available)
-                  </button>
-                  <p className="text-xs text-orange-600 mt-1">⚠️ Using hints means no credit for this question</p>
-                </div>
+                <button
+                  onClick={() => {
+                    setShowHints(true)
+                    setVisibleHintCount(1)
+                  }}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                  Show Hint ({currentQuestion.hints_json.length} available)
+                </button>
               ) : (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
                   <p className="text-sm font-medium text-yellow-800">

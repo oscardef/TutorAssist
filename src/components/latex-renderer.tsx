@@ -38,6 +38,10 @@ function LatexRendererComponent({ content, className = '' }: LatexRendererProps)
 
 // Escape HTML special characters for safety
 function escapeHtml(text: string): string {
+  // Handle non-string values gracefully
+  if (typeof text !== 'string') {
+    return String(text ?? '')
+  }
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -49,6 +53,10 @@ function escapeHtml(text: string): string {
 // Render mixed content with both text and LaTeX
 function renderMixedContent(content: string): string {
   if (!content) return ''
+  // Ensure content is a string
+  if (typeof content !== 'string') {
+    content = String(content)
+  }
 
   // Check if content has any LaTeX delimiters at all
   const hasDelimiters = /\\\(|\\\)|\\\[|\\\]|\$\$|\$/.test(content)

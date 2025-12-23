@@ -22,6 +22,7 @@ interface Question {
     options?: string[]
   }
   difficulty: number
+  grade_level: number | null
   status: string
   origin: string
   tags_json: string[]
@@ -474,6 +475,14 @@ export default function QuestionBankClient({
                       {question.difficulty && (
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${difficultyColors[question.difficulty - 1]}`}>
                           {difficultyLabels[question.difficulty - 1]}
+                        </span>
+                      )}
+                      {question.grade_level && (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                          {question.grade_level <= 12 ? `Year ${question.grade_level}` : 
+                           question.grade_level === 13 ? 'A-Level' : 
+                           question.grade_level === 14 ? 'Uni' : 
+                           question.grade_level === 15 ? 'Postgrad' : ''}
                         </span>
                       )}
                       {question.origin === 'ai_generated' && (

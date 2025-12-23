@@ -21,6 +21,7 @@ interface Question {
     options?: string[]
   }
   difficulty: number
+  grade_level: number | null
   hints: string[]
   solution_steps: string[]
   tags: string[]
@@ -47,6 +48,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   const [options, setOptions] = useState<string[]>(['', '', '', ''])
   const [correctOption, setCorrectOption] = useState(0)
   const [difficulty, setDifficulty] = useState(3)
+  const [gradeLevel, setGradeLevel] = useState<number | null>(null)
   const [hints, setHints] = useState<string[]>([''])
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
   const [tags, setTags] = useState('')
@@ -74,6 +76,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         setPromptLatex(q.prompt_latex || '')
         setAnswerType(q.answer_type || 'exact')
         setDifficulty(q.difficulty || 3)
+        setGradeLevel(q.grade_level || null)
         setHints(q.hints?.length > 0 ? q.hints : [''])
         setSolutionSteps(q.solution_steps?.length > 0 ? q.solution_steps : [''])
         setTags(q.tags?.join(', ') || '')
@@ -132,6 +135,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           answer_type: answerType,
           correct_answer_json: correctAnswerJson,
           difficulty,
+          grade_level: gradeLevel,
           hints: hints.filter(h => h.trim()),
           solution_steps: solutionSteps.filter(s => s.trim()),
           tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -357,6 +361,43 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
               onChange={(e) => setDifficulty(parseInt(e.target.value))}
               className="w-full"
             />
+          </div>
+          
+          {/* Grade Level */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Grade Level
+            </label>
+            <select
+              value={gradeLevel || ''}
+              onChange={(e) => setGradeLevel(e.target.value ? parseInt(e.target.value) : null)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Not specified</option>
+              <optgroup label="Primary">
+                <option value="1">Year 1</option>
+                <option value="2">Year 2</option>
+                <option value="3">Year 3</option>
+                <option value="4">Year 4</option>
+                <option value="5">Year 5</option>
+                <option value="6">Year 6</option>
+              </optgroup>
+              <optgroup label="Secondary">
+                <option value="7">Year 7</option>
+                <option value="8">Year 8</option>
+                <option value="9">Year 9</option>
+                <option value="10">Year 10</option>
+                <option value="11">Year 11</option>
+              </optgroup>
+              <optgroup label="Post-16">
+                <option value="12">Year 12 (AS)</option>
+                <option value="13">Year 13 (A-Level)</option>
+              </optgroup>
+              <optgroup label="Higher Education">
+                <option value="14">University</option>
+                <option value="15">Postgraduate</option>
+              </optgroup>
+            </select>
           </div>
           
           {/* Status */}
