@@ -23,7 +23,7 @@ export async function GET() {
       questions:questions(count)
     `)
     .eq('workspace_id', context.workspaceId)
-    .order('display_order')
+    .order('order_index')
     .order('name')
   
   if (error) {
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   
   try {
     const body = await request.json()
-    const { name, description, parentId, color, icon } = body
+    const { name, description, parentId } = body
     
     if (!name) {
       return NextResponse.json({ error: 'Topic name required' }, { status: 400 })
@@ -55,16 +55,16 @@ export async function POST(request: Request) {
     
     const supabase = await createServerClient()
     
-    // Get max display order
+    // Get max order index
     const { data: maxOrder } = await supabase
       .from('topics')
-      .select('display_order')
+      .select('order_index')
       .eq('workspace_id', context.workspaceId)
-      .order('display_order', { ascending: false })
+      .order('order_index', { ascending: false })
       .limit(1)
       .single()
     
-    const displayOrder = (maxOrder?.display_order || 0) + 1
+    const orderIndex = (maxOrder?.order_index || 0) + 1
     
     // If parentId provided, verify it exists
     if (parentId) {
@@ -86,10 +86,8 @@ export async function POST(request: Request) {
         workspace_id: context.workspaceId,
         name,
         description: description || null,
-        parent_topic_id: parentId || null,
-        display_order: displayOrder,
-        color: color || null,
-        icon: icon || null,
+        parent_id: parentId || null,
+        order_index: orderIndex,
       })
       .select()
       .single()

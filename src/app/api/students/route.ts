@@ -25,12 +25,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create student profile' }, { status: 500 })
     }
 
-    // Update private notes if provided (separate from profile creation to keep admin notes secure)
+    // Update additional fields (parent email, additional emails, private notes)
+    const supabase = await createServerClient()
+    const updates: Record<string, unknown> = {}
+    
     if (data.private_notes) {
-      const supabase = await createServerClient()
+      updates.private_notes = data.private_notes
+    }
+    if (data.parent_email?.trim()) {
+      updates.parent_email = data.parent_email.trim()
+    }
+    if (data.additional_emails?.length > 0) {
+      updates.additional_emails = data.additional_emails.filter((e: string) => e?.trim())
+    }
+    
+    if (Object.keys(updates).length > 0) {
       await supabase
         .from('student_profiles')
-        .update({ private_notes: data.private_notes })
+        .update(updates)
         .eq('id', profile.id)
     }
 
@@ -67,7 +79,7 @@ export async function GET() {
 
     const { data: students, error } = await supabase
       .from('student_profiles')
-      .select('*')
+      .select('*, user:users(email)')
       .eq('workspace_id', context.workspaceId)
       .order('name')
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function OnboardingPage() {
@@ -9,7 +9,34 @@ export default function OnboardingPage() {
   const [inviteToken, setInviteToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [checkingWorkspace, setCheckingWorkspace] = useState(true)
   const router = useRouter()
+
+  // Check if user already has a workspace on mount
+  useEffect(() => {
+    async function checkExistingWorkspace() {
+      try {
+        const response = await fetch('/api/workspace/check')
+        const data = await response.json()
+        
+        if (data.hasWorkspace) {
+          // User already has a workspace, redirect based on role
+          if (data.role === 'tutor') {
+            window.location.href = '/tutor/dashboard'
+          } else {
+            window.location.href = '/student/dashboard'
+          }
+          return
+        }
+      } catch (err) {
+        console.error('Error checking workspace:', err)
+      } finally {
+        setCheckingWorkspace(false)
+      }
+    }
+    
+    checkExistingWorkspace()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,6 +99,18 @@ export default function OnboardingPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading while checking for existing workspace
+  if (checkingWorkspace) {
+    return (
+      <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking your account...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

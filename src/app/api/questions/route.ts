@@ -75,17 +75,40 @@ export async function POST(request: Request) {
     const body = await request.json()
     const {
       topicId,
-      questionLatex,
-      answerLatex,
-      difficulty = 'medium',
+      promptText,
+      promptLatex,
+      answerType = 'exact',
+      correctAnswerJson,
+      tolerance,
+      difficulty = 3,
       hints = [],
       solutionSteps = [],
       tags = [],
+      // Legacy support for old API format
+      questionLatex,
+      answerLatex,
     } = body
     
-    if (!topicId || !questionLatex || !answerLatex) {
+    // Support both old and new field names
+    const questionText = promptText || questionLatex
+    const questionLatexFinal = promptLatex || questionLatex
+    
+    if (!topicId || !questionText) {
       return NextResponse.json(
-        { error: 'Topic, question, and answer are required' },
+        { error: 'Topic and question text are required' },
+        { status: 400 }
+      )
+    }
+    
+    // Build correct_answer_json if not provided
+    let answerJson = correctAnswerJson
+    if (!answerJson && answerLatex) {
+      answerJson = { value: answerLatex }
+    }
+    
+    if (!answerJson) {
+      return NextResponse.json(
+        { error: 'Answer is required' },
         { status: 400 }
       )
     }
@@ -104,25 +127,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Topic not found' }, { status: 404 })
     }
     
+    // Convert difficulty string to number if needed
+    let difficultyNum = difficulty
+    if (typeof difficulty === 'string') {
+      const difficultyMap: Record<string, number> = {
+        'easy': 1,
+        'medium-easy': 2,
+        'medium': 3,
+        'medium-hard': 4,
+        'hard': 5,
+      }
+      difficultyNum = difficultyMap[difficulty] || 3
+    }
+    
     // Create question
     const { data: question, error } = await supabase
       .from('questions')
       .insert({
         workspace_id: context.workspaceId,
         topic_id: topicId,
-        ai_generated: false,
-        question_latex: questionLatex,
-        answer_latex: answerLatex,
-        difficulty,
+        origin: 'manual',
+        status: 'active',
+        prompt_text: questionText,
+        prompt_latex: questionLatexFinal || null,
+        answer_type: answerType,
+        correct_answer_json: answerJson,
+        tolerance: tolerance || null,
+        difficulty: difficultyNum,
         hints_json: hints,
         solution_steps_json: solutionSteps,
-        tags,
+        tags_json: tags,
         quality_score: 1.0,
+        created_by: user.id,
       })
       .select()
       .single()
     
     if (error) {
+      console.error('Create question error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     

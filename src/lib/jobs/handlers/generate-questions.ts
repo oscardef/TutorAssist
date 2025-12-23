@@ -14,12 +14,19 @@ interface GenerateQuestionsPayload {
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed'
   style?: string
   fromMaterialId?: string
+  excludeQuestionIds?: string[] // Avoid duplicates
 }
 
 interface GeneratedQuestion {
-  questionLatex: string
-  answerLatex: string
-  difficulty: 'easy' | 'medium' | 'hard'
+  promptText: string
+  promptLatex?: string
+  answerType: 'exact' | 'numeric' | 'multiple_choice'
+  correctAnswer: {
+    value: string | number
+    tolerance?: number
+    options?: string[]
+  }
+  difficulty: number // 1-5
   hints: string[]
   solutionSteps: string[]
   tags: string[]
@@ -30,24 +37,26 @@ const SYSTEM_PROMPT = `You are an expert math tutor and question generator. Gene
 Guidelines:
 1. Questions should be clear and unambiguous
 2. Include step-by-step solution hints
-3. Use LaTeX for all math expressions (wrap in \\( \\) for inline or \\[ \\] for display)
+3. Use LaTeX for math expressions (wrap in \\( \\) for inline or \\[ \\] for display)
 4. Vary question styles: direct calculation, word problems, proofs, applications
 5. Ensure answers are mathematically correct
-6. Match difficulty to the requested level
+6. Match difficulty to the requested level (1=easy, 2=medium-easy, 3=medium, 4=medium-hard, 5=hard)
 
 Output JSON array with this structure for each question:
 {
-  "questionLatex": "The question text with LaTeX math",
-  "answerLatex": "The complete answer with LaTeX",
-  "difficulty": "easy|medium|hard",
-  "hints": ["hint 1", "hint 2", ...],
-  "solutionSteps": ["step 1", "step 2", ...],
+  "promptText": "The question text in plain language",
+  "promptLatex": "LaTeX version if math expressions needed",
+  "answerType": "exact|numeric|multiple_choice",
+  "correctAnswer": {"value": "the answer", "tolerance": 0.01 (for numeric), "options": ["a","b","c","d"] (for multiple choice)},
+  "difficulty": 1-5,
+  "hints": ["hint 1", "hint 2"],
+  "solutionSteps": ["step 1", "step 2"],
   "tags": ["relevant", "topic", "tags"]
 }`
 
 export async function handleGenerateQuestions(job: Job): Promise<void> {
   const payload = job.payload_json as unknown as GenerateQuestionsPayload
-  const { topicId, workspaceId, count, difficulty = 'mixed', style, fromMaterialId } = payload
+  const { topicId, workspaceId, count, difficulty = 'mixed', style, fromMaterialId, excludeQuestionIds = [] } = payload
   
   try {
     const supabase = await createAdminClient()
@@ -63,12 +72,22 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
       throw new Error(`Topic not found: ${topicId}`)
     }
     
+    // Get existing questions to avoid duplicates
+    const { data: existingQuestions } = await supabase
+      .from('questions')
+      .select('prompt_text')
+      .eq('workspace_id', workspaceId)
+      .eq('topic_id', topicId)
+      .limit(50)
+    
+    const existingPrompts = existingQuestions?.map(q => q.prompt_text.toLowerCase().trim()) || []
+    
     // Get source material context if specified
     let materialContext = ''
     if (fromMaterialId) {
       const { data: material } = await supabase
         .from('source_materials')
-        .select('extracted_text, topics_json')
+        .select('extracted_text')
         .eq('id', fromMaterialId)
         .single()
       
@@ -79,11 +98,13 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
     
     // Generate questions
     const difficultyPrompt = difficulty === 'mixed'
-      ? 'Include a mix of easy, medium, and hard questions.'
-      : `All questions should be ${difficulty} difficulty.`
+      ? 'Include a mix of difficulties (1-5 scale).'
+      : `All questions should be ${difficulty === 'easy' ? '1-2' : difficulty === 'medium' ? '3' : '4-5'} difficulty.`
     
-    const stylePrompt = style
-      ? `Question style preference: ${style}`
+    const stylePrompt = style ? `Question style preference: ${style}` : ''
+    
+    const avoidDuplicatesPrompt = existingPrompts.length > 0
+      ? `\n\nIMPORTANT: Avoid generating questions similar to these existing ones:\n${existingPrompts.slice(0, 10).join('\n')}`
       : ''
     
     const response = await openai.chat.completions.create({
@@ -99,13 +120,14 @@ Topic description: ${topic.description || 'N/A'}
 ${difficultyPrompt}
 ${stylePrompt}
 ${materialContext}
+${avoidDuplicatesPrompt}
 
 Return a JSON object with a "questions" array containing exactly ${count} questions.`,
         },
       ],
       response_format: { type: 'json_object' },
       max_tokens: 4000,
-      temperature: 0.8, // Some creativity for variety
+      temperature: 0.8,
     })
     
     const result = JSON.parse(response.choices[0].message.content || '{}')
@@ -115,19 +137,36 @@ Return a JSON object with a "questions" array containing exactly ${count} questi
       throw new Error('No questions generated')
     }
     
-    // Insert questions into database
-    const questionsToInsert = questions.map((q) => ({
+    // Filter out any duplicates
+    const uniqueQuestions = questions.filter(q => {
+      const normalized = q.promptText.toLowerCase().trim()
+      return !existingPrompts.some(existing => 
+        existing === normalized || 
+        levenshteinSimilarity(existing, normalized) > 0.85
+      )
+    })
+    
+    if (uniqueQuestions.length === 0) {
+      throw new Error('All generated questions were duplicates of existing ones')
+    }
+    
+    // Insert questions into database with correct column names
+    const questionsToInsert = uniqueQuestions.map((q) => ({
       workspace_id: workspaceId,
       topic_id: topicId,
       source_material_id: fromMaterialId || null,
-      ai_generated: true,
-      question_latex: q.questionLatex,
-      answer_latex: q.answerLatex,
-      difficulty: q.difficulty,
-      hints_json: q.hints,
-      solution_steps_json: q.solutionSteps,
-      tags: q.tags,
-      quality_score: 1.0, // Default score for new questions
+      origin: 'ai_generated' as const,
+      status: 'active' as const,
+      prompt_text: q.promptText,
+      prompt_latex: q.promptLatex || null,
+      answer_type: q.answerType || 'exact',
+      correct_answer_json: q.correctAnswer,
+      difficulty: q.difficulty || 3,
+      hints_json: q.hints || [],
+      solution_steps_json: q.solutionSteps || [],
+      tags_json: q.tags || [],
+      quality_score: 1.0,
+      created_by: job.created_by_user_id,
     }))
     
     const { data: insertedQuestions, error: insertError } = await supabase
@@ -139,16 +178,11 @@ Return a JSON object with a "questions" array containing exactly ${count} questi
       throw new Error(`Failed to insert questions: ${insertError.message}`)
     }
     
-    // Update topic question count
-    await supabase.rpc('increment_topic_question_count', {
-      topic_id_param: topicId,
-      increment_by: questions.length,
-    })
-    
     await completeJob(job.id, {
       success: true,
-      questionsGenerated: questions.length,
+      questionsGenerated: uniqueQuestions.length,
       questionIds: insertedQuestions?.map((q) => q.id) || [],
+      duplicatesFiltered: questions.length - uniqueQuestions.length,
     })
   } catch (error) {
     console.error('Generate questions failed:', error)
@@ -160,10 +194,41 @@ Return a JSON object with a "questions" array containing exactly ${count} questi
   }
 }
 
+// Simple Levenshtein similarity for duplicate detection
+function levenshteinSimilarity(a: string, b: string): number {
+  if (a.length === 0) return b.length === 0 ? 1 : 0
+  if (b.length === 0) return 0
+  
+  const matrix: number[][] = []
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i]
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j
+  }
+  
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1]
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        )
+      }
+    }
+  }
+  
+  const maxLen = Math.max(a.length, b.length)
+  return 1 - matrix[b.length][a.length] / maxLen
+}
+
 // Regenerate a variant of an existing question
 export async function handleRegenVariant(job: Job): Promise<void> {
-  const payload = job.payload_json as unknown as { questionId: string }
-  const { questionId } = payload
+  const payload = job.payload_json as unknown as { questionId: string; variationType?: 'similar' | 'harder' | 'easier' }
+  const { questionId, variationType = 'similar' } = payload
   
   try {
     const supabase = await createAdminClient()
@@ -179,26 +244,38 @@ export async function handleRegenVariant(job: Job): Promise<void> {
       throw new Error(`Question not found: ${questionId}`)
     }
     
+    const difficultyAdjustment = variationType === 'harder' 
+      ? Math.min(original.difficulty + 1, 5)
+      : variationType === 'easier'
+      ? Math.max(original.difficulty - 1, 1)
+      : original.difficulty
+    
+    const variationPrompt = variationType === 'harder'
+      ? 'Make this variant MORE CHALLENGING - add complexity, extra steps, or trickier numbers.'
+      : variationType === 'easier'
+      ? 'Make this variant EASIER - simpler numbers, fewer steps, more straightforward.'
+      : 'Create a similar variant with different numbers/context but same difficulty.'
+    
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Generate a variant of this math question that tests the same concept but with different numbers/context:
+          content: `Generate a variant of this math question:
 
-Original question: ${original.question_latex}
-Original answer: ${original.answer_latex}
+Original question: ${original.prompt_text}
+${original.prompt_latex ? `LaTeX: ${original.prompt_latex}` : ''}
+Original answer: ${JSON.stringify(original.correct_answer_json)}
 Topic: ${(original.topics as { name: string })?.name || 'Math'}
-Difficulty: ${original.difficulty}
+Current difficulty: ${original.difficulty}
 
-Create ONE new question that:
-1. Tests the same mathematical concept
-2. Has different numbers/values
-3. Maintains the same difficulty level
-4. Could optionally have a different context (word problem vs direct calculation, etc.)
+${variationPrompt}
+Target difficulty: ${difficultyAdjustment}
 
-Return JSON with a single "question" object.`,
+Create ONE new question that tests the same mathematical concept.
+
+Return JSON with a single "question" object matching the format from the system prompt.`,
         },
       ],
       response_format: { type: 'json_object' },
@@ -213,21 +290,25 @@ Return JSON with a single "question" object.`,
       throw new Error('No variant generated')
     }
     
-    // Insert variant
+    // Insert variant with correct column names
     const { data: newQuestion, error: insertError } = await supabase
       .from('questions')
       .insert({
         workspace_id: original.workspace_id,
         topic_id: original.topic_id,
         parent_question_id: original.parent_question_id || original.id,
-        ai_generated: true,
-        question_latex: variant.questionLatex,
-        answer_latex: variant.answerLatex,
-        difficulty: variant.difficulty || original.difficulty,
-        hints_json: variant.hints,
-        solution_steps_json: variant.solutionSteps,
-        tags: variant.tags || original.tags,
+        origin: 'variant' as const,
+        status: 'active' as const,
+        prompt_text: variant.promptText,
+        prompt_latex: variant.promptLatex || null,
+        answer_type: variant.answerType || original.answer_type,
+        correct_answer_json: variant.correctAnswer,
+        difficulty: difficultyAdjustment,
+        hints_json: variant.hints || [],
+        solution_steps_json: variant.solutionSteps || [],
+        tags_json: variant.tags || original.tags_json || [],
         quality_score: 1.0,
+        created_by: job.created_by_user_id,
       })
       .select('id')
       .single()
@@ -240,6 +321,7 @@ Return JSON with a single "question" object.`,
       success: true,
       variantId: newQuestion?.id,
       originalId: questionId,
+      variationType,
     })
   } catch (error) {
     console.error('Regen variant failed:', error)

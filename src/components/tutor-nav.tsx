@@ -10,6 +10,7 @@ const navigation = [
   { name: 'Students', href: '/tutor/students', icon: UsersIcon },
   { name: 'Assignments', href: '/tutor/assignments', icon: ClipboardIcon },
   { name: 'Question Bank', href: '/tutor/questions', icon: QuestionIcon },
+  { name: 'Topics', href: '/tutor/topics', icon: TopicsIcon },
   { name: 'Generate', href: '/tutor/generate', icon: SparklesIcon },
   { name: 'Sessions', href: '/tutor/sessions', icon: CalendarIcon },
   { name: 'Materials', href: '/tutor/materials', icon: FolderIcon },
@@ -45,6 +46,14 @@ function QuestionIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+    </svg>
+  )
+}
+
+function TopicsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
     </svg>
   )
 }

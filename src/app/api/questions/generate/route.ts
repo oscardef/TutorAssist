@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { enqueueJob, enqueueBatchJob, getJob } from '@/lib/jobs'
 import { createServerClient } from '@/lib/supabase/server'
+import { processJobs } from '@/lib/jobs'
 
 // Enqueue question generation job
 export async function POST(request: Request) {
@@ -75,6 +76,13 @@ export async function POST(request: Request) {
     
     if (!job) {
       return NextResponse.json({ error: 'Failed to enqueue job' }, { status: 500 })
+    }
+    
+    // For non-batch (real-time) jobs, process immediately
+    if (!useBatchApi) {
+      // Process the job immediately in the background
+      // We don't await this to return quickly to the user
+      processJobs(1).catch(err => console.error('Immediate job processing failed:', err))
     }
     
     return NextResponse.json({

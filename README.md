@@ -91,6 +91,44 @@ A modern math tutoring platform for practice and progress tracking, built with N
 
 See `.env.example` for all required environment variables.
 
+### Google OAuth Setup (for Calendar Integration)
+
+To enable Google Calendar integration:
+
+1. **Go to [Google Cloud Console](https://console.cloud.google.com/)**
+
+2. **Create a new project** (or select existing)
+
+3. **Enable the Google Calendar API**:
+   - Go to "APIs & Services" → "Enable APIs and Services"
+   - Search for "Google Calendar API" and enable it
+
+4. **Configure OAuth Consent Screen**:
+   - Go to "APIs & Services" → "OAuth consent screen"
+   - Select "External" user type
+   - Fill in app name, user support email, developer contact
+   - Add scopes: `userinfo.email`, `userinfo.profile`, `calendar`, `calendar.events`
+   - Add your test user emails (while in testing mode)
+
+5. **Create OAuth Credentials**:
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth client ID"
+   - Application type: **Web application**
+   - Add authorized redirect URIs:
+     - For development: `http://localhost:3000/api/auth/google/callback`
+     - For production: `https://your-domain.com/api/auth/google/callback`
+
+6. **Add credentials to .env.local**:
+   ```
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   ```
+
+⚠️ **Important**: The redirect URI must exactly match what's configured in Google Cloud Console. If you see "This app does not comply with Google's OAuth 2.0 guidelines", double-check that:
+- The redirect URI is added to your OAuth credentials
+- Your consent screen is properly configured
+- You're using the correct client ID and secret
+
 ## Project Structure
 
 ```

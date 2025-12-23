@@ -5,7 +5,10 @@ import Link from 'next/link'
 
 interface Student {
   id: string
-  display_name: string
+  name: string
+  email?: string
+  parent_email?: string
+  additional_emails?: string[]
   user_id: string
 }
 
@@ -18,13 +21,29 @@ interface Session {
   location: string | null
   meet_link: string | null
   student: Student | null
+  source: 'database' | 'calendar' // Track where session came from
+  google_event_id?: string
+  attendees?: string[]
+}
+
+interface CalendarEvent {
+  id: string
+  summary: string
+  start: string
+  end: string
+  attendees: string[]
+  meetLink?: string
+  htmlLink: string
 }
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([])
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
+  const [isCalendarConnected, setIsCalendarConnected] = useState(false)
+  const [syncingCalendar, setSyncingCalendar] = useState(false)
   const [formData, setFormData] = useState({
     studentId: '',
     scheduledAt: '',
@@ -34,29 +53,133 @@ export default function SessionsPage() {
   })
   
   useEffect(() => {
-    fetchSessions()
-    fetchStudents()
+    fetchData()
   }, [])
   
-  async function fetchSessions() {
+  async function fetchData() {
     try {
-      const response = await fetch('/api/sessions?upcoming=true')
-      const data = await response.json()
-      setSessions(data.sessions || [])
+      const [sessionsRes, studentsRes, calendarRes] = await Promise.all([
+        fetch('/api/sessions?upcoming=true'),
+        fetch('/api/students'),
+        fetch('/api/sessions/calendar')
+      ])
+      
+      const sessionsData = await sessionsRes.json()
+      const studentsData = await studentsRes.json()
+      const calendarData = await calendarRes.json()
+      
+      const dbSessions: Session[] = (sessionsData.sessions || []).map((s: Session) => ({
+        ...s,
+        source: 'database' as const
+      }))
+      
+      setStudents(studentsData.students || [])
+      setIsCalendarConnected(calendarData.connected)
+      
+      if (calendarData.events) {
+        setCalendarEvents(calendarData.events)
+        
+        // Match calendar events with students and merge with DB sessions
+        const calendarSessions = matchCalendarEventsWithStudents(
+          calendarData.events,
+          studentsData.students || [],
+          dbSessions
+        )
+        
+        // Combine and dedupe sessions
+        const allSessions = deduplicateSessions([...dbSessions, ...calendarSessions])
+        setSessions(allSessions)
+      } else {
+        setSessions(dbSessions)
+      }
     } catch (error) {
-      console.error('Failed to fetch sessions:', error)
+      console.error('Failed to fetch data:', error)
     } finally {
       setLoading(false)
     }
   }
   
-  async function fetchStudents() {
+  // Match calendar events with students by email
+  function matchCalendarEventsWithStudents(
+    events: CalendarEvent[],
+    studentList: Student[],
+    existingSessions: Session[]
+  ): Session[] {
+    const existingEventIds = new Set(existingSessions.map(s => s.google_event_id).filter(Boolean))
+    
+    return events
+      .filter(event => !existingEventIds.has(event.id)) // Skip already linked events
+      .map(event => {
+        // Find student by matching any of their emails with event attendees
+        const matchedStudent = studentList.find(student => {
+          const studentEmails = [
+            student.email,
+            student.parent_email,
+            ...(student.additional_emails || [])
+          ].filter(Boolean).map(e => e?.toLowerCase())
+          
+          return event.attendees.some(attendee => 
+            studentEmails.includes(attendee.toLowerCase())
+          )
+        })
+        
+        const startDate = new Date(event.start)
+        const endDate = new Date(event.end)
+        const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000)
+        
+        return {
+          id: `calendar-${event.id}`,
+          google_event_id: event.id,
+          scheduled_at: event.start,
+          duration_minutes: durationMinutes,
+          status: 'scheduled',
+          notes: null,
+          location: null,
+          meet_link: event.meetLink || null,
+          student: matchedStudent || null,
+          source: 'calendar' as const,
+          attendees: event.attendees
+        }
+      })
+  }
+  
+  // Remove duplicate sessions (prefer DB sessions over calendar)
+  function deduplicateSessions(sessions: Session[]): Session[] {
+    const seen = new Map<string, Session>()
+    
+    for (const session of sessions) {
+      // Create a key based on time and student
+      const timeKey = new Date(session.scheduled_at).toISOString().slice(0, 16) // minute precision
+      const studentKey = session.student?.id || session.attendees?.join(',') || 'unknown'
+      const key = `${timeKey}-${studentKey}`
+      
+      const existing = seen.get(key)
+      if (!existing || (existing.source === 'calendar' && session.source === 'database')) {
+        seen.set(key, session)
+      }
+    }
+    
+    return Array.from(seen.values()).sort((a, b) => 
+      new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+    )
+  }
+  
+  async function syncCalendarEvent(eventId: string, studentId: string) {
+    setSyncingCalendar(true)
     try {
-      const response = await fetch('/api/students')
-      const data = await response.json()
-      setStudents(data.students || [])
+      const response = await fetch('/api/sessions/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleEventId: eventId, studentId })
+      })
+      
+      if (response.ok) {
+        await fetchData() // Refresh data
+      }
     } catch (error) {
-      console.error('Failed to fetch students:', error)
+      console.error('Failed to sync calendar event:', error)
+    } finally {
+      setSyncingCalendar(false)
     }
   }
   
@@ -86,7 +209,7 @@ export default function SessionsPage() {
           notes: '',
           location: '',
         })
-        fetchSessions()
+        fetchData()
       }
     } catch (error) {
       console.error('Failed to create session:', error)
@@ -117,20 +240,44 @@ export default function SessionsPage() {
       </div>
       
       {/* Calendar Connection Notice */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">📅</span>
-          <div>
-            <h3 className="font-medium text-blue-800">Google Calendar Integration</h3>
-            <p className="text-sm text-blue-700">
-              Connect your Google Calendar to auto-create events with Meet links.
-              <Link href="/tutor/settings" className="ml-2 underline">
-                Connect in Settings
-              </Link>
-            </p>
+      {!isCalendarConnected && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📅</span>
+            <div>
+              <h3 className="font-medium text-blue-800">Google Calendar Integration</h3>
+              <p className="text-sm text-blue-700">
+                Connect your Google Calendar to auto-create events with Meet links.
+                <Link href="/tutor/settings" className="ml-2 underline">
+                  Connect in Settings
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      
+      {isCalendarConnected && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">✓</span>
+              <div>
+                <h3 className="font-medium text-green-800">Google Calendar Connected</h3>
+                <p className="text-sm text-green-700">
+                  Your calendar events are synced. Sessions with matching student emails appear below.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => fetchData()}
+              className="text-sm text-green-700 hover:text-green-800 underline"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Sessions List */}
       {sessions.length > 0 ? (
@@ -142,13 +289,27 @@ export default function SessionsPage() {
             return (
               <div
                 key={session.id}
-                className="bg-white rounded-lg shadow-sm border p-6"
+                className={`bg-white rounded-lg shadow-sm border p-6 ${
+                  session.source === 'calendar' ? 'border-l-4 border-l-purple-500' : ''
+                }`}
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold text-gray-900">
-                      {session.student?.display_name || 'Student'}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900">
+                        {session.student?.name || 'Unknown Student'}
+                      </h3>
+                      {session.source === 'calendar' && !session.student && (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">
+                          Unmatched
+                        </span>
+                      )}
+                      {session.source === 'calendar' && (
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                          From Calendar
+                        </span>
+                      )}
+                    </div>
                     <div className="text-sm text-gray-600 mt-1">
                       {date.toLocaleDateString('en-US', {
                         weekday: 'long',
@@ -169,6 +330,11 @@ export default function SessionsPage() {
                       {' '}
                       ({session.duration_minutes} min)
                     </div>
+                    {session.attendees && session.attendees.length > 0 && !session.student && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Attendees: {session.attendees.join(', ')}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-2">
@@ -181,6 +347,22 @@ export default function SessionsPage() {
                       >
                         Join Meet
                       </a>
+                    )}
+                    {session.source === 'calendar' && !session.student && students.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value && session.google_event_id) {
+                            syncCalendarEvent(session.google_event_id, e.target.value)
+                          }
+                        }}
+                        className="text-sm border rounded px-2 py-1"
+                        disabled={syncingCalendar}
+                      >
+                        <option value="">Link to student...</option>
+                        {students.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
                     )}
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       session.status === 'scheduled'
@@ -246,8 +428,8 @@ export default function SessionsPage() {
                 >
                   <option value="">Select student...</option>
                   {students.map((student) => (
-                    <option key={student.id} value={student.user_id}>
-                      {student.display_name}
+                    <option key={student.id} value={student.user_id || student.id}>
+                      {student.name}
                     </option>
                   ))}
                 </select>

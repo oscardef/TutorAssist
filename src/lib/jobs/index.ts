@@ -3,6 +3,7 @@ import { handleExtractMaterial } from './handlers/extract-material'
 import { handleGenerateQuestions, handleRegenVariant } from './handlers/generate-questions'
 import { handleBatchGenerate, handleProcessBatchResult } from './handlers/batch-generate'
 import { handleGeneratePdf } from './handlers/generate-pdf'
+import { handleSyllabusBatchGenerate } from './handlers/syllabus-generate'
 import { claimJobs } from './queue'
 
 type JobHandler = (job: Job) => Promise<void>
@@ -19,6 +20,7 @@ const handlers: Record<JobType, JobHandler> = {
   EXTRACT_MATERIAL: handleExtractMaterial,
   GENERATE_QUESTIONS: handleGenerateQuestions,
   GENERATE_QUESTIONS_BATCH: handleBatchGenerate,
+  BATCH_GENERATE: handleSyllabusBatchGenerate,
   REGEN_VARIANT: handleRegenVariant,
   GENERATE_PDF: handleGeneratePdf,
   DAILY_SPACED_REP_REFRESH: handleDailySpacedRepRefresh,

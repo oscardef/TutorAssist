@@ -12,6 +12,8 @@ export default function NewStudentPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    parent_email: '',
+    additional_emails: [''],
     age: '',
     school: '',
     grade_current: '',
@@ -30,6 +32,7 @@ export default function NewStudentPage() {
         body: JSON.stringify({
           ...formData,
           age: formData.age ? parseInt(formData.age) : null,
+          additional_emails: formData.additional_emails.filter(e => e.trim()),
         }),
       })
 
@@ -50,6 +53,27 @@ export default function NewStudentPage() {
     } finally {
       setLoading(false)
     }
+  }
+  
+  const addEmailField = () => {
+    setFormData(prev => ({
+      ...prev,
+      additional_emails: [...prev.additional_emails, '']
+    }))
+  }
+  
+  const removeEmailField = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      additional_emails: prev.additional_emails.filter((_, i) => i !== index)
+    }))
+  }
+  
+  const updateAdditionalEmail = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      additional_emails: prev.additional_emails.map((e, i) => i === index ? value : e)
+    }))
   }
 
   if (inviteLink) {
@@ -103,6 +127,8 @@ export default function NewStudentPage() {
                 setFormData({
                   name: '',
                   email: '',
+                  parent_email: '',
+                  additional_emails: [''],
                   age: '',
                   school: '',
                   grade_current: '',
@@ -151,7 +177,7 @@ export default function NewStudentPage() {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
+            Student Email
           </label>
           <input
             id="email"
@@ -159,7 +185,57 @@ export default function NewStudentPage() {
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="student@example.com"
           />
+        </div>
+        
+        <div>
+          <label htmlFor="parent_email" className="block text-sm font-medium text-gray-700">
+            Parent/Guardian Email
+          </label>
+          <input
+            id="parent_email"
+            type="email"
+            value={formData.parent_email}
+            onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="parent@example.com"
+          />
+          <p className="mt-1 text-xs text-gray-500">Used for calendar invites and session notifications</p>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Additional Emails
+          </label>
+          <p className="text-xs text-gray-500 mb-2">Add other emails to receive session invites (e.g., other parent, nanny)</p>
+          {formData.additional_emails.map((email, index) => (
+            <div key={index} className="flex gap-2 mb-2">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => updateAdditionalEmail(index, e.target.value)}
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="additional@example.com"
+              />
+              {formData.additional_emails.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeEmailField(index)}
+                  className="px-3 py-2 text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addEmailField}
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            + Add another email
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
