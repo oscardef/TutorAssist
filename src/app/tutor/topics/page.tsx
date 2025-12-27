@@ -31,6 +31,14 @@ interface Topic {
   is_core: boolean
   curriculum_code: string | null
   order_index: number
+  metadata?: {
+    difficulty?: number
+    subtopics?: string[]
+    learning_objectives?: string[]
+    generated_from?: string
+    source_program_id?: string | null
+    source_grade_level_id?: string | null
+  }
   questions?: { count: number }[]
   program?: StudyProgram
   grade_level?: GradeLevel
@@ -775,21 +783,40 @@ function TopicRow({ topic, level, onEdit, onDelete, programs }: TopicRowProps) {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              {program && (
-                <span className="text-xs text-gray-500">
-                  {program.name}
-                </span>
+            <div className="flex flex-col gap-1 mt-0.5">
+              <div className="flex items-center gap-2">
+                {program && (
+                  <span className="text-xs text-gray-500">
+                    {program.name}
+                  </span>
+                )}
+                {gradeLevel && (
+                  <span className="text-xs text-gray-500">
+                    • {gradeLevel.code}
+                  </span>
+                )}
+                {topic.description && (
+                  <span className="text-sm text-gray-500">
+                    {program || gradeLevel ? '• ' : ''}{topic.description}
+                  </span>
+                )}
+              </div>
+              {topic.metadata?.subtopics && topic.metadata.subtopics.length > 0 && (
+                <div className="flex items-start gap-1 mt-1">
+                  <span className="text-xs font-medium text-gray-600 shrink-0">Subtopics:</span>
+                  <span className="text-xs text-gray-500">
+                    {topic.metadata.subtopics.join(' • ')}
+                  </span>
+                </div>
               )}
-              {gradeLevel && (
-                <span className="text-xs text-gray-500">
-                  • {gradeLevel.code}
-                </span>
-              )}
-              {topic.description && (
-                <span className="text-sm text-gray-500">
-                  {program || gradeLevel ? '• ' : ''}{topic.description}
-                </span>
+              {topic.metadata?.learning_objectives && topic.metadata.learning_objectives.length > 0 && (
+                <div className="flex items-start gap-1">
+                  <span className="text-xs font-medium text-gray-600 shrink-0">Objectives:</span>
+                  <span className="text-xs text-gray-500">
+                    {topic.metadata.learning_objectives.slice(0, 2).join(' • ')}
+                    {topic.metadata.learning_objectives.length > 2 && ` (+${topic.metadata.learning_objectives.length - 2} more)`}
+                  </span>
+                </div>
               )}
             </div>
           </div>
