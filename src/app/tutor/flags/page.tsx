@@ -6,15 +6,18 @@ import { format } from 'date-fns'
 
 interface Flag {
   id: string
-  flag_type: 'incorrect_answer' | 'unclear' | 'typo' | 'too_hard' | 'other'
+  flag_type: 'incorrect_answer' | 'unclear' | 'typo' | 'too_hard' | 'claim_correct' | 'missing_content' | 'multiple_valid' | 'other'
   comment: string | null
-  status: 'pending' | 'reviewed' | 'fixed' | 'dismissed'
+  status: 'pending' | 'reviewed' | 'fixed' | 'dismissed' | 'accepted'
   review_notes: string | null
+  student_answer: string | null
+  attempt_id: string | null
   created_at: string
   questions: {
     id: string
     prompt_text: string
-    correct_answer_json: { value: unknown }
+    correct_answer_json: { value: unknown; alternates?: string[] }
+    alternate_answers_json: string[] | null
   } | null
   student: {
     email: string
@@ -31,6 +34,7 @@ export default function FlagsPage() {
   const [reviewingFlag, setReviewingFlag] = useState<Flag | null>(null)
   const [reviewStatus, setReviewStatus] = useState<string>('reviewed')
   const [reviewNotes, setReviewNotes] = useState('')
+  const [addAsAlternate, setAddAsAlternate] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function FlagsPage() {
       const response = await fetch('/api/flags')
       const data = await response.json()
       setFlags(data.flags || [])
-    } catch (err) {
+    } catch {
       setError('Failed to load flags')
     } finally {
       setLoading(false)
@@ -63,6 +67,7 @@ export default function FlagsPage() {
           id: reviewingFlag.id,
           status: reviewStatus,
           reviewNotes: reviewNotes.trim() || null,
+          addAsAlternate: reviewingFlag.flag_type === 'claim_correct' && reviewStatus === 'accepted' && addAsAlternate,
         }),
       })
       
@@ -81,6 +86,7 @@ export default function FlagsPage() {
       
       setReviewingFlag(null)
       setReviewNotes('')
+      setAddAsAlternate(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update flag')
     } finally {
@@ -94,19 +100,23 @@ export default function FlagsPage() {
   
   const pendingCount = flags.filter(f => f.status === 'pending').length
   
-  const flagTypeLabels = {
+  const flagTypeLabels: Record<string, { label: string; color: string }> = {
     incorrect_answer: { label: 'Incorrect Answer', color: 'bg-red-100 text-red-700' },
     unclear: { label: 'Unclear', color: 'bg-yellow-100 text-yellow-700' },
     typo: { label: 'Typo', color: 'bg-orange-100 text-orange-700' },
     too_hard: { label: 'Too Hard', color: 'bg-purple-100 text-purple-700' },
+    claim_correct: { label: 'Claims Correct', color: 'bg-blue-100 text-blue-700' },
+    missing_content: { label: 'Missing Content', color: 'bg-pink-100 text-pink-700' },
+    multiple_valid: { label: 'Multiple Valid Answers', color: 'bg-indigo-100 text-indigo-700' },
     other: { label: 'Other', color: 'bg-gray-100 text-gray-700' },
   }
   
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-700',
     reviewed: 'bg-blue-100 text-blue-700',
     fixed: 'bg-green-100 text-green-700',
     dismissed: 'bg-gray-100 text-gray-500',
+    accepted: 'bg-green-100 text-green-700',
   }
   
   if (loading) {
@@ -199,6 +209,13 @@ export default function FlagsPage() {
                     </div>
                   )}
                   
+                  {flag.student_answer && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm font-medium text-blue-700">Student&apos;s Answer:</p>
+                      <p className="text-sm text-blue-900 mt-1 font-mono">{flag.student_answer}</p>
+                    </div>
+                  )}
+                  
                   {flag.review_notes && (
                     <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                       <p className="text-sm font-medium text-blue-700">Review Notes:</p>
@@ -266,8 +283,21 @@ export default function FlagsPage() {
       {/* Review Modal */}
       {reviewingFlag && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Review Flag</h2>
+            
+            {/* Show student's answer for claim_correct flags */}
+            {reviewingFlag.flag_type === 'claim_correct' && reviewingFlag.student_answer && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm font-medium text-blue-700">Student claims this answer is correct:</p>
+                <p className="text-lg text-blue-900 mt-1 font-mono">{reviewingFlag.student_answer}</p>
+                {reviewingFlag.questions?.correct_answer_json && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Expected: <span className="font-mono">{String(reviewingFlag.questions.correct_answer_json.value)}</span>
+                  </p>
+                )}
+              </div>
+            )}
             
             <div className="space-y-4">
               <div>
@@ -280,10 +310,33 @@ export default function FlagsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="reviewed">Reviewed</option>
+                  {reviewingFlag.flag_type === 'claim_correct' && (
+                    <option value="accepted">Accept - Student was correct</option>
+                  )}
                   <option value="fixed">Fixed</option>
                   <option value="dismissed">Dismissed</option>
                 </select>
               </div>
+              
+              {/* Option to add as alternate answer */}
+              {reviewingFlag.flag_type === 'claim_correct' && reviewStatus === 'accepted' && reviewingFlag.student_answer && (
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={addAsAlternate}
+                      onChange={(e) => setAddAsAlternate(e.target.checked)}
+                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm text-green-800">
+                      Add &quot;{reviewingFlag.student_answer}&quot; as an alternate correct answer
+                    </span>
+                  </label>
+                  <p className="text-xs text-green-600 mt-1 ml-6">
+                    This will allow future students to get this answer marked correct automatically.
+                  </p>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -301,7 +354,10 @@ export default function FlagsPage() {
             
             <div className="flex justify-end gap-3 mt-6">
               <button
-                onClick={() => setReviewingFlag(null)}
+                onClick={() => {
+                  setReviewingFlag(null)
+                  setAddAsAlternate(false)
+                }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel

@@ -21,42 +21,69 @@ interface SyllabusBatchPayload {
 }
 
 interface GeneratedQuestion {
-  promptText: string
-  promptLatex?: string
-  answerType: 'exact' | 'numeric' | 'multiple_choice'
+  questionLatex: string
+  answerType: 'exact' | 'numeric' | 'multiple_choice' | 'expression'
   correctAnswer: {
     value: string | number
+    latex?: string
     tolerance?: number
-    options?: string[]
+    choices?: { text: string; latex?: string }[]
+    correct?: number
   }
   difficulty: number
   hints: string[]
-  solutionSteps: string[]
+  solutionSteps: { step: string; latex?: string }[]
   tags: string[]
 }
 
 const SYSTEM_PROMPT = `You are an expert math curriculum designer and question generator. Generate high-quality, curriculum-aligned practice questions.
 
+CRITICAL LaTeX Rules:
+1. The "questionLatex" field is PRIMARY - use \\( \\) for inline math, \\[ \\] for display math
+2. Regular text stays plain, only wrap actual math expressions in delimiters
+3. Include proper LaTeX in hints and solution steps where math appears
+
+CORRECT EXAMPLES:
+- "Solve for \\(x\\) in the equation \\(2x + 5 = 13\\)."
+- "Calculate \\(\\frac{3}{4} + \\frac{2}{5}\\) and simplify."
+- "Find all values of \\(\\theta\\) where \\(\\sin(\\theta) = \\frac{1}{2}\\) for \\(0 \\leq \\theta < 2\\pi\\)."
+
 Guidelines:
 1. Questions should match the specified curriculum standards
 2. Use clear, unambiguous language appropriate for the grade level
-3. Include step-by-step solution hints for students
-4. Use LaTeX for math expressions (wrap in \\( \\) for inline or \\[ \\] for display)
+3. Include 2-3 step-by-step hints for students
+4. Include complete solution steps with LaTeX
 5. Vary question styles: direct calculation, word problems, proofs, applications
 6. Ensure mathematical correctness
-7. Match difficulty level (1=easy, 5=hard)
+7. Match difficulty level (1=basic, 2=easy, 3=medium, 4=hard, 5=challenging)
 
 Output JSON with "questions" array. Each question has:
 {
-  "promptText": "Question text",
-  "promptLatex": "LaTeX version if needed",
-  "answerType": "exact|numeric|multiple_choice",
-  "correctAnswer": {"value": "answer", "tolerance": 0.01, "options": ["a","b","c","d"]},
+  "questionLatex": "Question with \\\\( \\\\) or \\\\[ \\\\] LaTeX delimiters",
+  "answerType": "exact|numeric|multiple_choice|expression",
+  "correctAnswer": {"value": "answer", "latex": "\\\\(LaTeX\\\\)", "tolerance": 0.01},
   "difficulty": 1-5,
-  "hints": ["hint1", "hint2"],
-  "solutionSteps": ["step1", "step2"],
+  "hints": ["hint with \\\\(LaTeX\\\\) if needed"],
+  "solutionSteps": [{"step": "description", "latex": "\\\\(math\\\\)"}],
   "tags": ["tag1", "tag2"]
 }`
+
+// Strip LaTeX for plain text version
+function stripLatex(text: string): string {
+  return text
+    .replace(/\\\[|\\\]/g, '')
+    .replace(/\\\(|\\\)/g, '')
+    .replace(/\$\$?/g, '')
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
+    .replace(/\\times/g, '×')
+    .replace(/\\div/g, '÷')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\[a-zA-Z]+/g, '')
+    .replace(/[{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 export async function handleSyllabusBatchGenerate(job: Job): Promise<void> {
   const payload = job.payload_json as unknown as SyllabusBatchPayload
@@ -119,14 +146,14 @@ Return a JSON object with a "questions" array.`,
       throw new Error('No questions generated')
     }
     
-    // Insert questions into database
+    // Insert questions into database with proper field mapping
     const questionsToInsert = questions.map((q) => ({
       workspace_id: job.workspace_id,
       topic_id: topicId,
       origin: 'ai_generated' as const,
       status: 'active' as const,
-      prompt_text: q.promptText,
-      prompt_latex: q.promptLatex || null,
+      prompt_text: stripLatex(q.questionLatex),
+      prompt_latex: q.questionLatex,
       answer_type: q.answerType || 'exact',
       correct_answer_json: q.correctAnswer,
       difficulty: q.difficulty || 3,

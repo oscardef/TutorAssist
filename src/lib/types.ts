@@ -75,15 +75,53 @@ export interface StudentProfile {
   updated_at: string
 }
 
+// ============================================
+// CURRICULUM & PROGRAM TYPES
+// ============================================
+
+export interface StudyProgram {
+  id: string
+  workspace_id: string
+  code: string // 'IB', 'AP', 'GCSE', 'ALEVEL', 'GENERAL'
+  name: string // 'International Baccalaureate'
+  description: string | null
+  color: string
+  order_index: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface GradeLevel {
+  id: string
+  workspace_id: string
+  program_id: string | null
+  code: string // 'M8', 'M9', 'DP1', 'DP2', 'AP1', etc.
+  name: string // 'MYP Year 8', 'DP Year 1'
+  description: string | null
+  year_number: number | null
+  order_index: number
+  is_active: boolean
+  created_at: string
+  // Relations (populated by joins)
+  program?: StudyProgram
+}
+
 export interface Topic {
   id: string
   workspace_id: string
   name: string
   description: string | null
   parent_id: string | null
+  program_id: string | null
+  grade_level_id: string | null
+  is_core: boolean
+  curriculum_code: string | null
   tags: string[]
   order_index: number
   created_at: string
+  // Relations (populated by joins)
+  program?: StudyProgram
+  grade_level?: GradeLevel
 }
 
 export interface SourceMaterial {
@@ -127,9 +165,18 @@ export interface Question {
   avg_time_seconds: number | null
   parent_question_id: string | null
   variant_seed: string | null
+  // Program/Grade fields
+  primary_program_id: string | null
+  primary_grade_level_id: string | null
   created_by: string | null
   created_at: string
   updated_at: string
+  // Relations (populated by joins)
+  topic?: Topic
+  primary_program?: StudyProgram
+  primary_grade_level?: GradeLevel
+  programs?: StudyProgram[]
+  grade_levels?: GradeLevel[]
 }
 
 export interface CorrectAnswer {

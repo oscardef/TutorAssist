@@ -7,20 +7,46 @@ export default async function StudentAssignmentsPage() {
   const context = await getUserContext()
   const supabase = await createServerClient()
   
-  // Get all assignments for student
+  // Get all assignments for student with items
   const { data: assignments } = await supabase
     .from('assignments')
     .select(`
       *,
-      assignment_items(count),
-      attempts:attempts(count)
+      assignment_items(id, question_id)
     `)
     .eq('assigned_student_user_id', user?.id)
     .eq('workspace_id', context?.workspaceId)
     .order('created_at', { ascending: false })
   
-  const pendingAssignments = assignments?.filter((a) => a.status === 'active') || []
-  const completedAssignments = assignments?.filter((a) => a.status === 'completed') || []
+  // For each assignment, get unique questions that have been attempted
+  const assignmentsWithProgress = await Promise.all(
+    (assignments || []).map(async (assignment) => {
+      const items = assignment.assignment_items as { id: string; question_id: string }[] || []
+      const questionIds = items.map(item => item.question_id)
+      
+      // Get distinct question_ids that have attempts for this assignment
+      const { data: attemptedQuestions } = questionIds.length > 0 
+        ? await supabase
+            .from('attempts')
+            .select('question_id')
+            .eq('assignment_id', assignment.id)
+            .eq('student_user_id', user?.id)
+            .in('question_id', questionIds)
+        : { data: [] }
+      
+      // Count unique questions attempted
+      const uniqueAttempted = new Set(attemptedQuestions?.map(a => a.question_id) || []).size
+      
+      return {
+        ...assignment,
+        totalQuestions: items.length,
+        completedQuestions: Math.min(uniqueAttempted, items.length), // Cap at total
+      }
+    })
+  )
+  
+  const pendingAssignments = assignmentsWithProgress.filter((a) => a.status === 'active')
+  const completedAssignments = assignmentsWithProgress.filter((a) => a.status === 'completed')
   
   return (
     <div>
@@ -42,8 +68,7 @@ export default async function StudentAssignmentsPage() {
             {pendingAssignments.map((assignment) => {
               const dueDate = assignment.due_at ? new Date(assignment.due_at) : null
               const isOverdue = dueDate && dueDate < new Date()
-              const totalQuestions = (assignment.assignment_items as { count: number }[])?.[0]?.count || 0
-              const completedQuestions = (assignment.attempts as { count: number }[])?.[0]?.count || 0
+              const { totalQuestions, completedQuestions } = assignment
               const progress = totalQuestions > 0 
                 ? Math.round((completedQuestions / totalQuestions) * 100) 
                 : 0
@@ -107,7 +132,7 @@ export default async function StudentAssignmentsPage() {
           
           <div className="grid gap-4">
             {completedAssignments.map((assignment) => {
-              const totalQuestions = (assignment.assignment_items as { count: number }[])?.[0]?.count || 0
+              const { totalQuestions } = assignment
               
               return (
                 <Link

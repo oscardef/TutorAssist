@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
 import MathSymbolsPanel from '@/components/math-symbols-panel'
+import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
 
 interface Question {
   id: string
@@ -48,76 +49,7 @@ interface AttemptResult {
   isCorrect: boolean
   answer: string
   usedHints?: boolean
-}
-
-// Normalize answer by converting math symbols to their standard forms
-function normalizeAnswer(answer: string): string {
-  return answer
-    .trim()
-    .toLowerCase()
-    // Remove all whitespace
-    .replace(/\s+/g, '')
-    // Convert common math symbols to standard form
-    .replace(/×/g, '*')
-    .replace(/÷/g, '/')
-    .replace(/−/g, '-')
-    .replace(/√/g, 'sqrt')
-    .replace(/π/g, 'pi')
-    .replace(/∞/g, 'infinity')
-    // Handle LaTeX commands
-    .replace(/\\times/g, '*')
-    .replace(/\\div/g, '/')
-    .replace(/\\pm/g, '+-')
-    .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
-    .replace(/\\sqrt/g, 'sqrt')
-    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
-    .replace(/\\pi/g, 'pi')
-    .replace(/\\infty/g, 'infinity')
-    .replace(/\^/g, '^')
-    // Remove remaining backslashes
-    .replace(/\\/g, '')
-    // Remove braces
-    .replace(/[{}]/g, '')
-}
-
-// Format answer for display (convert symbols/LaTeX to proper rendered format)
-function formatAnswerForDisplay(answer: string): string {
-  if (!answer) return ''
-  
-  // If it already has delimiters, return as-is
-  if (/\$|\\\(|\\\[/.test(answer)) {
-    return answer
-  }
-  
-  // Convert Unicode math symbols to LaTeX for display
-  let latex = answer
-    .replace(/√/g, '\\sqrt{')
-    .replace(/×/g, '\\times ')
-    .replace(/÷/g, '\\div ')
-    .replace(/−/g, '-')
-    .replace(/π/g, '\\pi ')
-    .replace(/∞/g, '\\infty ')
-    .replace(/≤/g, '\\leq ')
-    .replace(/≥/g, '\\geq ')
-    .replace(/≠/g, '\\neq ')
-    .replace(/±/g, '\\pm ')
-    .replace(/°/g, '^\\circ ')
-  
-  // Close any opened sqrt braces (simple case: √2 -> \sqrt{2})
-  // Count opening \sqrt{ and add closing } at the end for each unmatched
-  const sqrtCount = (latex.match(/\\sqrt\{/g) || []).length
-  const closeBraceCount = (latex.match(/\}/g) || []).length
-  const unclosedSqrt = sqrtCount - closeBraceCount
-  if (unclosedSqrt > 0) {
-    latex += '}'.repeat(unclosedSqrt)
-  }
-  
-  // If it has any LaTeX commands or math content, wrap it
-  if (/\\[a-zA-Z]+/.test(latex) || /[_^]/.test(latex) || /\d/.test(latex)) {
-    return `$${latex}$`
-  }
-  
-  return answer
+  attemptId?: string
 }
 
 export default function StudentAssignmentDetailPage() {
@@ -214,15 +146,21 @@ export default function StudentAssignmentDetailPage() {
       userAnswer = String(selectedChoice)
       isCorrect = selectedChoice === correctAnswer.correct
     } else if (currentQuestion.answer_type === 'numeric') {
-      const numAnswer = parseFloat(answer)
-      const numCorrect = parseFloat(String(correctAnswer.value))
-      const tolerance = correctAnswer.tolerance || 0.01
-      isCorrect = Math.abs(numAnswer - numCorrect) <= tolerance
+      // Use the robust numeric comparison
+      isCorrect = compareNumericAnswers(
+        answer, 
+        parseFloat(String(correctAnswer.value)), 
+        correctAnswer.tolerance || 0.01
+      )
     } else {
-      // Normalize answer for comparison - handle math symbols
-      const normalizedUserAnswer = normalizeAnswer(answer)
-      const normalizedCorrectAnswer = normalizeAnswer(String(correctAnswer.value))
-      isCorrect = normalizedUserAnswer === normalizedCorrectAnswer
+      // Use robust math answer comparison (handles LaTeX, Unicode, etc.)
+      // Cast to access potential alternates field from API response
+      const alternates = (correctAnswer as { alternates?: string[] }).alternates
+      isCorrect = compareMathAnswers(
+        answer, 
+        String(correctAnswer.value),
+        alternates
+      )
     }
 
     // If hints were used, mark as incorrect (no credit for using hints)
@@ -498,11 +436,11 @@ export default function StudentAssignmentDetailPage() {
               </p>
               {currentAttempt && (
                 <div className="mt-2 text-sm text-gray-600">
-                  Your answer: <span className="font-medium"><LatexRenderer content={formatAnswerForDisplay(currentAttempt.answer)} /></span>
+                  Your answer: <span className="font-medium"><LatexRenderer content={formatMathForDisplay(currentAttempt.answer)} /></span>
                   {!currentAttempt.isCorrect && currentQuestion?.correct_answer_json.value && (
                     <span className="ml-2">
                       | Correct: <span className="font-medium text-green-600">
-                        <LatexRenderer content={formatAnswerForDisplay(String(currentQuestion.correct_answer_json.value))} />
+                        <LatexRenderer content={formatMathForDisplay(String(currentQuestion.correct_answer_json.value))} />
                       </span>
                     </span>
                   )}

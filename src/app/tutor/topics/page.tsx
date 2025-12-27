@@ -1,15 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+
+interface StudyProgram {
+  id: string
+  code: string
+  name: string
+  color: string | null
+  order_index: number
+  grade_levels?: GradeLevel[]
+}
+
+interface GradeLevel {
+  id: string
+  program_id: string
+  code: string
+  name: string
+  year_number: number | null
+  order_index: number
+}
 
 interface Topic {
   id: string
   name: string
   description: string | null
   parent_id: string | null
+  program_id: string | null
+  grade_level_id: string | null
+  is_core: boolean
+  curriculum_code: string | null
   order_index: number
   questions?: { count: number }[]
+  program?: StudyProgram
+  grade_level?: GradeLevel
 }
 
 interface TopicGroup {
@@ -27,9 +51,17 @@ interface TopicAnalysis {
 }
 
 export default function TopicsPage() {
+  // Data state
+  const [programs, setPrograms] = useState<StudyProgram[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Filter state
+  const [selectedProgram, setSelectedProgram] = useState<string | null>(null)
+  const [selectedGradeLevel, setSelectedGradeLevel] = useState<string | null>(null)
+  
+  // Modal state
   const [showModal, setShowModal] = useState(false)
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null)
   const [saving, setSaving] = useState(false)
@@ -44,10 +76,56 @@ export default function TopicsPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [parentId, setParentId] = useState('')
+  const [formProgramId, setFormProgramId] = useState('')
+  const [formGradeLevelId, setFormGradeLevelId] = useState('')
+  const [isCore, setIsCore] = useState(false)
+  const [curriculumCode, setCurriculumCode] = useState('')
+  
+  const fetchPrograms = useCallback(async () => {
+    try {
+      const response = await fetch('/api/programs')
+      const data = await response.json()
+      if (data.programs && data.programs.length > 0) {
+        setPrograms(data.programs)
+        // Auto-select first program if none selected
+        if (!selectedProgram) {
+          setSelectedProgram(data.programs[0].id)
+        }
+      }
+    } catch {
+      console.error('Failed to load programs')
+    }
+  }, [selectedProgram])
+  
+  const fetchTopics = useCallback(async () => {
+    try {
+      let url = '/api/topics?'
+      if (selectedProgram) url += `programId=${selectedProgram}&`
+      if (selectedGradeLevel) url += `gradeLevelId=${selectedGradeLevel}&`
+      
+      const response = await fetch(url)
+      const data = await response.json()
+      setTopics(data.topics || [])
+    } catch {
+      setError('Failed to load topics')
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedProgram, selectedGradeLevel])
   
   useEffect(() => {
-    fetchTopics()
-  }, [])
+    fetchPrograms()
+  }, [fetchPrograms])
+  
+  useEffect(() => {
+    if (programs.length > 0) {
+      fetchTopics()
+    }
+  }, [selectedProgram, selectedGradeLevel, programs.length, fetchTopics])
+  
+  // Get grade levels for selected program
+  const selectedProgramData = programs.find(p => p.id === selectedProgram)
+  const gradeLevels = selectedProgramData?.grade_levels || []
   
   async function analyzeTopics() {
     setAnalyzing(true)
@@ -89,7 +167,6 @@ export default function TopicsPage() {
         throw new Error(data.error)
       }
       
-      // Refresh data
       await fetchTopics()
       await analyzeTopics()
     } catch (err) {
@@ -99,23 +176,15 @@ export default function TopicsPage() {
     }
   }
   
-  async function fetchTopics() {
-    try {
-      const response = await fetch('/api/topics')
-      const data = await response.json()
-      setTopics(data.topics || [])
-    } catch {
-      setError('Failed to load topics')
-    } finally {
-      setLoading(false)
-    }
-  }
-  
   function openCreateModal() {
     setEditingTopic(null)
     setName('')
     setDescription('')
     setParentId('')
+    setFormProgramId(selectedProgram || '')
+    setFormGradeLevelId(selectedGradeLevel || '')
+    setIsCore(false)
+    setCurriculumCode('')
     setShowModal(true)
   }
   
@@ -124,6 +193,10 @@ export default function TopicsPage() {
     setName(topic.name)
     setDescription(topic.description || '')
     setParentId(topic.parent_id || '')
+    setFormProgramId(topic.program_id || '')
+    setFormGradeLevelId(topic.grade_level_id || '')
+    setIsCore(topic.is_core || false)
+    setCurriculumCode(topic.curriculum_code || '')
     setShowModal(true)
   }
   
@@ -142,7 +215,11 @@ export default function TopicsPage() {
         body: JSON.stringify({
           name,
           description: description || null,
-          parent_id: parentId || null,
+          parentId: parentId || null,
+          programId: formProgramId || null,
+          gradeLevelId: formGradeLevelId || null,
+          isCore,
+          curriculumCode: curriculumCode || null,
         }),
       })
       
@@ -181,6 +258,10 @@ export default function TopicsPage() {
     }
   }
   
+  // Get grade levels for the form's selected program
+  const formProgramData = programs.find(p => p.id === formProgramId)
+  const formGradeLevels = formProgramData?.grade_levels || []
+  
   // Organize topics into a tree structure
   type TopicWithChildren = Topic & { children: TopicWithChildren[] }
   
@@ -188,12 +269,10 @@ export default function TopicsPage() {
     const topicMap = new Map<string, TopicWithChildren>()
     const rootTopics: TopicWithChildren[] = []
     
-    // Create map with empty children arrays
     topics.forEach(topic => {
       topicMap.set(topic.id, { ...topic, children: [] })
     })
     
-    // Build tree
     topics.forEach(topic => {
       const topicWithChildren = topicMap.get(topic.id)!
       if (topic.parent_id && topicMap.has(topic.parent_id)) {
@@ -208,7 +287,19 @@ export default function TopicsPage() {
   
   const topicTree = buildTopicTree(topics)
   
-  if (loading) {
+  // Color helper for program tabs
+  function getProgramColor(program: StudyProgram) {
+    const colors: Record<string, string> = {
+      'IB': 'bg-blue-500',
+      'AP': 'bg-green-500',
+      'GCSE': 'bg-purple-500',
+      'ALEVEL': 'bg-orange-500',
+      'GENERAL': 'bg-gray-500',
+    }
+    return program.color || colors[program.code] || 'bg-gray-500'
+  }
+  
+  if (loading && programs.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -218,11 +309,12 @@ export default function TopicsPage() {
   
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Topics</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Organize your questions into topics and subtopics
+            Organize questions by study program and grade level
           </p>
         </div>
         <div className="flex gap-3">
@@ -261,7 +353,87 @@ export default function TopicsPage() {
         </div>
       )}
       
-      {topicTree.length > 0 ? (
+      {/* Program Tabs */}
+      {programs.length > 0 && (
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex gap-2" aria-label="Programs">
+            {programs.map((program) => (
+              <button
+                key={program.id}
+                onClick={() => {
+                  setSelectedProgram(program.id)
+                  setSelectedGradeLevel(null)
+                }}
+                className={`
+                  px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2
+                  ${selectedProgram === program.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
+              >
+                <span className={`w-2 h-2 rounded-full ${getProgramColor(program)}`} />
+                {program.name}
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                setSelectedProgram(null)
+                setSelectedGradeLevel(null)
+              }}
+              className={`
+                px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                ${selectedProgram === null
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              All Programs
+            </button>
+          </nav>
+        </div>
+      )}
+      
+      {/* Grade Level Pills */}
+      {selectedProgram && gradeLevels.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedGradeLevel(null)}
+            className={`
+              px-3 py-1.5 text-sm font-medium rounded-full transition-colors
+              ${selectedGradeLevel === null
+                ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-500'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }
+            `}
+          >
+            All Grades
+          </button>
+          {gradeLevels.map((grade) => (
+            <button
+              key={grade.id}
+              onClick={() => setSelectedGradeLevel(grade.id)}
+              className={`
+                px-3 py-1.5 text-sm font-medium rounded-full transition-colors
+                ${selectedGradeLevel === grade.id
+                  ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-500'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }
+              `}
+            >
+              {grade.code} - {grade.name}
+            </button>
+          ))}
+        </div>
+      )}
+      
+      {/* Topics List */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      ) : topicTree.length > 0 ? (
         <div className="bg-white rounded-lg shadow-sm border divide-y">
           {topicTree.map((topic) => (
             <TopicRow
@@ -270,6 +442,7 @@ export default function TopicsPage() {
               level={0}
               onEdit={openEditModal}
               onDelete={handleDelete}
+              programs={programs}
             />
           ))}
         </div>
@@ -288,16 +461,21 @@ export default function TopicsPage() {
               d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"
             />
           </svg>
-          <h3 className="mt-4 text-sm font-semibold text-gray-900">No topics yet</h3>
+          <h3 className="mt-4 text-sm font-semibold text-gray-900">
+            No topics {selectedProgram ? 'in this program' : 'yet'}
+          </h3>
           <p className="mt-1 text-sm text-gray-500">
-            Create topics to organize your questions by subject area.
+            {selectedProgram 
+              ? 'Create topics for this study program and grade level.'
+              : 'Create topics to organize your questions by subject area.'
+            }
           </p>
           <div className="mt-6">
             <button
               onClick={openCreateModal}
               className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
             >
-              Create Your First Topic
+              Create Topic
             </button>
           </div>
         </div>
@@ -316,6 +494,49 @@ export default function TopicsPage() {
                   </h3>
                   
                   <div className="space-y-4">
+                    {/* Program Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Study Program
+                      </label>
+                      <select
+                        value={formProgramId}
+                        onChange={(e) => {
+                          setFormProgramId(e.target.value)
+                          setFormGradeLevelId('') // Reset grade when program changes
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">No Program (General)</option>
+                        {programs.map(program => (
+                          <option key={program.id} value={program.id}>
+                            {program.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Grade Level Selection */}
+                    {formProgramId && formGradeLevels.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Grade Level
+                        </label>
+                        <select
+                          value={formGradeLevelId}
+                          onChange={(e) => setFormGradeLevelId(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Grades</option>
+                          {formGradeLevels.map(grade => (
+                            <option key={grade.id} value={grade.id}>
+                              {grade.code} - {grade.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Topic Name *
@@ -325,9 +546,23 @@ export default function TopicsPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., Algebra, Fractions, Linear Equations"
+                        placeholder="e.g., Quadratic Functions, Integration, Statistics"
                         required
                       />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Curriculum Code
+                      </label>
+                      <input
+                        type="text"
+                        value={curriculumCode}
+                        onChange={(e) => setCurriculumCode(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., AA.2.3, SL.5.1"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Optional curriculum reference code</p>
                     </div>
                     
                     <div>
@@ -361,6 +596,19 @@ export default function TopicsPage() {
                             </option>
                           ))}
                       </select>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isCore"
+                        checked={isCore}
+                        onChange={(e) => setIsCore(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <label htmlFor="isCore" className="text-sm text-gray-700">
+                        Core Topic (required in syllabus)
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -479,11 +727,16 @@ interface TopicRowProps {
   level: number
   onEdit: (topic: Topic) => void
   onDelete: (topicId: string) => void
+  programs: StudyProgram[]
 }
 
-function TopicRow({ topic, level, onEdit, onDelete }: TopicRowProps) {
+function TopicRow({ topic, level, onEdit, onDelete, programs }: TopicRowProps) {
   const [expanded, setExpanded] = useState(true)
   const questionCount = topic.questions?.[0]?.count || 0
+  
+  // Get program and grade info for badges
+  const program = programs.find(p => p.id === topic.program_id)
+  const gradeLevel = program?.grade_levels?.find(g => g.id === topic.grade_level_id)
   
   return (
     <>
@@ -508,10 +761,36 @@ function TopicRow({ topic, level, onEdit, onDelete }: TopicRowProps) {
           {topic.children.length === 0 && <div className="w-4" />}
           
           <div>
-            <div className="font-medium text-gray-900">{topic.name}</div>
-            {topic.description && (
-              <div className="text-sm text-gray-500">{topic.description}</div>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-900">{topic.name}</span>
+              {topic.curriculum_code && (
+                <span className="px-2 py-0.5 text-xs font-mono bg-gray-100 text-gray-600 rounded">
+                  {topic.curriculum_code}
+                </span>
+              )}
+              {topic.is_core && (
+                <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">
+                  Core
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              {program && (
+                <span className="text-xs text-gray-500">
+                  {program.name}
+                </span>
+              )}
+              {gradeLevel && (
+                <span className="text-xs text-gray-500">
+                  • {gradeLevel.code}
+                </span>
+              )}
+              {topic.description && (
+                <span className="text-sm text-gray-500">
+                  {program || gradeLevel ? '• ' : ''}{topic.description}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         
@@ -549,6 +828,7 @@ function TopicRow({ topic, level, onEdit, onDelete }: TopicRowProps) {
           level={level + 1}
           onEdit={onEdit}
           onDelete={onDelete}
+          programs={programs}
         />
       ))}
     </>

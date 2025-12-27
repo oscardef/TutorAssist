@@ -29,21 +29,44 @@ interface BatchRequest {
   }
 }
 
-const SYSTEM_PROMPT = `You are an expert math tutor. Generate practice questions with LaTeX math.
+const SYSTEM_PROMPT = `You are an expert math tutor. Generate practice questions with perfect LaTeX formatting.
 
 CRITICAL LaTeX Rules:
-- All math expressions MUST be wrapped in delimiters: \\( \\) for inline, \\[ \\] for display
-- questionLatex should have math properly delimited, e.g., "Calculate \\(5 \\times 3\\)"
-- answerLatex should also use delimiters, e.g., "\\(\\frac{\\ln(2)}{3}\\)"
-- Plain text portions should remain as normal text, not italicized math
+- The "questionLatex" field is PRIMARY - use \\( \\) for inline math, \\[ \\] for display math
+- "answerLatex" should also use proper delimiters
+- Regular text stays plain, only wrap actual math expressions
+
+CORRECT EXAMPLES:
+- "Solve for \\(x\\): \\(3x - 7 = 14\\)"
+- "Calculate \\(\\frac{2}{3} \\times \\frac{5}{4}\\)"
+- "Find the area of a circle with radius \\(r = 5\\) cm."
 
 Output JSON with "questions" array. Each question has:
-- questionLatex: string (question with properly delimited LaTeX, e.g., "Find \\(x\\) if \\(2x + 3 = 7\\)")
-- answerLatex: string (answer with delimited LaTeX if needed)  
-- difficulty: "easy"|"medium"|"hard"
-- hints: string[]
-- solutionSteps: string[]
+- questionLatex: string (question with properly delimited LaTeX)
+- answerLatex: string (answer with LaTeX if needed, e.g., "\\(\\frac{3}{4}\\)")
+- answerValue: string | number (the raw answer value)
+- answerType: "exact" | "numeric" | "multiple_choice" | "expression"
+- difficulty: "easy" | "medium" | "hard"
+- hints: string[] (with LaTeX where appropriate)
+- solutionSteps: {step: string, latex?: string}[]
 - tags: string[]`
+
+// Strip LaTeX for plain text version
+function stripLatex(text: string): string {
+  return text
+    .replace(/\\\[|\\\]/g, '')
+    .replace(/\\\(|\\\)/g, '')
+    .replace(/\$\$?/g, '')
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
+    .replace(/\\times/g, '×')
+    .replace(/\\div/g, '÷')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\[a-zA-Z]+/g, '')
+    .replace(/[{}]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 export async function handleBatchGenerate(job: Job): Promise<void> {
   const payload = job.payload_json as unknown as BatchGeneratePayload
@@ -186,25 +209,43 @@ export async function checkBatchStatus(jobId: string): Promise<boolean> {
           const parsed = JSON.parse(responseContent)
           const questions = parsed.questions || []
           
-          // Insert questions
+          // Map difficulty strings to numbers
+          const difficultyMap: Record<string, number> = {
+            'easy': 2,
+            'medium': 3,
+            'hard': 4
+          }
+          
+          // Insert questions with proper field mapping
           const questionsToInsert = questions.map((q: {
             questionLatex: string
-            answerLatex: string
-            difficulty: string
+            answerLatex?: string
+            answerValue?: string | number
+            answerType?: string
+            difficulty: string | number
             hints: string[]
-            solutionSteps: string[]
+            solutionSteps: { step: string; latex?: string }[] | string[]
             tags: string[]
           }) => ({
             workspace_id: request.workspaceId,
             topic_id: request.topicId,
-            ai_generated: true,
-            question_latex: q.questionLatex,
-            answer_latex: q.answerLatex,
-            difficulty: q.difficulty,
-            hints_json: q.hints,
-            solution_steps_json: q.solutionSteps,
-            tags: q.tags,
+            origin: 'ai_generated' as const,
+            status: 'active' as const,
+            prompt_text: stripLatex(q.questionLatex),
+            prompt_latex: q.questionLatex,
+            answer_type: q.answerType || 'exact',
+            correct_answer_json: {
+              value: q.answerValue || q.answerLatex,
+              latex: q.answerLatex,
+            },
+            difficulty: typeof q.difficulty === 'number' 
+              ? q.difficulty 
+              : (difficultyMap[q.difficulty] || 3),
+            hints_json: q.hints || [],
+            solution_steps_json: q.solutionSteps || [],
+            tags_json: q.tags || [],
             quality_score: 1.0,
+            created_by: job.created_by_user_id,
           }))
           
           await supabase.from('questions').insert(questionsToInsert)

@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
+import { 
+  ASSIGNMENT_GENERATION_SYSTEM_PROMPT,
+  stripLatexToPlainText,
+  normalizeAnswer,
+} from '@/lib/prompts/question-generation'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -187,53 +192,10 @@ ${options.focusOnWeakAreas ? '- PRIORITY: Focus on weak areas to help improvemen
 
   const topicsContext = topics.map(t => t.name).join(', ')
 
-  const systemPrompt = `You are an expert educational AI assistant helping tutors create personalized assignments for students.
-
-Your task is to:
-1. Analyze the tutor's prompt to understand what kind of assignment they want
-2. Consider the student's learning history and weak areas
-3. Select appropriate questions from the available question bank
-4. If needed, generate NEW questions to fill gaps (you'll specify these)
-5. Create a well-balanced, pedagogically sound assignment
-
-Guidelines:
-- For adaptive difficulty: Start easier, progress harder
-- For weak area focus: Include remedial questions on struggled topics
-- Ensure topic variety unless specifically focused
-- Include a mix of question types when possible
-- New questions MUST use proper LaTeX delimiters:
-  * \\( \\) for inline math
-  * \\[ \\] for display math
-  * Plain text should remain as normal text, not LaTeX
-  * Example: "Calculate \\(5 \\times 3\\)" NOT "Calculate 5 \\times 3"
-- Generated questions should have proper hints and solution steps
-
-Output a JSON object with this structure:
-{
-  "title": "A descriptive title for the assignment",
-  "description": "Brief description of what this assignment covers",
-  "reasoning": "Brief explanation of your selection strategy",
-  "selectedQuestionIndices": [0, 3, 5], // Indices from the provided question bank
-  "newQuestions": [
-    {
-      "promptText": "Question text",
-      "promptLatex": "LaTeX version if needed",
-      "difficulty": 1-5,
-      "topicName": "Topic this belongs to",
-      "answerType": "exact|numeric|multiple_choice",
-      "correctAnswer": {"value": "answer"},
-      "hints": ["hint 1", "hint 2"],
-      "solutionSteps": [{"step": "Step 1", "result": "result"}]
-    }
-  ],
-  "suggestedDueDays": 7,
-  "estimatedMinutes": 30
-}`
-
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-4o-mini',  // Use cheaper model for assignment selection
     messages: [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: ASSIGNMENT_GENERATION_SYSTEM_PROMPT },
       {
         role: 'user',
         content: `
@@ -251,7 +213,10 @@ Available Topics: ${topicsContext}
 Available Questions from Question Bank:
 ${JSON.stringify(questionsContext, null, 2)}
 
-Please create an assignment based on these requirements.`,
+Please create an assignment based on these requirements.
+- Prefer selecting from existing questions when they match the requirements
+- Only generate new questions if needed to fill gaps
+- Remember: Use \\( \\) for inline math in any new questions`,
       },
     ],
     response_format: { type: 'json_object' },
@@ -271,18 +236,21 @@ Please create an assignment based on these requirements.`,
     }
   }
 
-  // Add newly generated questions
+  // Add newly generated questions - normalize them properly
   for (const newQ of result.newQuestions || []) {
+    // Handle different field names from AI (questionLatex vs promptLatex)
+    const questionText = newQ.questionLatex || newQ.promptLatex || newQ.promptText
+    
     selectedQuestions.push({
       id: `generated-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      promptText: newQ.promptText,
-      promptLatex: newQ.promptLatex,
-      difficulty: newQ.difficulty || 3,
+      promptText: stripLatexToPlainText(questionText),
+      promptLatex: questionText,
+      difficulty: Math.min(5, Math.max(1, newQ.difficulty || 3)),
       topicName: newQ.topicName,
       answerType: newQ.answerType || 'exact',
-      correctAnswer: newQ.correctAnswer,
-      hints: newQ.hints || [],
-      solutionSteps: newQ.solutionSteps || [],
+      correctAnswer: normalizeAnswer(newQ.correctAnswer, newQ.answerType || 'exact'),
+      hints: Array.isArray(newQ.hints) ? newQ.hints : [],
+      solutionSteps: Array.isArray(newQ.solutionSteps) ? newQ.solutionSteps : [],
       isGenerated: true,
     })
   }

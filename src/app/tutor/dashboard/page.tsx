@@ -3,9 +3,22 @@ import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { format } from 'date-fns'
 
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 export default async function TutorDashboard() {
   const context = await requireTutor()
   const supabase = await createServerClient()
+
+  // Get user metadata for name
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const firstName = authUser?.user_metadata?.full_name?.split(' ')[0]
+    || authUser?.email?.split('@')[0]
+    || 'Tutor'
 
   // Get workspace info
   const { data: workspace } = await supabase
@@ -55,9 +68,9 @@ export default async function TutorDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {firstName}! 👋</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Welcome back to {workspace?.name || 'your workspace'}
+          Managing {workspace?.name || 'your workspace'}
         </p>
       </div>
 

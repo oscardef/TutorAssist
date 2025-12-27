@@ -18,6 +18,8 @@ export async function GET(request: Request) {
   const topicId = searchParams.get('topicId')
   const difficulty = searchParams.get('difficulty')
   const gradeLevel = searchParams.get('gradeLevel')
+  const programId = searchParams.get('programId')
+  const gradeLevelId = searchParams.get('gradeLevelId')
   const mode = searchParams.get('mode') // 'review' or 'weak'
   const aiGenerated = searchParams.get('aiGenerated')
   const limit = parseInt(searchParams.get('limit') || '50')
@@ -100,7 +102,12 @@ export async function GET(request: Request) {
   
   let query = supabase
     .from('questions')
-    .select('*, topics(id, name)', { count: 'exact' })
+    .select(`
+      *,
+      topics(id, name, program_id, grade_level_id),
+      primary_program:study_programs!questions_primary_program_id_fkey(id, code, name, color),
+      primary_grade_level:grade_levels!questions_primary_grade_level_id_fkey(id, code, name, year_number)
+    `, { count: 'exact' })
     .eq('workspace_id', context.workspaceId)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
@@ -116,6 +123,16 @@ export async function GET(request: Request) {
   
   if (gradeLevel) {
     query = query.eq('grade_level', parseInt(gradeLevel))
+  }
+  
+  // Filter by primary program
+  if (programId) {
+    query = query.eq('primary_program_id', programId)
+  }
+  
+  // Filter by primary grade level
+  if (gradeLevelId) {
+    query = query.eq('primary_grade_level_id', gradeLevelId)
   }
   
   if (aiGenerated === 'true') {
@@ -164,6 +181,11 @@ export async function POST(request: Request) {
       hints = [],
       solutionSteps = [],
       tags = [],
+      // New program/grade level support
+      primaryProgramId,
+      primaryGradeLevelId,
+      programIds = [],      // For many-to-many
+      gradeLevelIds = [],   // For many-to-many
       // Legacy support for old API format
       questionLatex,
       answerLatex,
@@ -235,18 +257,43 @@ export async function POST(request: Request) {
         tolerance: tolerance || null,
         difficulty: difficultyNum,
         grade_level: gradeLevel || null,
+        primary_program_id: primaryProgramId || null,
+        primary_grade_level_id: primaryGradeLevelId || null,
         hints_json: hints,
         solution_steps_json: solutionSteps,
         tags_json: tags,
         quality_score: 1.0,
         created_by: user.id,
       })
-      .select()
+      .select(`
+        *,
+        topics(id, name),
+        primary_program:study_programs!questions_primary_program_id_fkey(id, code, name, color),
+        primary_grade_level:grade_levels!questions_primary_grade_level_id_fkey(id, code, name)
+      `)
       .single()
     
     if (error) {
       console.error('Create question error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    // Insert many-to-many program relationships
+    if (programIds.length > 0) {
+      const programInserts = programIds.map((progId: string) => ({
+        question_id: question.id,
+        program_id: progId,
+      }))
+      await supabase.from('question_programs').insert(programInserts)
+    }
+    
+    // Insert many-to-many grade level relationships
+    if (gradeLevelIds.length > 0) {
+      const gradeInserts = gradeLevelIds.map((gradeId: string) => ({
+        question_id: question.id,
+        grade_level_id: gradeId,
+      }))
+      await supabase.from('question_grade_levels').insert(gradeInserts)
     }
     
     return NextResponse.json({ question })
@@ -304,6 +351,8 @@ export async function PATCH(request: Request) {
     if (body.correct_answer_json !== undefined) updateFields.correct_answer_json = body.correct_answer_json
     if (body.difficulty !== undefined) updateFields.difficulty = body.difficulty
     if (body.grade_level !== undefined) updateFields.grade_level = body.grade_level
+    if (body.primary_program_id !== undefined) updateFields.primary_program_id = body.primary_program_id
+    if (body.primary_grade_level_id !== undefined) updateFields.primary_grade_level_id = body.primary_grade_level_id
     if (body.hints !== undefined) updateFields.hints_json = body.hints
     if (body.solution_steps !== undefined) updateFields.solution_steps_json = body.solution_steps
     if (body.tags !== undefined) updateFields.tags_json = body.tags
@@ -315,12 +364,45 @@ export async function PATCH(request: Request) {
       .from('questions')
       .update(updateFields)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        topics(id, name),
+        primary_program:study_programs!questions_primary_program_id_fkey(id, code, name, color),
+        primary_grade_level:grade_levels!questions_primary_grade_level_id_fkey(id, code, name)
+      `)
       .single()
     
     if (error) {
       console.error('Update question error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    // Update many-to-many program relationships if provided
+    if (body.programIds !== undefined) {
+      // Delete existing
+      await supabase.from('question_programs').delete().eq('question_id', id)
+      // Insert new
+      if (body.programIds.length > 0) {
+        const programInserts = body.programIds.map((progId: string) => ({
+          question_id: id,
+          program_id: progId,
+        }))
+        await supabase.from('question_programs').insert(programInserts)
+      }
+    }
+    
+    // Update many-to-many grade level relationships if provided
+    if (body.gradeLevelIds !== undefined) {
+      // Delete existing
+      await supabase.from('question_grade_levels').delete().eq('question_id', id)
+      // Insert new
+      if (body.gradeLevelIds.length > 0) {
+        const gradeInserts = body.gradeLevelIds.map((gradeId: string) => ({
+          question_id: id,
+          grade_level_id: gradeId,
+        }))
+        await supabase.from('question_grade_levels').insert(gradeInserts)
+      }
     }
     
     return NextResponse.json({ question })

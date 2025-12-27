@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
 import MathSymbolsPanel from '@/components/math-symbols-panel'
+import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
 
 interface Question {
   id: string
@@ -15,19 +16,35 @@ interface Question {
   answer_type: string
   correct_answer_json: {
     value: string | number
+    latex?: string
     tolerance?: number
     choices?: { text: string; latex?: string }[]
     correct?: number
+    alternates?: string[]
   }
   hints_json: string[] | null
   solution_steps_json: { step: string; result: string }[] | null
   topics: { id: string; name: string } | null
+  primary_program?: { code: string; name: string; color: string | null } | null
+  primary_grade_level?: { code: string; name: string } | null
+}
+
+interface StudyProgram {
+  id: string
+  code: string
+  name: string
+  color: string | null
+  grade_levels?: { id: string; code: string; name: string }[]
 }
 
 interface Topic {
   id: string
   name: string
+  program_id: string | null
+  grade_level_id: string | null
   questions: { count: number }[]
+  program?: { code: string; name: string; color: string | null } | null
+  grade_level?: { code: string; name: string } | null
 }
 
 interface TopicStats {
@@ -39,50 +56,6 @@ interface TopicStats {
 }
 
 type PracticeMode = 'select' | 'topic' | 'review' | 'weak' | 'browse'
-
-// Normalize answer for comparison
-function normalizeAnswer(answer: string): string {
-  return answer
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/×/g, '*')
-    .replace(/÷/g, '/')
-    .replace(/−/g, '-')
-    .replace(/√/g, 'sqrt')
-    .replace(/π/g, 'pi')
-    .replace(/\\times/g, '*')
-    .replace(/\\div/g, '/')
-    .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
-    .replace(/\\sqrt/g, 'sqrt')
-    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
-    .replace(/\\pi/g, 'pi')
-    .replace(/\\/g, '')
-    .replace(/[{}]/g, '')
-}
-
-// Format answer for display
-function formatAnswerForDisplay(answer: string): string {
-  if (!answer) return ''
-  if (/\$|\\\(|\\\[/.test(answer)) return answer
-  
-  let latex = answer
-    .replace(/√/g, '\\sqrt{')
-    .replace(/×/g, '\\times ')
-    .replace(/÷/g, '\\div ')
-    .replace(/π/g, '\\pi ')
-  
-  const sqrtCount = (latex.match(/\\sqrt\{/g) || []).length
-  const closeBraceCount = (latex.match(/\}/g) || []).length
-  if (sqrtCount > closeBraceCount) {
-    latex += '}'.repeat(sqrtCount - closeBraceCount)
-  }
-  
-  if (/\\[a-zA-Z]+/.test(latex) || /[_^]/.test(latex) || /\d/.test(latex)) {
-    return `$${latex}$`
-  }
-  return answer
-}
 
 function getGradeLevelLabel(level: number | null): string {
   if (!level) return ''
@@ -100,6 +73,9 @@ export default function PracticePage() {
   
   const [mode, setMode] = useState<PracticeMode>(modeParam || 'select')
   const [loading, setLoading] = useState(true)
+  const [programs, setPrograms] = useState<StudyProgram[]>([])
+  const [selectedProgram, setSelectedProgram] = useState<string>('')
+  const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>('')
   const [topics, setTopics] = useState<Topic[]>([])
   const [topicStats, setTopicStats] = useState<TopicStats[]>([])
   const [selectedTopic, setSelectedTopic] = useState<string>(topicParam || '')
@@ -118,12 +94,26 @@ export default function PracticePage() {
   const [startTime, setStartTime] = useState<number>(0)
   const [streak, setStreak] = useState(0)
   const [sessionStats, setSessionStats] = useState({ total: 0, correct: 0 })
+  
+  // Flagging state
+  const [showFlagModal, setShowFlagModal] = useState(false)
+  const [flagType, setFlagType] = useState<string>('')
+  const [flagComment, setFlagComment] = useState('')
+  const [flagSubmitting, setFlagSubmitting] = useState(false)
+  const [flagSubmitted, setFlagSubmitted] = useState(false)
+  const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null)
+  const [claimedCorrect, setClaimedCorrect] = useState(false)
 
   // Fetch topics and stats on mount
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
       try {
+        // Fetch programs
+        const programsRes = await fetch('/api/programs')
+        const programsData = await programsRes.json()
+        setPrograms(programsData.programs || [])
+        
         // Fetch topics
         const topicsRes = await fetch('/api/topics')
         const topicsData = await topicsRes.json()
@@ -215,6 +205,12 @@ export default function PracticePage() {
     setIsCorrect(null)
     setShowSolution(false)
     setStartTime(Date.now())
+    setShowFlagModal(false)
+    setFlagType('')
+    setFlagComment('')
+    setFlagSubmitted(false)
+    setCurrentAttemptId(null)
+    setClaimedCorrect(false)
   }
 
   async function handleSubmit() {
@@ -228,14 +224,19 @@ export default function PracticePage() {
       userAnswer = String(selectedChoice)
       correct = selectedChoice === correctAnswer.correct
     } else if (question.answer_type === 'numeric') {
-      const numAnswer = parseFloat(answer)
-      const numCorrect = parseFloat(String(correctAnswer.value))
-      const tolerance = correctAnswer.tolerance || 0.01
-      correct = Math.abs(numAnswer - numCorrect) <= tolerance
+      // Use robust numeric comparison
+      correct = compareNumericAnswers(
+        answer,
+        parseFloat(String(correctAnswer.value)),
+        correctAnswer.tolerance || 0.01
+      )
     } else {
-      const normalizedUserAnswer = normalizeAnswer(answer)
-      const normalizedCorrectAnswer = normalizeAnswer(String(correctAnswer.value))
-      correct = normalizedUserAnswer === normalizedCorrectAnswer
+      // Use robust math answer comparison (handles LaTeX, Unicode, alternates)
+      correct = compareMathAnswers(
+        answer,
+        String(correctAnswer.value),
+        correctAnswer.alternates
+      )
     }
 
     setIsCorrect(correct)
@@ -254,7 +255,7 @@ export default function PracticePage() {
     // Record attempt
     try {
       const timeSpent = Math.round((Date.now() - startTime) / 1000)
-      await fetch('/api/attempts', {
+      const response = await fetch('/api/attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -265,8 +266,70 @@ export default function PracticePage() {
           hintsUsed: visibleHintCount,
         }),
       })
+      const data = await response.json()
+      if (data.attempt?.id) {
+        setCurrentAttemptId(data.attempt.id)
+      }
     } catch (error) {
       console.error('Failed to record attempt:', error)
+    }
+  }
+  
+  // Handle "I was right" claim
+  async function handleClaimCorrect() {
+    if (!question || !currentAttemptId || claimedCorrect) return
+    
+    setFlagSubmitting(true)
+    try {
+      const response = await fetch('/api/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: question.id,
+          flagType: 'claim_correct',
+          comment: 'Student claims their answer was marked incorrectly',
+          studentAnswer: answer,
+          attemptId: currentAttemptId,
+        }),
+      })
+      
+      if (response.ok) {
+        setClaimedCorrect(true)
+        // Update local state to show as "pending review"
+      }
+    } catch (error) {
+      console.error('Failed to claim correct:', error)
+    } finally {
+      setFlagSubmitting(false)
+    }
+  }
+  
+  // Handle flagging question
+  async function handleSubmitFlag() {
+    if (!question || !flagType) return
+    
+    setFlagSubmitting(true)
+    try {
+      const response = await fetch('/api/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: question.id,
+          flagType: flagType,
+          comment: flagComment || null,
+          studentAnswer: answer || null,
+          attemptId: currentAttemptId || null,
+        }),
+      })
+      
+      if (response.ok) {
+        setFlagSubmitted(true)
+        setShowFlagModal(false)
+      }
+    } catch (error) {
+      console.error('Failed to submit flag:', error)
+    } finally {
+      setFlagSubmitting(false)
     }
   }
 
@@ -369,44 +432,142 @@ export default function PracticePage() {
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Practice by Topic</h2>
           
-          {topics.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {topics.map((topic) => {
-                const questionCount = topic.questions?.[0]?.count || 0
-                const stats = topicStats.find(s => s.topicId === topic.id)
-                
-                return (
+          {/* Program Filter */}
+          {programs.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  setSelectedProgram('')
+                  setSelectedGradeLevel('')
+                }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                  !selectedProgram
+                    ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-500'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All Programs
+              </button>
+              {programs.map(program => (
+                <button
+                  key={program.id}
+                  onClick={() => {
+                    setSelectedProgram(program.id)
+                    setSelectedGradeLevel('')
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center gap-1.5 ${
+                    selectedProgram === program.id
+                      ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-500'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span 
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: program.color || '#6366f1' }}
+                  />
+                  {program.name}
+                </button>
+              ))}
+            </div>
+          )}
+          
+          {/* Grade Level Filter */}
+          {selectedProgram && (() => {
+            const program = programs.find(p => p.id === selectedProgram)
+            const gradeLevels = program?.grade_levels || []
+            if (gradeLevels.length === 0) return null
+            return (
+              <div className="mb-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedGradeLevel('')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    !selectedGradeLevel
+                      ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-500'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  All Grades
+                </button>
+                {gradeLevels.map(grade => (
                   <button
-                    key={topic.id}
-                    onClick={() => questionCount > 0 && startPractice('topic', topic.id)}
-                    disabled={questionCount === 0}
-                    className={`p-4 rounded-lg border text-left transition-all ${
-                      questionCount > 0
-                        ? 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                        : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                    key={grade.id}
+                    onClick={() => setSelectedGradeLevel(grade.id)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                      selectedGradeLevel === grade.id
+                        ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-500'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    <div className="font-medium text-gray-900 mb-1">{topic.name}</div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">{questionCount} questions</span>
-                      {stats && stats.total > 0 && (
-                        <span className={`font-medium ${
-                          stats.accuracy >= 80 ? 'text-green-600' :
-                          stats.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {stats.accuracy}%
-                        </span>
-                      )}
-                    </div>
+                    {grade.code}
                   </button>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-8">
-              No topics available. Your tutor will add practice materials soon.
-            </p>
-          )}
+                ))}
+              </div>
+            )
+          })()}
+          
+          {(() => {
+            // Filter topics based on selected program/grade
+            const filteredTopics = topics.filter(topic => {
+              if (selectedProgram && topic.program_id !== selectedProgram) return false
+              if (selectedGradeLevel && topic.grade_level_id !== selectedGradeLevel) return false
+              return true
+            })
+            
+            return filteredTopics.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredTopics.map((topic) => {
+                  const questionCount = topic.questions?.[0]?.count || 0
+                  const stats = topicStats.find(s => s.topicId === topic.id)
+                  
+                  return (
+                    <button
+                      key={topic.id}
+                      onClick={() => questionCount > 0 && startPractice('topic', topic.id)}
+                      disabled={questionCount === 0}
+                      className={`p-4 rounded-lg border text-left transition-all ${
+                        questionCount > 0
+                          ? 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                          : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <span className="font-medium text-gray-900">{topic.name}</span>
+                        {topic.program && (
+                          <span 
+                            className="px-1.5 py-0.5 text-xs rounded text-white ml-2 shrink-0"
+                            style={{ backgroundColor: topic.program.color || '#6366f1' }}
+                          >
+                            {topic.program.code}
+                          </span>
+                        )}
+                      </div>
+                      {topic.grade_level && (
+                        <div className="text-xs text-indigo-600 mb-1">{topic.grade_level.code}</div>
+                      )}
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">{questionCount} questions</span>
+                        {stats && stats.total > 0 && (
+                          <span className={`font-medium ${
+                            stats.accuracy >= 80 ? 'text-green-600' :
+                            stats.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                          }`}>
+                            {stats.accuracy}%
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">
+                {selectedProgram || selectedGradeLevel 
+                  ? 'No topics found for the selected filters.'
+                  : 'No topics available. Your tutor will add practice materials soon.'
+                }
+              </p>
+            )
+          })()}
         </div>
 
         {/* Topic Stats Summary */}
@@ -544,6 +705,23 @@ export default function PracticePage() {
               </span>
             )}
           </div>
+          
+          {/* Flag button */}
+          <button
+            onClick={() => setShowFlagModal(true)}
+            disabled={flagSubmitted}
+            className={`text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors ${
+              flagSubmitted 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'text-gray-500 hover:text-orange-600 hover:bg-orange-50'
+            }`}
+            title={flagSubmitted ? 'Flag submitted' : 'Report an issue'}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+            </svg>
+            {flagSubmitted ? 'Flagged' : 'Flag'}
+          </button>
         </div>
 
         {/* Question Content */}
@@ -575,7 +753,7 @@ export default function PracticePage() {
                   }`}
                 >
                   <span className="font-medium mr-3">{String.fromCharCode(65 + idx)}.</span>
-                  <LatexRenderer content={choice.text} />
+                  <LatexRenderer content={choice.latex || choice.text} />
                 </button>
               ))}
             </div>
@@ -584,37 +762,69 @@ export default function PracticePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Your Answer
               </label>
-              <div className="flex gap-2">
-                <input
-                  type={question.answer_type === 'numeric' ? 'number' : 'text'}
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={submitted}
-                  className="flex-1 px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
-                  placeholder={question.answer_type === 'numeric' ? 'Enter a number' : 'Type your answer'}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !submitted) {
-                      handleSubmit()
-                    }
-                  }}
-                />
-                {!submitted && (
-                  <MathSymbolsPanel onInsert={(symbol) => setAnswer(prev => prev + symbol)} />
+              <div className="relative">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    disabled={submitted}
+                    className={`flex-1 px-4 py-3 text-lg border-2 rounded-lg focus:outline-none transition-colors ${
+                      submitted 
+                        ? isCorrect 
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-red-500 bg-red-50'
+                        : 'border-gray-300 focus:border-blue-500'
+                    } disabled:bg-gray-50`}
+                    placeholder={question.answer_type === 'numeric' ? 'Enter a number (e.g., 3.14, 1/2)' : 'Type your answer (e.g., 2x+1, √2)'}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !submitted && answer.trim()) {
+                        handleSubmit()
+                      }
+                    }}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                  />
+                  {!submitted && (
+                    <MathSymbolsPanel onInsert={(symbol) => setAnswer(prev => prev + symbol)} />
+                  )}
+                </div>
+                
+                {/* Live preview of answer */}
+                {answer && !submitted && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
+                    <span className="text-xs text-gray-500 mr-2">Preview:</span>
+                    <LatexRenderer content={formatMathForDisplay(answer)} className="text-gray-800" />
+                  </div>
                 )}
               </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Use the math symbols button or type normally. Common notations: × ÷ √ π
+              
+              <p className="mt-2 text-xs text-gray-500">
+                💡 Tips: Type fractions as &ldquo;1/2&rdquo;, exponents as &ldquo;x^2&rdquo;, roots as &ldquo;√&rdquo; or &ldquo;sqrt&rdquo;. 
+                Use the math symbols button for special characters.
               </p>
+              
               {submitted && (
-                <div className="mt-3 text-sm text-gray-600">
-                  Your answer: <span className="font-medium"><LatexRenderer content={formatAnswerForDisplay(answer)} /></span>
-                  {!isCorrect && question.correct_answer_json.value && (
-                    <span className="ml-2">
-                      | Correct: <span className="font-medium text-green-600">
-                        <LatexRenderer content={formatAnswerForDisplay(String(question.correct_answer_json.value))} />
-                      </span>
-                    </span>
-                  )}
+                <div className={`mt-4 p-3 rounded-lg ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">
+                        Your answer: <span className="font-semibold"><LatexRenderer content={formatMathForDisplay(answer)} /></span>
+                      </p>
+                      {!isCorrect && (
+                        <p className="text-sm mt-1">
+                          Correct answer: <span className="font-semibold text-green-700">
+                            <LatexRenderer content={
+                              question.correct_answer_json.latex || 
+                              formatMathForDisplay(String(question.correct_answer_json.value || ''))
+                            } />
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -623,20 +833,45 @@ export default function PracticePage() {
           {/* Feedback */}
           {submitted && (
             <div className={`mt-4 p-4 rounded-lg ${
-              isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              isCorrect ? 'bg-green-50 text-green-800' : claimedCorrect ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'
             }`}>
-              <div className="flex items-center gap-2">
-                {isCorrect ? (
-                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {isCorrect ? (
+                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  ) : claimedCorrect ? (
+                    <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                  <span className="font-medium">
+                    {isCorrect ? 'Correct!' : claimedCorrect ? 'Under review' : 'Not quite right'}
+                  </span>
+                </div>
+                
+                {/* "I was right" button - only show when marked incorrect */}
+                {!isCorrect && !claimedCorrect && (
+                  <button
+                    onClick={handleClaimCorrect}
+                    disabled={flagSubmitting}
+                    className="text-sm px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                  >
+                    {flagSubmitting ? 'Submitting...' : 'I was right'}
+                  </button>
                 )}
-                <span className="font-medium">{isCorrect ? 'Correct!' : 'Not quite right'}</span>
               </div>
+              
+              {claimedCorrect && (
+                <p className="mt-2 text-sm text-yellow-700">
+                  Your claim has been submitted for review. Your tutor will check if your answer should be accepted.
+                </p>
+              )}
             </div>
           )}
 
@@ -742,6 +977,87 @@ export default function PracticePage() {
           )}
         </div>
       </div>
+      
+      {/* Flag Modal */}
+      {showFlagModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Report an Issue</h3>
+              <button
+                onClick={() => setShowFlagModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Help us improve by reporting any issues with this question.
+            </p>
+            
+            {/* Flag Type Selection */}
+            <div className="space-y-2 mb-4">
+              <label className="block text-sm font-medium text-gray-700">What&apos;s the issue?</label>
+              <div className="grid gap-2">
+                {[
+                  { type: 'incorrect_answer', label: 'The correct answer is wrong' },
+                  { type: 'unclear', label: 'The question is confusing' },
+                  { type: 'typo', label: 'There is a typo' },
+                  { type: 'too_hard', label: 'Too difficult for this level' },
+                  { type: 'multiple_valid', label: 'Multiple valid answers exist' },
+                  { type: 'other', label: 'Other issue' },
+                ].map(({ type, label }) => (
+                  <button
+                    key={type}
+                    onClick={() => setFlagType(type)}
+                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      flagType === type
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Additional Comment */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional details (optional)
+              </label>
+              <textarea
+                value={flagComment}
+                onChange={(e) => setFlagComment(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Describe the issue in more detail..."
+              />
+            </div>
+            
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowFlagModal(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitFlag}
+                disabled={!flagType || flagSubmitting}
+                className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {flagSubmitting ? 'Submitting...' : 'Submit Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

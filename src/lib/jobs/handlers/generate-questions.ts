@@ -2,6 +2,13 @@ import OpenAI from 'openai'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Job } from '@/lib/types'
 import { completeJob, failJob } from '../queue'
+import { 
+  QUESTION_GENERATION_SYSTEM_PROMPT, 
+  validateQuestionLatex,
+  stripLatexToPlainText,
+  normalizeAnswer,
+  type GeneratedQuestion 
+} from '@/lib/prompts/question-generation'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -14,62 +21,12 @@ interface GenerateQuestionsPayload {
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed'
   style?: string
   fromMaterialId?: string
-  excludeQuestionIds?: string[] // Avoid duplicates
+  excludeQuestionIds?: string[]
 }
-
-interface GeneratedQuestion {
-  promptText: string
-  promptLatex?: string
-  answerType: 'exact' | 'numeric' | 'multiple_choice'
-  correctAnswer: {
-    value: string | number
-    tolerance?: number
-    options?: string[]
-  }
-  difficulty: number // 1-5
-  hints: string[]
-  solutionSteps: string[]
-  tags: string[]
-}
-
-const SYSTEM_PROMPT = `You are an expert math tutor and question generator. Generate high-quality practice questions that help students learn and build mastery.
-
-CRITICAL: LaTeX Formatting Rules:
-1. All math expressions MUST be wrapped in delimiters:
-   - Use \\( ... \\) for inline math within sentences
-   - Use \\[ ... \\] for display/block math equations
-2. Plain text should NEVER contain raw LaTeX commands
-3. In promptText, use words: "5 times 3" not "5 \\times 3"
-4. In promptLatex, properly delimit: "Calculate \\(5 \\times 3\\)"
-5. For fractions in text: "15 divided by 35" or "15/35"
-6. For fractions in LaTeX: "Simplify \\(\\frac{15}{35}\\)"
-
-Example correct formats:
-- promptText: "A biologist models bacterial growth using N(t) = N0 * e^(kt). If the colony doubles every 3 hours, find k."
-- promptLatex: "A biologist models bacterial growth using \\(N(t) = N_0 \\cdot e^{kt}\\). If the colony doubles every 3 hours, find \\(k\\)."
-
-Guidelines:
-1. Questions should be clear and unambiguous
-2. Include step-by-step solution hints
-3. Vary question styles: direct calculation, word problems, proofs, applications
-4. Ensure answers are mathematically correct
-5. Match difficulty to the requested level (1=easy, 2=medium-easy, 3=medium, 4=medium-hard, 5=hard)
-
-Output JSON array with this structure for each question:
-{
-  "promptText": "The question text in PLAIN language (no LaTeX, use words)",
-  "promptLatex": "Same question with math expressions wrapped in \\\\( \\\\) or \\\\[ \\\\] delimiters",
-  "answerType": "exact|numeric|multiple_choice",
-  "correctAnswer": {"value": "the answer", "tolerance": 0.01 (for numeric), "options": ["a","b","c","d"] (for multiple choice)},
-  "difficulty": 1-5,
-  "hints": ["hint 1", "hint 2"],
-  "solutionSteps": ["step 1", "step 2"],
-  "tags": ["relevant", "topic", "tags"]
-}`
 
 export async function handleGenerateQuestions(job: Job): Promise<void> {
   const payload = job.payload_json as unknown as GenerateQuestionsPayload
-  const { topicId, workspaceId, count, difficulty = 'mixed', style, fromMaterialId, excludeQuestionIds = [] } = payload
+  const { topicId, workspaceId, count, difficulty = 'mixed', style, fromMaterialId } = payload
   
   try {
     const supabase = await createAdminClient()
@@ -109,7 +66,7 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
       }
     }
     
-    // Generate questions
+    // Generate questions using centralized prompt
     const difficultyPrompt = difficulty === 'mixed'
       ? 'Include a mix of difficulties (1-5 scale).'
       : `All questions should be ${difficulty === 'easy' ? '1-2' : difficulty === 'medium' ? '3' : '4-5'} difficulty.`
@@ -123,7 +80,7 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: QUESTION_GENERATION_SYSTEM_PROMPT },
         {
           role: 'user',
           content: `Generate ${count} practice questions for the topic: "${topic.name}"
@@ -135,12 +92,13 @@ ${stylePrompt}
 ${materialContext}
 ${avoidDuplicatesPrompt}
 
-Return a JSON object with a "questions" array containing exactly ${count} questions.`,
+Return a JSON object with a "questions" array containing exactly ${count} questions.
+Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the "latex" field in all answers.`,
         },
       ],
       response_format: { type: 'json_object' },
       max_tokens: 4000,
-      temperature: 0.8,
+      temperature: 0.7,  // Lower temperature for more consistent output
     })
     
     const result = JSON.parse(response.choices[0].message.content || '{}')
@@ -150,9 +108,30 @@ Return a JSON object with a "questions" array containing exactly ${count} questi
       throw new Error('No questions generated')
     }
     
-    // Filter out any duplicates
-    const uniqueQuestions = questions.filter(q => {
-      const normalized = q.promptText.toLowerCase().trim()
+    // Validate and filter questions
+    const validQuestions: GeneratedQuestion[] = []
+    const invalidQuestions: { question: GeneratedQuestion; errors: string[] }[] = []
+    
+    for (const q of questions) {
+      const validation = validateQuestionLatex(q)
+      if (validation.valid) {
+        validQuestions.push(q)
+      } else {
+        // Try to auto-fix minor issues
+        const fixed = attemptAutoFix(q)
+        const revalidation = validateQuestionLatex(fixed)
+        if (revalidation.valid) {
+          validQuestions.push(fixed)
+        } else {
+          invalidQuestions.push({ question: q, errors: revalidation.errors })
+          console.warn('Invalid question filtered:', revalidation.errors)
+        }
+      }
+    }
+    
+    // Filter out duplicates
+    const uniqueQuestions = validQuestions.filter(q => {
+      const normalized = stripLatexToPlainText(q.questionLatex).toLowerCase().trim()
       return !existingPrompts.some(existing => 
         existing === normalized || 
         levenshteinSimilarity(existing, normalized) > 0.85
@@ -160,25 +139,25 @@ Return a JSON object with a "questions" array containing exactly ${count} questi
     })
     
     if (uniqueQuestions.length === 0) {
-      throw new Error('All generated questions were duplicates of existing ones')
+      throw new Error(`No valid questions after validation. ${invalidQuestions.length} failed validation.`)
     }
     
-    // Insert questions into database with correct column names
+    // Insert questions with proper formatting
     const questionsToInsert = uniqueQuestions.map((q) => ({
       workspace_id: workspaceId,
       topic_id: topicId,
       source_material_id: fromMaterialId || null,
       origin: 'ai_generated' as const,
-      status: 'active' as const,
-      prompt_text: q.promptText,
-      prompt_latex: q.promptLatex || null,
+      status: 'active' as const,  // Active by default - flagging handles issues
+      prompt_text: stripLatexToPlainText(q.questionLatex),
+      prompt_latex: q.questionLatex,
       answer_type: q.answerType || 'exact',
-      correct_answer_json: q.correctAnswer,
-      difficulty: q.difficulty || 3,
+      correct_answer_json: normalizeAnswer(q.correctAnswer, q.answerType),
+      difficulty: Math.min(5, Math.max(1, q.difficulty || 3)),
       hints_json: q.hints || [],
       solution_steps_json: q.solutionSteps || [],
       tags_json: q.tags || [],
-      quality_score: 1.0,
+      quality_score: 1.0,  // Starts at 1.0, can decrease with flags
       created_by: job.created_by_user_id,
     }))
     
@@ -195,7 +174,8 @@ Return a JSON object with a "questions" array containing exactly ${count} questi
       success: true,
       questionsGenerated: uniqueQuestions.length,
       questionIds: insertedQuestions?.map((q) => q.id) || [],
-      duplicatesFiltered: questions.length - uniqueQuestions.length,
+      duplicatesFiltered: validQuestions.length - uniqueQuestions.length,
+      invalidFiltered: invalidQuestions.length,
     })
   } catch (error) {
     console.error('Generate questions failed:', error)
@@ -205,6 +185,46 @@ Return a JSON object with a "questions" array containing exactly ${count} questi
       true
     )
   }
+}
+
+/**
+ * Attempt to auto-fix common issues in generated questions
+ */
+function attemptAutoFix(q: GeneratedQuestion): GeneratedQuestion {
+  const fixed = { ...q }
+  
+  // Ensure questionLatex has proper delimiters for math content
+  if (!/\\\(|\\\[/.test(fixed.questionLatex)) {
+    // Try to detect and wrap math content
+    fixed.questionLatex = fixed.questionLatex.replace(
+      /(\d+\s*[+\-*/×÷=]\s*\d+|\d*x\s*[+\-*/×÷=]\s*\d+|[a-z]\s*[+\-*/×÷=]\s*[a-z\d]+)/gi,
+      '\\($1\\)'
+    )
+  }
+  
+  // Ensure answer has latex field
+  if (!fixed.correctAnswer.latex && fixed.correctAnswer.value !== undefined) {
+    const val = String(fixed.correctAnswer.value)
+    fixed.correctAnswer = {
+      ...fixed.correctAnswer,
+      latex: `\\(${val}\\)`
+    }
+  }
+  
+  // Ensure hints is an array
+  if (!Array.isArray(fixed.hints)) {
+    fixed.hints = fixed.hints ? [String(fixed.hints)] : ['Think about what the question is asking.']
+  }
+  
+  // Ensure solutionSteps is an array
+  if (!Array.isArray(fixed.solutionSteps)) {
+    fixed.solutionSteps = [{ step: 'Solve the problem', latex: fixed.correctAnswer.latex || '' }]
+  }
+  
+  // Clamp difficulty
+  fixed.difficulty = Math.min(5, Math.max(1, fixed.difficulty || 3))
+  
+  return fixed
 }
 
 // Simple Levenshtein similarity for duplicate detection
@@ -272,13 +292,12 @@ export async function handleRegenVariant(job: Job): Promise<void> {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: QUESTION_GENERATION_SYSTEM_PROMPT },
         {
           role: 'user',
           content: `Generate a variant of this math question:
 
-Original question: ${original.prompt_text}
-${original.prompt_latex ? `LaTeX: ${original.prompt_latex}` : ''}
+Original question: ${original.prompt_latex || original.prompt_text}
 Original answer: ${JSON.stringify(original.correct_answer_json)}
 Topic: ${(original.topics as { name: string })?.name || 'Math'}
 Current difficulty: ${original.difficulty}
@@ -288,12 +307,13 @@ Target difficulty: ${difficultyAdjustment}
 
 Create ONE new question that tests the same mathematical concept.
 
-Return JSON with a single "question" object matching the format from the system prompt.`,
+Return JSON with a single "question" object (not a "questions" array).
+Remember: Use \\( \\) for inline math. Include the "latex" field in the answer.`,
         },
       ],
       response_format: { type: 'json_object' },
       max_tokens: 1500,
-      temperature: 0.9,
+      temperature: 0.8,
     })
     
     const result = JSON.parse(response.choices[0].message.content || '{}')
@@ -303,7 +323,19 @@ Return JSON with a single "question" object matching the format from the system 
       throw new Error('No variant generated')
     }
     
-    // Insert variant with correct column names
+    // Validate and auto-fix
+    const validation = validateQuestionLatex(variant)
+    let finalVariant = variant
+    if (!validation.valid) {
+      finalVariant = attemptAutoFix(variant)
+      const revalidation = validateQuestionLatex(finalVariant)
+      if (!revalidation.valid) {
+        console.warn('Variant validation warnings:', revalidation.errors)
+        // Proceed anyway with fixed version
+      }
+    }
+    
+    // Insert variant
     const { data: newQuestion, error: insertError } = await supabase
       .from('questions')
       .insert({
@@ -312,14 +344,14 @@ Return JSON with a single "question" object matching the format from the system 
         parent_question_id: original.parent_question_id || original.id,
         origin: 'variant' as const,
         status: 'active' as const,
-        prompt_text: variant.promptText,
-        prompt_latex: variant.promptLatex || null,
-        answer_type: variant.answerType || original.answer_type,
-        correct_answer_json: variant.correctAnswer,
+        prompt_text: stripLatexToPlainText(finalVariant.questionLatex),
+        prompt_latex: finalVariant.questionLatex,
+        answer_type: finalVariant.answerType || original.answer_type,
+        correct_answer_json: normalizeAnswer(finalVariant.correctAnswer, finalVariant.answerType),
         difficulty: difficultyAdjustment,
-        hints_json: variant.hints || [],
-        solution_steps_json: variant.solutionSteps || [],
-        tags_json: variant.tags || original.tags_json || [],
+        hints_json: finalVariant.hints || [],
+        solution_steps_json: finalVariant.solutionSteps || [],
+        tags_json: finalVariant.tags || original.tags_json || [],
         quality_score: 1.0,
         created_by: job.created_by_user_id,
       })

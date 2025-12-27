@@ -1,9 +1,24 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import LatexRenderer from '@/components/latex-renderer'
+
+interface StudyProgram {
+  id: string
+  code: string
+  name: string
+  color: string | null
+  grade_levels?: GradeLevel[]
+}
+
+interface GradeLevel {
+  id: string
+  program_id: string
+  code: string
+  name: string
+}
 
 interface Topic {
   id: string
@@ -23,6 +38,8 @@ interface Question {
   }
   difficulty: number
   grade_level: number | null
+  primary_program_id: string | null
+  primary_grade_level_id: string | null
   status: string
   origin: string
   tags_json: string[]
@@ -31,6 +48,8 @@ interface Question {
   parent_question_id: string | null
   created_at: string
   topics?: { name: string } | null
+  primary_program?: { id: string; code: string; name: string; color: string | null } | null
+  primary_grade_level?: { id: string; code: string; name: string } | null
 }
 
 type SortField = 'created_at' | 'difficulty' | 'topic' | 'success_rate'
@@ -46,16 +65,42 @@ export default function QuestionBankClient({
   const router = useRouter()
   const [questions, setQuestions] = useState<Question[]>(initialQuestions)
   const [topics] = useState<Topic[]>(initialTopics)
+  const [programs, setPrograms] = useState<StudyProgram[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTopic, setSelectedTopic] = useState<string>('')
   const [selectedDifficulty, setSelectedDifficulty] = useState<number | ''>('')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [selectedOrigin, setSelectedOrigin] = useState<string>('')
+  const [selectedProgram, setSelectedProgram] = useState<string>('')
+  const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>('')
   const [sortField, setSortField] = useState<SortField>('created_at')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set())
   const [showBulkActions, setShowBulkActions] = useState(false)
   const [generatingVariant, setGeneratingVariant] = useState<string | null>(null)
+  
+  // Fetch programs on mount
+  useEffect(() => {
+    async function fetchPrograms() {
+      try {
+        const response = await fetch('/api/programs')
+        const data = await response.json()
+        if (data.programs) {
+          setPrograms(data.programs)
+        }
+      } catch (error) {
+        console.error('Failed to fetch programs:', error)
+      }
+    }
+    fetchPrograms()
+  }, [])
+  
+  // Get grade levels for selected program
+  const availableGradeLevels = useMemo(() => {
+    if (!selectedProgram) return []
+    const program = programs.find(p => p.id === selectedProgram)
+    return program?.grade_levels || []
+  }, [selectedProgram, programs])
   
   // Filtered and sorted questions
   const filteredQuestions = useMemo(() => {
@@ -91,6 +136,16 @@ export default function QuestionBankClient({
       result = result.filter(q => q.origin === selectedOrigin)
     }
     
+    // Program filter
+    if (selectedProgram) {
+      result = result.filter(q => q.primary_program_id === selectedProgram)
+    }
+    
+    // Grade level filter
+    if (selectedGradeLevel) {
+      result = result.filter(q => q.primary_grade_level_id === selectedGradeLevel)
+    }
+    
     // Sorting
     result.sort((a, b) => {
       let comparison = 0
@@ -116,14 +171,14 @@ export default function QuestionBankClient({
     })
     
     return result
-  }, [questions, searchQuery, selectedTopic, selectedDifficulty, selectedStatus, selectedOrigin, sortField, sortOrder])
+  }, [questions, searchQuery, selectedTopic, selectedDifficulty, selectedStatus, selectedOrigin, selectedProgram, selectedGradeLevel, sortField, sortOrder])
   
   // Stats
   const stats = useMemo(() => {
     const total = questions.length
     const byDifficulty = [0, 0, 0, 0, 0]
     const byOrigin = { manual: 0, ai_generated: 0, imported: 0, variant: 0 }
-    const byStatus = { active: 0, needs_review: 0, archived: 0, draft: 0 }
+    const byStatus = { active: 0, archived: 0, draft: 0 }
     
     questions.forEach(q => {
       if (q.difficulty >= 1 && q.difficulty <= 5) {
@@ -230,9 +285,11 @@ export default function QuestionBankClient({
     setSelectedDifficulty('')
     setSelectedStatus('')
     setSelectedOrigin('')
+    setSelectedProgram('')
+    setSelectedGradeLevel('')
   }
   
-  const hasActiveFilters = searchQuery || selectedTopic || selectedDifficulty !== '' || selectedStatus || selectedOrigin
+  const hasActiveFilters = searchQuery || selectedTopic || selectedDifficulty !== '' || selectedStatus || selectedOrigin || selectedProgram || selectedGradeLevel
   
   const difficultyLabels = ['Easy', 'Medium-Easy', 'Medium', 'Medium-Hard', 'Hard']
   const difficultyColors = [
@@ -328,6 +385,35 @@ export default function QuestionBankClient({
             ))}
           </select>
           
+          {/* Program Filter */}
+          <select
+            value={selectedProgram}
+            onChange={(e) => {
+              setSelectedProgram(e.target.value)
+              setSelectedGradeLevel('')
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Programs</option>
+            {programs.map(program => (
+              <option key={program.id} value={program.id}>{program.name}</option>
+            ))}
+          </select>
+          
+          {/* Grade Level Filter */}
+          {selectedProgram && availableGradeLevels.length > 0 && (
+            <select
+              value={selectedGradeLevel}
+              onChange={(e) => setSelectedGradeLevel(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Grades</option>
+              {availableGradeLevels.map(grade => (
+                <option key={grade.id} value={grade.id}>{grade.code} - {grade.name}</option>
+              ))}
+            </select>
+          )}
+          
           {/* Status Filter */}
           <select
             value={selectedStatus}
@@ -336,7 +422,6 @@ export default function QuestionBankClient({
           >
             <option value="">All Status</option>
             <option value="active">Active ({stats.byStatus.active})</option>
-            <option value="needs_review">Needs Review ({stats.byStatus.needs_review})</option>
             <option value="draft">Draft ({stats.byStatus.draft})</option>
             <option value="archived">Archived ({stats.byStatus.archived})</option>
           </select>
@@ -467,6 +552,19 @@ export default function QuestionBankClient({
                   <div className="flex-1 min-w-0">
                     {/* Tags row */}
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      {question.primary_program && (
+                        <span 
+                          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                          style={{ backgroundColor: question.primary_program.color || '#6366f1' }}
+                        >
+                          {question.primary_program.code}
+                        </span>
+                      )}
+                      {question.primary_grade_level && (
+                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                          {question.primary_grade_level.code}
+                        </span>
+                      )}
                       {question.topics?.name && (
                         <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                           {question.topics.name}
@@ -477,7 +575,7 @@ export default function QuestionBankClient({
                           {difficultyLabels[question.difficulty - 1]}
                         </span>
                       )}
-                      {question.grade_level && (
+                      {!question.primary_grade_level && question.grade_level && (
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
                           {question.grade_level <= 12 ? `Year ${question.grade_level}` : 
                            question.grade_level === 13 ? 'A-Level' : 
@@ -493,11 +591,6 @@ export default function QuestionBankClient({
                       {question.origin === 'variant' && (
                         <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
                           Variant
-                        </span>
-                      )}
-                      {question.status === 'needs_review' && (
-                        <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                          Needs Review
                         </span>
                       )}
                     </div>
