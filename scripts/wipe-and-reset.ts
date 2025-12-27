@@ -46,11 +46,10 @@ async function wipeData() {
   try {
     // 1. Delete attempts (depends on questions, assignments)
     console.log('1/8 Deleting attempts...')
-    const { error: attemptsError, count: attemptsCount } = await supabase
+    const { error: attemptsError } = await supabase
       .from('attempts')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
-      .select('*', { count: 'exact', head: true })
     if (attemptsError) throw new Error(`Attempts: ${attemptsError.message}`)
     console.log(`   ✓ Deleted attempts`)
 

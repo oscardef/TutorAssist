@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create student profile' }, { status: 500 })
     }
 
-    // Update additional fields (parent email, additional emails, private notes)
+    // Update additional fields (parent email, additional emails, private notes, study program, grade level)
     const supabase = await createServerClient()
     const updates: Record<string, unknown> = {}
     
@@ -37,6 +37,12 @@ export async function POST(request: Request) {
     }
     if (data.additional_emails?.length > 0) {
       updates.additional_emails = data.additional_emails.filter((e: string) => e?.trim())
+    }
+    if (data.study_program_id) {
+      updates.study_program_id = data.study_program_id
+    }
+    if (data.grade_level_id) {
+      updates.grade_level_id = data.grade_level_id
     }
     
     if (Object.keys(updates).length > 0) {

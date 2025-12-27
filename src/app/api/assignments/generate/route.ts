@@ -21,14 +21,23 @@ interface StudentHistory {
 }
 
 interface GenerateAssignmentRequest {
-  studentId: string
-  prompt: string
+  studentId?: string      // Legacy: single student
+  studentIds?: string[]   // New: multiple students
+  prompt?: string         // Legacy: AI prompt
+  title?: string          // New: assignment title
+  topicIds?: string[]     // Topics to draw questions from
   questionCount?: number
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed' | 'adaptive'
+  dueDate?: string        // New: ISO date string
+  instructions?: string   // New: instructions for students
+  options?: {             // New: additional options
+    timeLimit?: number | null
+    shuffleQuestions?: boolean
+    showResultsImmediately?: boolean
+  }
   includeMarkscheme?: boolean
   includeSolutionSteps?: boolean
   focusOnWeakAreas?: boolean
-  topicIds?: string[] // Optional specific topics to focus on
 }
 
 interface SelectedQuestion {
@@ -297,20 +306,175 @@ export async function POST(request: Request) {
     const body: GenerateAssignmentRequest = await request.json()
     const {
       studentId,
+      studentIds,
       prompt,
+      title,
+      topicIds,
       questionCount = 10,
       difficulty = 'adaptive',
+      dueDate,
+      instructions,
+      options = {},
       includeMarkscheme = true,
       includeSolutionSteps = true,
       focusOnWeakAreas = false,
-      topicIds,
     } = body
 
-    if (!prompt?.trim()) {
-      return NextResponse.json({ error: 'Please provide a prompt describing the assignment' }, { status: 400 })
+    const supabase = await createServerClient()
+    
+    // Determine which students to create assignments for
+    const targetStudentIds = studentIds?.length ? studentIds : studentId ? [studentId] : []
+    
+    // NEW FORMAT: Create assignments from topic questions for multiple students
+    if (targetStudentIds.length > 0 && topicIds?.length) {
+      // Get available questions from the selected topics
+      let questionsQuery = supabase
+        .from('questions')
+        .select(`
+          id,
+          difficulty,
+          topic_id
+        `)
+        .eq('workspace_id', context.workspaceId)
+        .eq('status', 'active')
+        .in('topic_id', topicIds)
+      
+      // Apply difficulty filter
+      if (difficulty === 'easy') {
+        questionsQuery = questionsQuery.lte('difficulty', 2)
+      } else if (difficulty === 'medium') {
+        questionsQuery = questionsQuery.gte('difficulty', 2).lte('difficulty', 4)
+      } else if (difficulty === 'hard') {
+        questionsQuery = questionsQuery.gte('difficulty', 4)
+      }
+      // For 'mixed' and 'adaptive', don't filter - include all difficulties
+      
+      const { data: questions, error: questionsError } = await questionsQuery
+      
+      if (questionsError) {
+        return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
+      }
+      
+      if (!questions || questions.length === 0) {
+        return NextResponse.json({ 
+          error: 'No questions found for the selected topics. Generate questions first.' 
+        }, { status: 400 })
+      }
+      
+      // Verify all students belong to workspace
+      const { data: students, error: studentsError } = await supabase
+        .from('student_profiles')
+        .select('id, user_id, name')
+        .eq('workspace_id', context.workspaceId)
+        .in('id', targetStudentIds)
+      
+      if (studentsError || !students || students.length !== targetStudentIds.length) {
+        return NextResponse.json({ error: 'Some students not found' }, { status: 404 })
+      }
+      
+      // Create assignments for each student
+      const createdAssignments: { studentId: string; studentName: string; assignmentId: string }[] = []
+      
+      for (const student of students) {
+        // Select questions based on difficulty strategy
+        let selectedQuestions = [...questions]
+        
+        // For 'mixed' difficulty, ensure variety across difficulty levels
+        if (difficulty === 'mixed' && questions.length >= questionCount) {
+          const easy = questions.filter(q => q.difficulty <= 2)
+          const medium = questions.filter(q => q.difficulty > 2 && q.difficulty <= 4)
+          const hard = questions.filter(q => q.difficulty > 4)
+          
+          // Aim for balanced distribution (roughly 1/3 each)
+          const easyCount = Math.floor(questionCount / 3)
+          const mediumCount = Math.floor(questionCount / 3)
+          const hardCount = questionCount - easyCount - mediumCount
+          
+          selectedQuestions = [
+            ...easy.sort(() => Math.random() - 0.5).slice(0, Math.min(easyCount, easy.length)),
+            ...medium.sort(() => Math.random() - 0.5).slice(0, Math.min(mediumCount, medium.length)),
+            ...hard.sort(() => Math.random() - 0.5).slice(0, Math.min(hardCount, hard.length)),
+          ]
+          
+          // If we don't have enough in each category, fill from all
+          if (selectedQuestions.length < questionCount) {
+            const remaining = questions
+              .filter(q => !selectedQuestions.find(sq => sq.id === q.id))
+              .sort(() => Math.random() - 0.5)
+              .slice(0, questionCount - selectedQuestions.length)
+            selectedQuestions.push(...remaining)
+          }
+          
+          // Shuffle the final selection
+          if (options.shuffleQuestions !== false) {
+            selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5)
+          }
+        } else {
+          // Standard shuffle and slice
+          if (options.shuffleQuestions !== false) {
+            selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5)
+          }
+          selectedQuestions = selectedQuestions.slice(0, questionCount)
+        }
+        
+        // Create the assignment
+        const { data: assignment, error: assignmentError } = await supabase
+          .from('assignments')
+          .insert({
+            workspace_id: context.workspaceId,
+            created_by: user.id,
+            student_profile_id: student.id,
+            assigned_student_user_id: student.user_id,
+            title: title || 'AI-Generated Assignment',
+            description: instructions || null,
+            due_at: dueDate || null,
+            settings_json: {
+              timeLimit: options.timeLimit || null,
+              shuffleQuestions: options.shuffleQuestions ?? true,
+              showResultsImmediately: options.showResultsImmediately ?? false,
+              generatedFrom: 'ai-studio',
+              topicIds,
+            },
+            status: 'active',
+          })
+          .select('id')
+          .single()
+        
+        if (assignmentError || !assignment) {
+          console.error('Failed to create assignment for student:', student.id, assignmentError)
+          continue
+        }
+        
+        // Create assignment items (link questions to assignment)
+        const assignmentItems = selectedQuestions.map((q, idx) => ({
+          workspace_id: context.workspaceId,
+          assignment_id: assignment.id,
+          question_id: q.id,
+          order_index: idx,
+          points: 1,
+        }))
+        
+        await supabase.from('assignment_items').insert(assignmentItems)
+        
+        createdAssignments.push({
+          studentId: student.id,
+          studentName: student.name,
+          assignmentId: assignment.id,
+        })
+      }
+      
+      return NextResponse.json({
+        success: true,
+        assignmentsCreated: createdAssignments.length,
+        assignments: createdAssignments,
+        message: `Created ${createdAssignments.length} assignment(s) with ${questionCount} questions each`,
+      })
     }
 
-    const supabase = await createServerClient()
+    // LEGACY FORMAT: AI-powered assignment generation with prompt
+    if (!prompt?.trim()) {
+      return NextResponse.json({ error: 'Please provide a prompt describing the assignment or select students and topics' }, { status: 400 })
+    }
 
     // Verify student if specified
     if (studentId) {

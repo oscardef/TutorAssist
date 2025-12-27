@@ -12,13 +12,30 @@ import { processJobs } from '@/lib/jobs'
  * OpenAI Batch API (for large batches at 50% cost).
  * 
  * POST /api/questions/bulk-generate
+ * Format 1 (legacy):
  * {
  *   requests: [
  *     { topicId: "...", count: 10, difficulty: "mixed" },
- *     { topicId: "...", count: 15, difficulty: "hard" },
  *   ],
  *   useBatchApi: false, // true for batch (cheaper but slower)
  *   style?: "Focus on word problems" // optional style hint
+ * }
+ * 
+ * Format 2 (new):
+ * {
+ *   topicIds: ["...", "..."],
+ *   totalCount: 20,
+ *   countPerTopic?: 10,
+ *   difficulty: "mixed",
+ *   questionTypes: ["multiple_choice", "short_answer"],
+ *   options: {
+ *     includeWorkedSolutions: true,
+ *     includeHints: true,
+ *     realWorldContext: false,
+ *     examStyle: false,
+ *     customInstructions: "..."
+ *   },
+ *   useBatchApi: false
  * }
  */
 export async function POST(request: NextRequest) {
@@ -27,11 +44,49 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerClient()
     const body = await request.json()
     
-    const { requests, useBatchApi = false, style } = body
+    // Support both formats
+    let requests: { topicId: string; count: number; difficulty: string }[]
+    let style: string | undefined
+    const useBatchApi = body.useBatchApi || false
     
-    if (!requests || !Array.isArray(requests) || requests.length === 0) {
+    if (body.topicIds && Array.isArray(body.topicIds)) {
+      // New format - convert to requests format
+      const topicIds = body.topicIds as string[]
+      const totalCount = body.totalCount || body.countPerTopic * topicIds.length || 10
+      const countPerTopic = Math.ceil(totalCount / topicIds.length)
+      const difficulty = body.difficulty || 'mixed'
+      
+      requests = topicIds.map(topicId => ({
+        topicId,
+        count: countPerTopic,
+        difficulty,
+      }))
+      
+      // Build style string from options
+      const opts = body.options || {}
+      const styleparts: string[] = []
+      if (body.questionTypes?.length) {
+        styleparts.push(`Question types: ${body.questionTypes.join(', ')}`)
+      }
+      if (opts.includeWorkedSolutions) styleparts.push('Include detailed worked solutions')
+      if (opts.includeHints) styleparts.push('Include hints for each question')
+      if (opts.realWorldContext) styleparts.push('Use real-world contexts and practical applications')
+      if (opts.examStyle) styleparts.push('Format like official exam questions')
+      if (opts.customInstructions) styleparts.push(opts.customInstructions)
+      style = styleparts.length > 0 ? styleparts.join('. ') : undefined
+    } else if (body.requests && Array.isArray(body.requests)) {
+      // Legacy format
+      requests = body.requests
+      style = body.style
+    } else {
       return NextResponse.json({ 
-        error: 'Requests array required. Each request needs topicId and count.' 
+        error: 'Either topicIds array or requests array is required' 
+      }, { status: 400 })
+    }
+    
+    if (requests.length === 0) {
+      return NextResponse.json({ 
+        error: 'At least one topic is required' 
       }, { status: 400 })
     }
     

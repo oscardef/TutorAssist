@@ -80,24 +80,27 @@ export default function TopicsPage() {
   const [formGradeLevelId, setFormGradeLevelId] = useState('')
   const [isCore, setIsCore] = useState(false)
   const [curriculumCode, setCurriculumCode] = useState('')
+  const [programsLoaded, setProgramsLoaded] = useState(false)
   
   const fetchPrograms = useCallback(async () => {
     try {
       const response = await fetch('/api/programs')
       const data = await response.json()
-      if (data.programs && data.programs.length > 0) {
+      if (data.programs) {
         setPrograms(data.programs)
-        // Auto-select first program if none selected
-        if (!selectedProgram) {
+        // Only auto-select first program on initial load, not when "All Programs" is selected
+        if (!programsLoaded && data.programs.length > 0) {
           setSelectedProgram(data.programs[0].id)
+          setProgramsLoaded(true)
         }
       }
     } catch {
       console.error('Failed to load programs')
     }
-  }, [selectedProgram])
+  }, [programsLoaded])
   
   const fetchTopics = useCallback(async () => {
+    setLoading(true)
     try {
       let url = '/api/topics?'
       if (selectedProgram) url += `programId=${selectedProgram}&`
@@ -118,10 +121,8 @@ export default function TopicsPage() {
   }, [fetchPrograms])
   
   useEffect(() => {
-    if (programs.length > 0) {
-      fetchTopics()
-    }
-  }, [selectedProgram, selectedGradeLevel, programs.length, fetchTopics])
+    fetchTopics()
+  }, [fetchTopics])
   
   // Get grade levels for selected program
   const selectedProgramData = programs.find(p => p.id === selectedProgram)

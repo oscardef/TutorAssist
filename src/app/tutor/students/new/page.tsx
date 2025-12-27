@@ -1,7 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+
+interface StudyProgram {
+  id: string
+  code: string
+  name: string
+  color: string | null
+  grade_levels?: GradeLevel[]
+}
+
+interface GradeLevel {
+  id: string
+  code: string
+  name: string
+  program_id: string
+}
 
 export default function NewStudentPage() {
   const router = useRouter()
@@ -13,6 +28,18 @@ export default function NewStudentPage() {
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  
+  // Programs and grade levels
+  const [programs, setPrograms] = useState<StudyProgram[]>([])
+  const [loadingPrograms, setLoadingPrograms] = useState(true)
+  const [showNewProgram, setShowNewProgram] = useState(false)
+  const [showNewGrade, setShowNewGrade] = useState(false)
+  const [newProgramName, setNewProgramName] = useState('')
+  const [newProgramCode, setNewProgramCode] = useState('')
+  const [newGradeName, setNewGradeName] = useState('')
+  const [newGradeCode, setNewGradeCode] = useState('')
+  const [creatingProgram, setCreatingProgram] = useState(false)
+  const [creatingGrade, setCreatingGrade] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -22,8 +49,103 @@ export default function NewStudentPage() {
     age: '',
     school: '',
     grade_current: '',
+    study_program_id: '',
+    grade_level_id: '',
     private_notes: '',
   })
+  
+  // Fetch programs on mount
+  useEffect(() => {
+    async function fetchPrograms() {
+      try {
+        const response = await fetch('/api/programs')
+        const data = await response.json()
+        setPrograms(data.programs || [])
+      } catch {
+        console.error('Failed to load programs')
+      } finally {
+        setLoadingPrograms(false)
+      }
+    }
+    fetchPrograms()
+  }, [])
+  
+  // Get available grade levels for selected program
+  const availableGradeLevels = formData.study_program_id
+    ? programs.find(p => p.id === formData.study_program_id)?.grade_levels || []
+    : []
+    
+  // Create new program
+  async function createProgram() {
+    if (!newProgramName.trim() || !newProgramCode.trim()) return
+    
+    setCreatingProgram(true)
+    try {
+      const response = await fetch('/api/programs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newProgramName.trim(),
+          code: newProgramCode.trim().toUpperCase(),
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to create program')
+      }
+      
+      const data = await response.json()
+      setPrograms(prev => [...prev, { ...data.program, grade_levels: [] }])
+      setFormData(prev => ({ ...prev, study_program_id: data.program.id }))
+      setShowNewProgram(false)
+      setNewProgramName('')
+      setNewProgramCode('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create program')
+    } finally {
+      setCreatingProgram(false)
+    }
+  }
+  
+  // Create new grade level
+  async function createGradeLevel() {
+    if (!newGradeName.trim() || !newGradeCode.trim() || !formData.study_program_id) return
+    
+    setCreatingGrade(true)
+    try {
+      const response = await fetch('/api/grades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId: formData.study_program_id,
+          name: newGradeName.trim(),
+          code: newGradeCode.trim(),
+        }),
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to create grade level')
+      }
+      
+      const data = await response.json()
+      // Update the program's grade levels
+      setPrograms(prev => prev.map(p => 
+        p.id === formData.study_program_id
+          ? { ...p, grade_levels: [...(p.grade_levels || []), data.gradeLevel] }
+          : p
+      ))
+      setFormData(prev => ({ ...prev, grade_level_id: data.gradeLevel.id }))
+      setShowNewGrade(false)
+      setNewGradeName('')
+      setNewGradeCode('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create grade level')
+    } finally {
+      setCreatingGrade(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,6 +160,8 @@ export default function NewStudentPage() {
           ...formData,
           age: formData.age ? parseInt(formData.age) : null,
           additional_emails: formData.additional_emails.filter(e => e.trim()),
+          study_program_id: formData.study_program_id || null,
+          grade_level_id: formData.grade_level_id || null,
         }),
       })
 
@@ -50,7 +174,6 @@ export default function NewStudentPage() {
 
       if (data.inviteLink) {
         setInviteLink(data.inviteLink)
-        // Extract token from invite link
         const token = data.inviteLink.split('/invite/')[1]
         if (token) {
           setInviteToken(token)
@@ -142,7 +265,6 @@ export default function NewStudentPage() {
             </p>
           </div>
 
-          {/* Invite Link Section */}
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700">Invite Link</label>
             <div className="mt-1 flex rounded-lg border border-gray-300 bg-gray-50">
@@ -157,19 +279,12 @@ export default function NewStudentPage() {
                 onClick={handleCopyLink}
                 className="rounded-r-lg border-l border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 min-w-[70px]"
               >
-                {copied ? (
-                  <span className="text-green-600">Copied!</span>
-                ) : (
-                  'Copy'
-                )}
+                {copied ? <span className="text-green-600">Copied!</span> : 'Copy'}
               </button>
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              This link expires in 7 days.
-            </p>
+            <p className="mt-2 text-xs text-gray-500">This link expires in 7 days.</p>
           </div>
 
-          {/* Email Invite Section */}
           {formData.email && (
             <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
               <div className="flex items-start gap-3">
@@ -180,13 +295,9 @@ export default function NewStudentPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-sm font-medium text-gray-900">Send Invite Email</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Send a professional invite email to {formData.email}
-                  </p>
+                  <p className="mt-1 text-sm text-gray-500">Send a professional invite email to {formData.email}</p>
                   
-                  {emailError && (
-                    <p className="mt-2 text-sm text-red-600">{emailError}</p>
-                  )}
+                  {emailError && <p className="mt-2 text-sm text-red-600">{emailError}</p>}
                   
                   {emailSent ? (
                     <div className="mt-3 flex items-center gap-2 text-sm text-green-600">
@@ -225,19 +336,6 @@ export default function NewStudentPage() {
             </div>
           )}
 
-          {!formData.email && (
-            <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-              <div className="flex items-start gap-3">
-                <svg className="h-5 w-5 text-yellow-600 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                </svg>
-                <p className="text-sm text-yellow-800">
-                  No email address was provided. You&apos;ll need to share the invite link manually.
-                </p>
-              </div>
-            </div>
-          )}
-
           <div className="mt-6 flex gap-3">
             <button
               onClick={() => router.push('/tutor/students')}
@@ -260,6 +358,8 @@ export default function NewStudentPage() {
                   age: '',
                   school: '',
                   grade_current: '',
+                  study_program_id: '',
+                  grade_level_id: '',
                   private_notes: '',
                 })
               }}
@@ -336,7 +436,7 @@ export default function NewStudentPage() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Additional Emails
           </label>
-          <p className="text-xs text-gray-500 mb-2">Add other emails to receive session invites (e.g., other parent, nanny)</p>
+          <p className="text-xs text-gray-500 mb-2">Add other emails to receive session invites</p>
           {formData.additional_emails.map((email, index) => (
             <div key={index} className="flex gap-2 mb-2">
               <input
@@ -366,6 +466,157 @@ export default function NewStudentPage() {
           </button>
         </div>
 
+        {/* Study Program & Grade Level Section */}
+        <div className="border-t pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Academic Information</h3>
+          
+          <div className="space-y-4">
+            {/* Study Program */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Study Program
+              </label>
+              {loadingPrograms ? (
+                <div className="animate-pulse h-10 bg-gray-100 rounded-lg"></div>
+              ) : showNewProgram ? (
+                <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
+                  <input
+                    type="text"
+                    placeholder="Program name (e.g., International Baccalaureate)"
+                    value={newProgramName}
+                    onChange={(e) => setNewProgramName(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Code (e.g., IB)"
+                    value={newProgramCode}
+                    onChange={(e) => setNewProgramCode(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={createProgram}
+                      disabled={creatingProgram || !newProgramName.trim() || !newProgramCode.trim()}
+                      className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                    >
+                      {creatingProgram ? 'Creating...' : 'Create Program'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewProgram(false)
+                        setNewProgramName('')
+                        setNewProgramCode('')
+                      }}
+                      className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <select
+                    value={formData.study_program_id}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      study_program_id: e.target.value,
+                      grade_level_id: '' // Reset grade level when program changes
+                    })}
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Select a program...</option>
+                    {programs.map(program => (
+                      <option key={program.id} value={program.id}>
+                        {program.name} ({program.code})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewProgram(true)}
+                    className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap"
+                  >
+                    + New
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {/* Grade Level */}
+            {formData.study_program_id && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Grade Level
+                </label>
+                {showNewGrade ? (
+                  <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
+                    <input
+                      type="text"
+                      placeholder="Grade name (e.g., Year 1, DP1)"
+                      value={newGradeName}
+                      onChange={(e) => setNewGradeName(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Code (e.g., M8, DP1)"
+                      value={newGradeCode}
+                      onChange={(e) => setNewGradeCode(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={createGradeLevel}
+                        disabled={creatingGrade || !newGradeName.trim() || !newGradeCode.trim()}
+                        className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                      >
+                        {creatingGrade ? 'Creating...' : 'Create Grade'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNewGrade(false)
+                          setNewGradeName('')
+                          setNewGradeCode('')
+                        }}
+                        className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.grade_level_id}
+                      onChange={(e) => setFormData({ ...formData, grade_level_id: e.target.value })}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Select a grade level...</option>
+                      {availableGradeLevels.map(grade => (
+                        <option key={grade.id} value={grade.id}>
+                          {grade.name} ({grade.code})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewGrade(true)}
+                      className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap"
+                    >
+                      + New
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="age" className="block text-sm font-medium text-gray-700">
@@ -384,14 +635,14 @@ export default function NewStudentPage() {
 
           <div>
             <label htmlFor="grade" className="block text-sm font-medium text-gray-700">
-              Grade
+              Grade/Year (text)
             </label>
             <input
               id="grade"
               type="text"
               value={formData.grade_current}
               onChange={(e) => setFormData({ ...formData, grade_current: e.target.value })}
-              placeholder="e.g., 8"
+              placeholder="e.g., 8, Year 10"
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
