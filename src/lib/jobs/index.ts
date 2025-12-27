@@ -1,4 +1,5 @@
 import type { Job, JobType } from '@/lib/types'
+import { createAdminClient } from '@/lib/supabase/server'
 import { handleExtractMaterial } from './handlers/extract-material'
 import { handleGenerateQuestions, handleRegenVariant } from './handlers/generate-questions'
 import { handleBatchGenerate, handleProcessBatchResult } from './handlers/batch-generate'
@@ -47,15 +48,64 @@ async function processJob(job: Job): Promise<void> {
   }
 }
 
-// Process available jobs (called by API route or cron)
-export async function processJobs(limit: number = 5): Promise<number> {
-  const jobs = await claimJobs(limit)
+// Process specific jobs by ID (for synchronous/immediate processing)
+export async function processJobsById(jobIds: string[]): Promise<number> {
+  if (jobIds.length === 0) return 0
   
-  if (jobs.length === 0) {
+  console.log(`[Jobs] Processing specific jobs: ${jobIds.join(', ')}`)
+  
+  const supabase = await createAdminClient()
+  const now = new Date().toISOString()
+  
+  // Claim and fetch the specific jobs
+  const { data: jobs, error } = await supabase
+    .from('jobs')
+    .update({
+      status: 'processing',
+      locked_at: now,
+      locked_by: 'direct-process',
+    })
+    .in('id', jobIds)
+    .eq('status', 'pending')
+    .select()
+  
+  if (error) {
+    console.error('[Jobs] Failed to claim specific jobs:', error)
     return 0
   }
   
-  console.log(`Processing ${jobs.length} jobs`)
+  if (!jobs || jobs.length === 0) {
+    console.log('[Jobs] No pending jobs found with those IDs')
+    return 0
+  }
+  
+  console.log(`[Jobs] Claimed ${jobs.length} jobs for direct processing`)
+  
+  // Process jobs sequentially
+  for (const job of jobs) {
+    try {
+      await processJob(job)
+    } catch (error) {
+      console.error(`[Jobs] Job ${job.id} processing error:`, error)
+    }
+  }
+  
+  console.log(`[Jobs] Finished processing ${jobs.length} jobs`)
+  return jobs.length
+}
+
+// Process available jobs (called by API route or cron)
+export async function processJobs(limit: number = 5): Promise<number> {
+  console.log(`[Jobs] Starting to process up to ${limit} jobs...`)
+  
+  const jobs = await claimJobs(limit)
+  
+  if (jobs.length === 0) {
+    console.log('[Jobs] No jobs to process')
+    return 0
+  }
+  
+  console.log(`[Jobs] Claimed ${jobs.length} jobs: ${jobs.map(j => `${j.id} (${j.type})`).join(', ')}`)
   
   // Process jobs sequentially to avoid overwhelming resources
   for (const job of jobs) {
@@ -63,10 +113,11 @@ export async function processJobs(limit: number = 5): Promise<number> {
       await processJob(job)
     } catch (error) {
       // Error handling is done in the handler
-      console.error(`Job ${job.id} processing error:`, error)
+      console.error(`[Jobs] Job ${job.id} processing error:`, error)
     }
   }
   
+  console.log(`[Jobs] Finished processing ${jobs.length} jobs`)
   return jobs.length
 }
 

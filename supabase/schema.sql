@@ -123,7 +123,7 @@ CREATE TABLE questions (
     prompt_image_r2_key TEXT, -- Optional image
     
     -- Answer configuration
-    answer_type TEXT NOT NULL CHECK (answer_type IN ('exact', 'numeric', 'multiple_choice', 'expression')),
+    answer_type TEXT NOT NULL CHECK (answer_type IN ('multiple_choice', 'short_answer', 'long_answer', 'true_false', 'fill_blank', 'matching')),
     correct_answer_json JSONB NOT NULL, -- Flexible: {"value": "42"} or {"choices": [...], "correct": 0}
     tolerance DECIMAL, -- For numeric answers
     

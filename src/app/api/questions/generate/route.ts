@@ -16,6 +16,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only tutors can generate questions' }, { status: 403 })
   }
   
+  // Early check for OpenAI configuration
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json(
+      { error: 'OpenAI API is not configured. Please contact the administrator.' },
+      { status: 503 }
+    )
+  }
+  
   try {
     const body = await request.json()
     const {
@@ -78,11 +86,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to enqueue job' }, { status: 500 })
     }
     
-    // For non-batch (real-time) jobs, process immediately
+    // For non-batch (real-time) jobs, process synchronously
     if (!useBatchApi) {
-      // Process the job immediately in the background
-      // We don't await this to return quickly to the user
-      processJobs(1).catch(err => console.error('Immediate job processing failed:', err))
+      console.log(`[Generate] Processing job ${job.id} synchronously...`)
+      try {
+        await processJobs(1)
+        console.log(`[Generate] Job ${job.id} processing complete`)
+      } catch (err) {
+        console.error('[Generate] Immediate job processing failed:', err)
+      }
     }
     
     return NextResponse.json({

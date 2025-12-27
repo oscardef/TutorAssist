@@ -14,6 +14,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+// Check if OpenAI is configured
+function checkOpenAIConfig(): void {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.')
+  }
+}
+
 interface GenerateQuestionsPayload {
   topicId: string
   workspaceId: string
@@ -28,10 +35,16 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
   const payload = job.payload_json as unknown as GenerateQuestionsPayload
   const { topicId, workspaceId, count, difficulty = 'mixed', style, fromMaterialId } = payload
   
+  console.log(`[GenerateQuestions] Starting job ${job.id}: ${count} questions for topic ${topicId}`)
+  
   try {
+    // Check OpenAI configuration first
+    checkOpenAIConfig()
+    
     const supabase = await createAdminClient()
     
     // Get topic info
+    console.log(`[GenerateQuestions] Fetching topic ${topicId}...`)
     const { data: topic, error: topicError } = await supabase
       .from('topics')
       .select('*')
@@ -41,6 +54,8 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
     if (topicError || !topic) {
       throw new Error(`Topic not found: ${topicId}`)
     }
+    
+    console.log(`[GenerateQuestions] Topic found: "${topic.name}"`)
     
     // Get existing questions to avoid duplicates
     const { data: existingQuestions } = await supabase
@@ -77,6 +92,8 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
       ? `\n\nIMPORTANT: Avoid generating questions similar to these existing ones:\n${existingPrompts.slice(0, 10).join('\n')}`
       : ''
     
+    console.log(`[GenerateQuestions] Calling OpenAI API for ${count} questions...`)
+    
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -101,8 +118,12 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
       temperature: 0.7,  // Lower temperature for more consistent output
     })
     
+    console.log(`[GenerateQuestions] OpenAI response received`)
+    
     const result = JSON.parse(response.choices[0].message.content || '{}')
     const questions: GeneratedQuestion[] = result.questions || []
+    
+    console.log(`[GenerateQuestions] Parsed ${questions.length} questions from response`)
     
     if (questions.length === 0) {
       throw new Error('No questions generated')
@@ -143,23 +164,48 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
     }
     
     // Insert questions with proper formatting
-    const questionsToInsert = uniqueQuestions.map((q) => ({
-      workspace_id: workspaceId,
-      topic_id: topicId,
-      source_material_id: fromMaterialId || null,
-      origin: 'ai_generated' as const,
-      status: 'active' as const,  // Active by default - flagging handles issues
-      prompt_text: stripLatexToPlainText(q.questionLatex),
-      prompt_latex: q.questionLatex,
-      answer_type: q.answerType || 'exact',
-      correct_answer_json: normalizeAnswer(q.correctAnswer, q.answerType),
-      difficulty: Math.min(5, Math.max(1, q.difficulty || 3)),
-      hints_json: q.hints || [],
-      solution_steps_json: q.solutionSteps || [],
-      tags_json: q.tags || [],
-      quality_score: 1.0,  // Starts at 1.0, can decrease with flags
-      created_by: job.created_by_user_id,
-    }))
+    const VALID_ANSWER_TYPES = ['short_answer', 'long_answer', 'numeric', 'expression', 'multiple_choice', 'true_false', 'fill_blank', 'matching'] as const
+    type ValidAnswerType = typeof VALID_ANSWER_TYPES[number]
+    
+    const normalizeAnswerType = (type: string | undefined): ValidAnswerType => {
+      if (!type) return 'short_answer'
+      const normalized = type.toLowerCase().replace(/[_-\s]/g, '_')
+      if (VALID_ANSWER_TYPES.includes(normalized as ValidAnswerType)) {
+        return normalized as ValidAnswerType
+      }
+      // Map common alternatives
+      if (normalized === 'exact' || normalized === 'text' || normalized === 'word') return 'short_answer'
+      if (normalized === 'number' || normalized === 'integer' || normalized === 'decimal' || normalized === 'float') return 'numeric'
+      if (normalized === 'formula' || normalized === 'equation' || normalized === 'algebraic' || normalized === 'math') return 'expression'
+      if (normalized === 'choice' || normalized === 'mcq' || normalized === 'multiplechoice') return 'multiple_choice'
+      if (normalized === 'essay' || normalized === 'paragraph' || normalized === 'explanation' || normalized === 'longanswer') return 'long_answer'
+      if (normalized === 'boolean' || normalized === 'tf' || normalized === 'truefalse' || normalized === 'true_false') return 'true_false'
+      if (normalized === 'blank' || normalized === 'fillblank' || normalized === 'fill_in_blank' || normalized === 'fill_in_the_blank' || normalized === 'fillintheblan k') return 'fill_blank'
+      console.warn(`[GenerateQuestions] Unknown answer type "${type}", defaulting to "short_answer"`)
+      return 'short_answer'
+    }
+    
+    const questionsToInsert = uniqueQuestions.map((q) => {
+      const answerType = normalizeAnswerType(q.answerType)
+      console.log(`[GenerateQuestions] Question answer type: "${q.answerType}" -> "${answerType}"`)
+      return {
+        workspace_id: workspaceId,
+        topic_id: topicId,
+        source_material_id: fromMaterialId || null,
+        origin: 'ai_generated' as const,
+        status: 'active' as const,  // Active by default - flagging handles issues
+        prompt_text: stripLatexToPlainText(q.questionLatex),
+        prompt_latex: q.questionLatex,
+        answer_type: answerType,
+        correct_answer_json: normalizeAnswer(q.correctAnswer, q.answerType),
+        difficulty: Math.min(5, Math.max(1, q.difficulty || 3)),
+        hints_json: q.hints || [],
+        solution_steps_json: q.solutionSteps || [],
+        tags_json: q.tags || [],
+        quality_score: 1.0,  // Starts at 1.0, can decrease with flags
+        created_by: job.created_by_user_id,
+      }
+    })
     
     const { data: insertedQuestions, error: insertError } = await supabase
       .from('questions')
@@ -179,10 +225,14 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
     })
   } catch (error) {
     console.error('Generate questions failed:', error)
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Unknown error during question generation'
     await failJob(
       job.id,
-      error instanceof Error ? error.message : 'Unknown error',
-      true
+      errorMessage,
+      // Only retry on certain errors
+      error instanceof Error && !errorMessage.includes('Topic not found')
     )
   }
 }

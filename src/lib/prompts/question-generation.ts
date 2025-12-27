@@ -57,20 +57,6 @@ export const ANSWER_FORMAT_SPEC = `
 
 The "correctAnswer" field MUST follow these exact structures:
 
-### For "exact" answers (strings, expressions):
-{
-  "value": "the answer as a string",
-  "latex": "\\\\(LaTeX representation\\\\)",
-  "alternates": ["alt1", "alt2"]  // Optional equivalent forms
-}
-
-### For "numeric" answers:
-{
-  "value": 3.14159,  // The numeric value
-  "latex": "\\\\(\\\\pi\\\\)",  // Display form
-  "tolerance": 0.001  // Acceptable error margin
-}
-
 ### For "multiple_choice" answers:
 {
   "choices": [
@@ -82,11 +68,56 @@ The "correctAnswer" field MUST follow these exact structures:
   "correct": 2  // Zero-indexed: answer is "15"
 }
 
-### For "expression" answers (algebraic):
+### For "short_answer" answers (single word/number/expression):
 {
-  "value": "2x+1",  // Normalized form
-  "latex": "\\\\(2x + 1\\\\)",
-  "alternates": ["2*x+1", "1+2x", "2x + 1"]
+  "value": "the answer as a string",
+  "latex": "\\\\(LaTeX representation\\\\)",
+  "alternates": ["alt1", "alt2"]  // Optional equivalent forms
+}
+
+### For "numeric" answers (number with tolerance):
+{
+  "value": 42.5,
+  "latex": "\\\\(42.5\\\\)",
+  "tolerance": 0.1,  // Accept 42.4 to 42.6
+  "unit": "meters"   // Optional unit
+}
+
+### For "expression" answers (algebraic expression):
+{
+  "value": "2x + 3",
+  "latex": "\\\\(2x + 3\\\\)",
+  "alternates": ["3 + 2x"]  // Equivalent forms
+}
+
+### For "long_answer" answers (essay/explanation):
+{
+  "value": "Sample model answer text",
+  "latex": "\\\\(Any math content\\\\)",
+  "rubric": ["Key point 1", "Key point 2"]  // Grading criteria
+}
+
+### For "true_false" answers:
+{
+  "value": true,  // or false
+  "latex": "\\\\(\\\\text{True}\\\\)" // or \\\\(\\\\text{False}\\\\)
+}
+
+### For "fill_blank" answers:
+{
+  "blanks": [
+    {"position": 1, "value": "answer1", "latex": "\\\\(answer1\\\\)", "alternates": ["alt1"]},
+    {"position": 2, "value": "answer2", "latex": "\\\\(answer2\\\\)", "alternates": []}
+  ]
+}
+
+### For "matching" answers:
+{
+  "pairs": [
+    {"left": "Term 1", "right": "Definition 1", "leftLatex": "\\\\(x^2\\\\)", "rightLatex": "\\\\(\\\\text{Square}\\\\)"},
+    {"left": "Term 2", "right": "Definition 2", "leftLatex": "\\\\(x^3\\\\)", "rightLatex": "\\\\(\\\\text{Cube}\\\\)"}
+  ],
+  "correctMatches": [0, 1]  // Indices of correct pairs
 }
 
 IMPORTANT: Always include the "latex" field for display purposes!
@@ -108,7 +139,7 @@ Return a JSON object with a "questions" array. Each question object MUST have:
 
 {
   "questionLatex": "The full question text with proper \\\\( \\\\) LaTeX delimiters",
-  "answerType": "exact" | "numeric" | "multiple_choice" | "expression",
+  "answerType": "short_answer" | "long_answer" | "numeric" | "expression" | "multiple_choice" | "true_false" | "fill_blank" | "matching",
   "correctAnswer": { /* see format above */ },
   "difficulty": 1-5,  // 1=basic, 2=easy, 3=medium, 4=hard, 5=challenging
   "hints": [
@@ -137,7 +168,7 @@ Return a JSON object with a "questions" array. Each question object MUST have:
 
 {
   "questionLatex": "Solve for \\\\(x\\\\): \\\\(3x - 7 = 14\\\\)",
-  "answerType": "exact",
+  "answerType": "short_answer",
   "correctAnswer": {
     "value": "7",
     "latex": "\\\\(7\\\\)",
@@ -192,7 +223,7 @@ Return a JSON object:
   "newQuestions": [
     {
       "questionLatex": "Question with \\\\(proper LaTeX\\\\)",
-      "answerType": "exact|numeric|multiple_choice|expression",
+      "answerType": "short_answer" | "long_answer" | "numeric" | "expression" | "multiple_choice" | "true_false" | "fill_blank" | "matching",
       "correctAnswer": { /* proper format */ },
       "difficulty": 1-5,
       "topicName": "Topic this belongs to",
@@ -210,14 +241,26 @@ Return a JSON object:
 
 export interface GeneratedQuestion {
   questionLatex: string
-  answerType: 'exact' | 'numeric' | 'multiple_choice' | 'expression'
+  answerType: 'short_answer' | 'long_answer' | 'numeric' | 'expression' | 'multiple_choice' | 'true_false' | 'fill_blank' | 'matching'
   correctAnswer: {
-    value?: string | number
+    // For short_answer, numeric, expression
+    value?: string | number | boolean
     latex?: string
+    alternates?: string[]
     tolerance?: number
+    unit?: string
+    // For long_answer
+    rubric?: string[]
+    // For multiple_choice
     choices?: { text: string; latex?: string }[]
     correct?: number
-    alternates?: string[]
+    // For long_answer
+    rubric?: string[]
+    // For fill_blank
+    blanks?: { position: number; value: string; latex?: string; alternates?: string[] }[]
+    // For matching
+    pairs?: { left: string; right: string; leftLatex?: string; rightLatex?: string }[]
+    correctMatches?: number[]
   }
   difficulty: number
   hints: string[]
@@ -254,7 +297,9 @@ export function validateQuestionLatex(q: GeneratedQuestion): { valid: boolean; e
   }
   
   // Check answer has latex field
-  if (!q.correctAnswer.latex && q.answerType !== 'multiple_choice') {
+  if (!q.correctAnswer) {
+    errors.push('Answer is missing')
+  } else if (!q.correctAnswer.latex && q.answerType !== 'multiple_choice') {
     errors.push('Answer missing latex field for display')
   }
   

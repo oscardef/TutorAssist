@@ -45,28 +45,45 @@ export async function claimJobs(limit: number = 5): Promise<Job[]> {
   const now = new Date().toISOString()
   const lockTimeout = new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 min timeout
   
-  // Find and lock available jobs
-  const { data: jobs, error } = await supabase
+  // First, find available jobs (pending or stale processing)
+  const { data: availableJobs, error: findError } = await supabase
     .from('jobs')
-    .update({
-      status: 'processing',
-      locked_at: now,
-      locked_by: WORKER_ID,
-    })
+    .select('id')
     .or(`status.eq.pending,and(status.eq.processing,locked_at.lt.${lockTimeout})`)
     .lte('run_after', now)
     .lt('attempts', 3)
     .order('priority', { ascending: false })
     .order('created_at')
     .limit(limit)
-    .select()
   
-  if (error) {
-    console.error('Failed to claim jobs:', error)
+  if (findError) {
+    console.error('Failed to find jobs:', findError)
     return []
   }
   
-  return jobs || []
+  if (!availableJobs || availableJobs.length === 0) {
+    return []
+  }
+  
+  const jobIds = availableJobs.map(j => j.id)
+  
+  // Now claim these specific jobs by updating them
+  const { data: claimedJobs, error: claimError } = await supabase
+    .from('jobs')
+    .update({
+      status: 'processing',
+      locked_at: now,
+      locked_by: WORKER_ID,
+    })
+    .in('id', jobIds)
+    .select()
+  
+  if (claimError) {
+    console.error('Failed to claim jobs:', claimError)
+    return []
+  }
+  
+  return claimedJobs || []
 }
 
 // Complete a job successfully
@@ -74,6 +91,8 @@ export async function completeJob(
   jobId: string,
   result: Record<string, unknown>
 ): Promise<boolean> {
+  console.log(`[Queue] Completing job ${jobId} with result:`, result)
+  
   const supabase = await createAdminClient()
   
   const { error } = await supabase
@@ -87,10 +106,11 @@ export async function completeJob(
     .eq('id', jobId)
   
   if (error) {
-    console.error('Failed to complete job:', error)
+    console.error(`[Queue] Failed to complete job ${jobId}:`, error)
     return false
   }
   
+  console.log(`[Queue] Job ${jobId} marked as completed`)
   return true
 }
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
-import { enqueueJob, enqueueBatchJob } from '@/lib/jobs'
-import { processJobs } from '@/lib/jobs'
+import { enqueueJob, enqueueBatchJob, processJobsById } from '@/lib/jobs'
 
 /**
  * Bulk Generate Questions API
@@ -40,6 +39,14 @@ import { processJobs } from '@/lib/jobs'
  */
 export async function POST(request: NextRequest) {
   try {
+    // Early check for OpenAI configuration
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API is not configured. Please contact the administrator.' },
+        { status: 503 }
+      )
+    }
+    
     const context = await requireTutor()
     const supabase = await createServerClient()
     const body = await request.json()
@@ -202,28 +209,67 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Process jobs in background
+      // Process jobs synchronously to ensure completion in serverless environment
+      // This blocks the response but ensures jobs actually complete
       if (jobs.length > 0) {
-        processJobs(jobs.length).catch(err => 
-          console.error('Bulk generation processing error:', err)
-        )
+        const jobIds = jobs.map(j => j.jobId)
+        console.log(`[BulkGenerate] Processing ${jobs.length} jobs directly: ${jobIds.join(', ')}`)
+        try {
+          const processed = await processJobsById(jobIds)
+          console.log(`[BulkGenerate] Processed ${processed} jobs`)
+        } catch (err) {
+          console.error('[BulkGenerate] Job processing error:', err)
+          // Don't fail the request - jobs are created and can be retried
+        }
       }
     }
     
-    return NextResponse.json({
+    // For real-time, check actual results
+    let actualQuestionsGenerated = totalQuestions
+    if (!useBatchApi && jobs.length > 0) {
+      console.log(`[BulkGenerate] Checking job results for: ${jobs.map(j => j.jobId).join(', ')}`)
+      
+      const { data: completedJobs, error: checkError } = await supabase
+        .from('jobs')
+        .select('id, result_json, status')
+        .in('id', jobs.map(j => j.jobId))
+      
+      if (checkError) {
+        console.error('[BulkGenerate] Error checking job status:', checkError)
+      } else {
+        console.log('[BulkGenerate] Job statuses:', completedJobs?.map(j => ({ id: j.id, status: j.status, result: j.result_json })))
+      }
+      
+      actualQuestionsGenerated = completedJobs?.reduce((sum, job) => {
+        if (job.status === 'completed' && job.result_json?.questionsGenerated) {
+          return sum + (job.result_json.questionsGenerated as number)
+        }
+        return sum
+      }, 0) || 0
+      
+      console.log(`[BulkGenerate] Total questions generated: ${actualQuestionsGenerated}`)
+    }
+    
+    const responseData = {
       success: true,
       mode: useBatchApi ? 'batch' : 'realtime',
       totalQuestions,
       jobs,
+      questionsGenerated: useBatchApi ? undefined : actualQuestionsGenerated,
       message: useBatchApi 
         ? `Batch job created. ${totalQuestions} questions will be generated within 24 hours.`
-        : `Generating ${totalQuestions} questions across ${jobs.length} topics...`,
-    })
+        : `Generated ${actualQuestionsGenerated} questions across ${jobs.length} topics.`,
+    }
+    
+    console.log('[BulkGenerate] Sending response:', responseData)
+    
+    return NextResponse.json(responseData)
     
   } catch (error) {
     console.error('Bulk generate error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to start bulk generation'
     return NextResponse.json(
-      { error: 'Failed to start bulk generation' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

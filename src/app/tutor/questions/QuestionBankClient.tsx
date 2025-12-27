@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import LatexRenderer from '@/components/latex-renderer'
+import { AnswerDisplay, AnswerTypeBadge } from '@/components/answer-display'
 
 interface StudyProgram {
   id: string
@@ -31,11 +32,8 @@ interface Question {
   topic_id: string | null
   prompt_text: string
   prompt_latex: string | null
-  answer_type: 'exact' | 'numeric' | 'multiple_choice'
-  correct_answer_json: {
-    value: string | number
-    options?: string[]
-  }
+  answer_type: 'short_answer' | 'long_answer' | 'numeric' | 'expression' | 'multiple_choice' | 'true_false' | 'fill_blank' | 'matching' | 'exact'
+  correct_answer_json: Record<string, unknown>
   difficulty: number
   grade_level: number | null
   primary_program_id: string | null
@@ -600,19 +598,24 @@ export default function QuestionBankClient({
                       <LatexRenderer content={question.prompt_latex || question.prompt_text} />
                     </div>
                     
-                    {/* Answer preview */}
-                    <div className="mt-2 text-sm text-gray-500">
-                      Answer: <LatexRenderer content={
-                        typeof question.correct_answer_json?.value === 'object'
-                          ? JSON.stringify(question.correct_answer_json.value)
-                          : String(question.correct_answer_json?.value || 'N/A')
-                      } />
-                      {successRate !== null && (
-                        <span className="ml-3">
-                          • {successRate}% success ({question.times_correct}/{question.times_attempted})
-                        </span>
-                      )}
+                    {/* Answer type badge and preview */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <AnswerTypeBadge answerType={question.answer_type} />
+                      <span className="text-sm text-gray-500">•</span>
+                      <div className="text-sm text-gray-500 line-clamp-1">
+                        <AnswerDisplay 
+                          answerType={question.answer_type} 
+                          correctAnswer={question.correct_answer_json}
+                        />
+                      </div>
                     </div>
+                    
+                    {/* Success rate */}
+                    {successRate !== null && (
+                      <div className="mt-1 text-sm text-gray-500">
+                        {successRate}% success ({question.times_correct}/{question.times_attempted})
+                      </div>
+                    )}
                     
                     {/* Tags */}
                     {question.tags_json && question.tags_json.length > 0 && (

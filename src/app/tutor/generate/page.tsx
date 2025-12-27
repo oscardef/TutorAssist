@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -56,6 +56,7 @@ export default function GeneratePage() {
   // Job tracking
   const [jobId, setJobId] = useState<string | null>(null)
   const [jobStatus, setJobStatus] = useState<string | null>(null)
+  const generationIdRef = useRef<number>(0) // To track the current generation request
   
   // Filter state
   const [selectedProgram, setSelectedProgram] = useState<string>('')
@@ -113,47 +114,122 @@ export default function GeneratePage() {
   
   // Load initial data
   useEffect(() => {
-    Promise.all([
-      fetch('/api/programs').then(r => r.json()),
-      fetch('/api/topics').then(r => r.json()),
-      fetch('/api/students').then(r => r.json()),
-    ]).then(([programsData, topicsData, studentsData]) => {
-      setPrograms(programsData.programs || [])
-      setTopics(topicsData.topics || [])
-      setStudents(studentsData.students || [])
-      setLoading(false)
-    }).catch(() => {
-      setError('Failed to load data')
-      setLoading(false)
-    })
+    async function loadData() {
+      try {
+        const [programsRes, topicsRes, studentsRes] = await Promise.all([
+          fetch('/api/programs'),
+          fetch('/api/topics'),
+          fetch('/api/students'),
+        ])
+        
+        if (!programsRes.ok || !topicsRes.ok || !studentsRes.ok) {
+          throw new Error('One or more API requests failed')
+        }
+        
+        const [programsData, topicsData, studentsData] = await Promise.all([
+          programsRes.json(),
+          topicsRes.json(),
+          studentsRes.json(),
+        ])
+        
+        setPrograms(programsData.programs || [])
+        setTopics(topicsData.topics || [])
+        setStudents(studentsData.students || [])
+      } catch (err) {
+        console.error('Failed to load data:', err)
+        setError('Failed to load data. Please refresh the page.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadData()
   }, [])
   
   // Poll job status
   useEffect(() => {
-    if (!jobId) return
+    if (!jobId) {
+      console.log('[Poll] No jobId, skipping polling')
+      return
+    }
     
-    const interval = setInterval(async () => {
+    const currentGenerationId = generationIdRef.current
+    console.log(`[Poll] Starting to poll job: ${jobId} (generation ${currentGenerationId})`)
+    
+    let pollCount = 0
+    const maxPolls = 60 // 2 minutes max
+    let isActive = true
+    
+    const poll = async () => {
+      if (!isActive) return
+      
+      pollCount++
+      console.log(`[Poll] Poll #${pollCount} for job ${jobId}`)
+      
+      // Check if this generation was cancelled
+      if (generationIdRef.current !== currentGenerationId) {
+        console.log(`[Poll] Generation ${currentGenerationId} was superseded, stopping poll`)
+        return
+      }
+      
+      if (pollCount > maxPolls) {
+        console.log('[Poll] Max polls reached, timing out')
+        setError('Generation timed out. Your questions may still be processing in the background.')
+        setJobId(null)
+        setGenerating(false)
+        return
+      }
+      
       try {
         const response = await fetch(`/api/questions/generate?jobId=${jobId}`)
+        
+        if (!isActive || generationIdRef.current !== currentGenerationId) return
+        
+        if (!response.ok) {
+          console.error('[Poll] Request failed:', response.status)
+          setTimeout(poll, 2000)
+          return
+        }
+        
         const data = await response.json()
+        console.log(`[Poll] Job ${jobId} status: ${data.status}`, data)
+        
+        if (!isActive || generationIdRef.current !== currentGenerationId) return
         
         setJobStatus(data.status)
         
         if (data.status === 'completed') {
-          setSuccess(`Successfully generated ${data.result?.questionsGenerated || questionCount} questions!`)
+          const count = data.result?.questionsGenerated || questionCount
+          console.log(`[Poll] Job completed with ${count} questions`)
+          setSuccess(`Successfully generated ${count} question${count !== 1 ? 's' : ''}!`)
           setJobId(null)
           setGenerating(false)
         } else if (data.status === 'failed') {
-          setError(data.error || 'Generation failed')
+          console.log('[Poll] Job failed:', data.error)
+          setError(data.error || 'Generation failed. Please try again.')
           setJobId(null)
           setGenerating(false)
+        } else {
+          // Continue polling
+          setTimeout(poll, 2000)
         }
-      } catch {
-        // Ignore polling errors
+      } catch (err) {
+        console.error('[Poll] Error:', err)
+        // Continue polling on network errors
+        if (isActive && generationIdRef.current === currentGenerationId) {
+          setTimeout(poll, 2000)
+        }
       }
-    }, 2000)
+    }
     
-    return () => clearInterval(interval)
+    // Start polling after a short delay
+    const timeoutId = setTimeout(poll, 1000)
+    
+    return () => {
+      console.log(`[Poll] Cleaning up polling for job ${jobId}`)
+      isActive = false
+      clearTimeout(timeoutId)
+    }
   }, [jobId, questionCount])
 
   // Handle topic selection
@@ -198,18 +274,31 @@ export default function GeneratePage() {
       return
     }
     
+    if (questionCount < 1) {
+      setError('Please specify at least 1 question')
+      return
+    }
+    
+    // Increment generation ID to cancel any stale polls
+    generationIdRef.current += 1
+    const currentGenerationId = generationIdRef.current
+    console.log(`[Generate] Starting generation ${currentGenerationId}`)
+    
     setGenerating(true)
     setError(null)
     setSuccess(null)
+    setJobId(null)
+    setJobStatus(null)
     
     try {
-      // If multiple topics, we'll need to generate for each (or use bulk endpoint)
+      const countPerTopic = Math.ceil(questionCount / selectedTopics.length)
+      
       const response = await fetch('/api/questions/bulk-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topicIds: selectedTopics,
-          countPerTopic: Math.ceil(questionCount / selectedTopics.length),
+          countPerTopic,
           totalCount: questionCount,
           difficulty,
           questionTypes,
@@ -218,7 +307,7 @@ export default function GeneratePage() {
             includeHints,
             realWorldContext,
             examStyle,
-            customInstructions: customInstructions || undefined,
+            customInstructions: customInstructions.trim() || undefined,
           },
           useBatchApi,
         }),
@@ -226,24 +315,49 @@ export default function GeneratePage() {
       
       const data = await response.json()
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to start generation')
+      console.log('[Generate] API response:', data)
+      
+      // Check if this generation was superseded
+      if (generationIdRef.current !== currentGenerationId) {
+        console.log(`[Generate] Generation ${currentGenerationId} was superseded, ignoring response`)
+        return
       }
       
-      if (data.jobId) {
-        setJobId(data.jobId)
-        setJobStatus(data.status)
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed with status ${response.status}`)
+      }
+      
+      // If questions were generated synchronously, show success immediately
+      if (data.questionsGenerated && data.questionsGenerated > 0) {
+        console.log(`[Generate] Questions generated synchronously: ${data.questionsGenerated}`)
+        setSuccess(`Successfully generated ${data.questionsGenerated} question${data.questionsGenerated !== 1 ? 's' : ''}!`)
+        setGenerating(false)
+        return // Don't start polling
       }
       
       if (useBatchApi) {
-        setSuccess('Batch job submitted! Questions will be generated within 24 hours.')
+        setSuccess(`Batch job submitted for ${questionCount} questions! They will be generated within 24 hours.`)
         setGenerating(false)
-      } else if (data.questionsGenerated) {
-        setSuccess(`Successfully generated ${data.questionsGenerated} questions!`)
+        return
+      }
+      
+      // Only start polling if we didn't get immediate results
+      if (data.jobs?.length > 0) {
+        console.log(`[Generate] Starting to poll job: ${data.jobs[0].jobId}`)
+        setJobId(data.jobs[0].jobId)
+        setJobStatus('pending')
+      } else if (data.jobId) {
+        console.log(`[Generate] Starting to poll job: ${data.jobId}`)
+        setJobId(data.jobId)
+        setJobStatus(data.status || 'pending')
+      } else {
+        // No jobs and no immediate result - something went wrong
+        setError('Generation started but no job was created. Please try again.')
         setGenerating(false)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate questions')
+      console.error('Generation error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to generate questions. Please try again.')
       setGenerating(false)
     }
   }
@@ -396,21 +510,30 @@ export default function GeneratePage() {
       
       {/* Alerts */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex justify-between items-center">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">×</button>
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex justify-between items-start">
+          <div className="flex gap-3">
+            <span className="text-red-500 flex-shrink-0">⚠️</span>
+            <div>
+              <p className="font-medium">Error</p>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
+          </div>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 ml-4">×</button>
         </div>
       )}
       
       {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex justify-between items-center">
-          <span>
-            {success}
-            {generationType === 'questions' && (
-              <Link href="/tutor/questions" className="ml-2 underline">View questions</Link>
-            )}
-          </span>
-          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">×</button>
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex justify-between items-start">
+          <div className="flex gap-3">
+            <span className="text-green-500 flex-shrink-0">✅</span>
+            <div>
+              <p>{success}</p>
+              {generationType === 'questions' && (
+                <Link href="/tutor/questions" className="text-sm underline mt-1 inline-block">View generated questions →</Link>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700 ml-4">×</button>
         </div>
       )}
       
