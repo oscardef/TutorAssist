@@ -247,7 +247,20 @@ export default function TopicsPage() {
   }
   
   async function handleDelete(topicId: string) {
-    if (!confirm('Are you sure you want to delete this topic? Questions will be preserved but unassigned.')) {
+    const topic = topics.find(t => t.id === topicId)
+    const hasChildren = topics.some(t => t.parent_id === topicId)
+    const questionCount = topic?.questions?.[0]?.count || 0
+    
+    let confirmMessage = `Are you sure you want to delete "${topic?.name}"?`
+    if (hasChildren) {
+      const childCount = topics.filter(t => t.parent_id === topicId).length
+      confirmMessage += `\n\nThis will also delete ${childCount} subtopic${childCount !== 1 ? 's' : ''}.`
+    }
+    if (questionCount > 0) {
+      confirmMessage += `\n\n${questionCount} question${questionCount !== 1 ? 's' : ''} will be unassigned but not deleted.`
+    }
+    
+    if (!confirm(confirmMessage)) {
       return
     }
     
@@ -295,6 +308,11 @@ export default function TopicsPage() {
   }
   
   const topicTree = buildTopicTree(topics)
+  
+  // Calculate statistics
+  const totalUnits = topics.filter(t => !t.parent_id).length
+  const totalSubtopics = topics.filter(t => t.parent_id).length
+  const totalQuestions = topics.reduce((sum, t) => sum + (t.questions?.[0]?.count || 0), 0)
   
   // Color helper for program tabs
   function getProgramColor(program: StudyProgram) {
@@ -437,13 +455,44 @@ export default function TopicsPage() {
         </div>
       )}
       
+      {/* Statistics Banner */}
+      {topics.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{totalUnits}</div>
+                <div className="text-xs text-gray-600">Units</div>
+              </div>
+              <div className="h-8 w-px bg-blue-200" />
+              <div>
+                <div className="text-2xl font-bold text-indigo-600">{totalSubtopics}</div>
+                <div className="text-xs text-gray-600">Subtopics</div>
+              </div>
+              <div className="h-8 w-px bg-blue-200" />
+              <div>
+                <div className="text-2xl font-bold text-purple-600">{totalQuestions}</div>
+                <div className="text-xs text-gray-600">Questions</div>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500">
+              {selectedProgram && selectedGradeLevel && (
+                <span>
+                  Showing {topics.length} topic{topics.length !== 1 ? 's' : ''} for selected grade
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Topics List */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
         </div>
       ) : topicTree.length > 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border divide-y">
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           {topicTree.map((topic) => (
             <TopicRow
               key={topic.id}
@@ -456,7 +505,7 @@ export default function TopicsPage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+        <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center bg-white">
           <svg
             className="mx-auto h-12 w-12 text-gray-400"
             fill="none"
@@ -467,25 +516,34 @@ export default function TopicsPage() {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"
+              d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"
             />
           </svg>
           <h3 className="mt-4 text-sm font-semibold text-gray-900">
-            No topics {selectedProgram ? 'in this program' : 'yet'}
+            No topics yet
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {selectedProgram 
-              ? 'Create topics for this study program and grade level.'
-              : 'Create topics to organize your questions by subject area.'
-            }
+          <p className="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
+            Create your first topic to organize questions by subject area. Try using the AI Generation Studio to create a full curriculum.
           </p>
-          <div className="mt-6">
+          <div className="mt-6 flex gap-3 justify-center">
             <button
               onClick={openCreateModal}
               className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
             >
-              Create Topic
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Create Topic Manually
             </button>
+            <Link
+              href="/tutor/generate"
+              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+              </svg>
+              Generate with AI
+            </Link>
           </div>
         </div>
       )}
@@ -740,125 +798,141 @@ interface TopicRowProps {
 }
 
 function TopicRow({ topic, level, onEdit, onDelete, programs }: TopicRowProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(level === 0) // Units expanded by default, subtopics collapsed
   const questionCount = topic.questions?.[0]?.count || 0
+  const hasChildren = topic.children.length > 0
+  const isUnit = level === 0 // Units are top-level (parents)
   
   // Get program and grade info for badges
   const program = programs.find(p => p.id === topic.program_id)
   const gradeLevel = program?.grade_levels?.find(g => g.id === topic.grade_level_id)
   
+  // Build question bank URL with topic filter
+  const questionBankUrl = `/tutor/questions?topicId=${topic.id}`
+  
   return (
     <>
-      <div className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
-        <div className="flex items-center gap-3" style={{ paddingLeft: `${level * 24}px` }}>
-          {topic.children.length > 0 && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg
-                className={`h-4 w-4 transform transition-transform ${expanded ? 'rotate-90' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
+      <div className={`group transition-colors ${
+        isUnit 
+          ? 'bg-gray-50 border-t border-gray-200 first:border-t-0' 
+          : 'bg-white hover:bg-blue-50/30'
+      }`}>
+        <div className="px-6 py-3 flex items-center justify-between">
+          {/* Left side: Topic info */}
+          <div className="flex items-center gap-3 flex-1 min-w-0" style={{ paddingLeft: `${level * 20}px` }}>
+            {/* Expand/collapse button */}
+            {hasChildren ? (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="shrink-0 text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-200 transition-colors"
+                aria-label={expanded ? 'Collapse' : 'Expand'}
+                title={expanded ? `Collapse (${topic.children.length} subtopics)` : `Expand (${topic.children.length} subtopics)`}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-          )}
-          {topic.children.length === 0 && <div className="w-4" />}
-          
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-gray-900">{topic.name}</span>
-              {topic.curriculum_code && (
-                <span className="px-2 py-0.5 text-xs font-mono bg-gray-100 text-gray-600 rounded">
-                  {topic.curriculum_code}
-                </span>
-              )}
-              {topic.is_core && (
-                <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded">
-                  Core
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-1 mt-0.5">
-              <div className="flex items-center gap-2">
-                {program && (
-                  <span className="text-xs text-gray-500">
-                    {program.name}
+                <svg
+                  className={`h-4 w-4 transform transition-transform ${expanded ? 'rotate-90' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            ) : (
+              <div className="w-6" />
+            )}
+            
+            {/* Topic name and metadata */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link 
+                  href={questionBankUrl}
+                  className={`font-medium hover:text-blue-600 hover:underline transition-colors ${
+                    isUnit ? 'text-gray-900 text-base' : 'text-gray-700 text-sm'
+                  }`}
+                >
+                  {topic.name}
+                </Link>
+                {hasChildren && isUnit && (
+                  <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded font-medium">
+                    {topic.children.length} subtopic{topic.children.length !== 1 ? 's' : ''}
                   </span>
                 )}
-                {gradeLevel && (
-                  <span className="text-xs text-gray-500">
-                    • {gradeLevel.code}
+                {topic.is_core && (
+                  <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded font-medium">
+                    Core
                   </span>
                 )}
-                {topic.description && (
-                  <span className="text-sm text-gray-500">
-                    {program || gradeLevel ? '• ' : ''}{topic.description}
+                {!isUnit && gradeLevel && (
+                  <span className="text-xs text-gray-400">
+                    {gradeLevel.code}
                   </span>
                 )}
               </div>
-              {topic.metadata?.subtopics && topic.metadata.subtopics.length > 0 && (
-                <div className="flex items-start gap-1 mt-1">
-                  <span className="text-xs font-medium text-gray-600 shrink-0">Subtopics:</span>
-                  <span className="text-xs text-gray-500">
-                    {topic.metadata.subtopics.join(' • ')}
-                  </span>
-                </div>
+              
+              {topic.description && (
+                <p className={`mt-1 text-gray-500 ${isUnit ? 'text-sm' : 'text-xs'}`}>
+                  {topic.description}
+                </p>
               )}
-              {topic.metadata?.learning_objectives && topic.metadata.learning_objectives.length > 0 && (
-                <div className="flex items-start gap-1">
-                  <span className="text-xs font-medium text-gray-600 shrink-0">Objectives:</span>
-                  <span className="text-xs text-gray-500">
-                    {topic.metadata.learning_objectives.slice(0, 2).join(' • ')}
-                    {topic.metadata.learning_objectives.length > 2 && ` (+${topic.metadata.learning_objectives.length - 2} more)`}
-                  </span>
+              
+              {/* Learning objectives for subtopics */}
+              {!isUnit && topic.metadata?.learning_objectives && topic.metadata.learning_objectives.length > 0 && (
+                <div className="mt-1 text-xs text-gray-400">
+                  {topic.metadata.learning_objectives.slice(0, 2).join(' • ')}
+                  {topic.metadata.learning_objectives.length > 2 && ` (+${topic.metadata.learning_objectives.length - 2})`}
                 </div>
               )}
             </div>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">
-            {questionCount} question{questionCount !== 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
+          
+          {/* Right side: Stats and actions */}
+          <div className="flex items-center gap-4 ml-4 shrink-0">
+            {/* Question count - clickable */}
             <Link
-              href={`/tutor/generate?topicId=${topic.id}`}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              href={questionBankUrl}
+              className="text-sm text-gray-500 hover:text-blue-600 transition-colors"
+              title="View questions"
             >
-              Generate
+              <span className="font-medium">{questionCount}</span> {questionCount === 1 ? 'question' : 'questions'}
             </Link>
-            <button
-              onClick={() => onEdit(topic)}
-              className="text-sm text-gray-600 hover:text-gray-800"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => onDelete(topic.id)}
-              className="text-sm text-red-600 hover:text-red-800"
-            >
-              Delete
-            </button>
+            
+            {/* Action buttons - hidden by default, shown on hover */}
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => onEdit(topic)}
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+                title="Edit topic"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => onDelete(topic.id)}
+                className="text-sm text-red-600 hover:text-red-800 font-medium"
+                title="Delete topic"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </div>
       
-      {expanded && topic.children.map(child => (
-        <TopicRow
-          key={child.id}
-          topic={child}
-          level={level + 1}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          programs={programs}
-        />
-      ))}
+      {/* Render children (subtopics) */}
+      {expanded && hasChildren && (
+        <div>
+          {topic.children.map(child => (
+            <TopicRow
+              key={child.id}
+              topic={child}
+              level={level + 1}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              programs={programs}
+            />
+          ))}
+        </div>
+      )}
     </>
   )
 }

@@ -762,7 +762,7 @@ export default function GeneratePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Number of Topics (optional)
+                      Number of Units (optional)
                     </label>
                     <input
                       type="number"
@@ -776,7 +776,7 @@ export default function GeneratePage() {
                       max={50}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Leave blank for AI to determine optimal count</p>
+                    <p className="text-xs text-gray-500 mt-1">Units (e.g., Number, Algebra). Each will have 2-5 subtopics.</p>
                   </div>
                   
                   <div>
@@ -802,8 +802,9 @@ export default function GeneratePage() {
                       checked={includeSubtopics}
                       onChange={(e) => setIncludeSubtopics(e.target.checked)}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      disabled={true}
                     />
-                    <span className="text-sm text-gray-700">Include subtopics</span>
+                    <span className="text-sm text-gray-700">Create hierarchical structure (units → subtopics)</span>
                   </label>
                   
                   <label className="flex items-center gap-2">
@@ -816,6 +817,9 @@ export default function GeneratePage() {
                     <span className="text-sm text-gray-700">Include learning objectives</span>
                   </label>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Topics are organized as Units (parent) → Subtopics (children). E.g., &quot;Algebra&quot; contains &quot;Equations&quot;, &quot;Formulas&quot;, etc.
+                </p>
               </div>
             </div>
             
@@ -872,13 +876,28 @@ export default function GeneratePage() {
             
             {/* Custom prompt */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Custom Instructions</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Custom Instructions / Curriculum Outline</h2>
+              <p className="text-sm text-gray-500 mb-3">
+                Paste a curriculum outline or add specific requirements. The AI will follow this structure closely.
+              </p>
               <textarea
                 value={syllabusCustomPrompt}
                 onChange={(e) => setSyllabusCustomPrompt(e.target.value)}
-                placeholder="Add specific requirements... e.g., 'Focus on calculus-based topics', 'Include statistics and probability', 'Align with AP Calculus AB curriculum'"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={4}
+                placeholder={`Paste your curriculum outline here. Example:
+
+Unit 1: Number
+- Exponents and Surds
+- Sequences
+
+Unit 2: Algebra
+- Expressions and equations
+- Formulas
+
+Or add specific requirements like:
+"Focus on IB MYP Year 9 standards"
+"Include trigonometry and geometry"`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                rows={8}
               />
             </div>
           </>

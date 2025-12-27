@@ -51,6 +51,7 @@ export async function GET(request: Request) {
   query = query
     .order('program_id', { nullsFirst: false })
     .order('grade_level_id', { nullsFirst: false })
+    .order('parent_id', { nullsFirst: true }) // Parents first (null parent_id = unit)
     .order('order_index')
     .order('name')
   

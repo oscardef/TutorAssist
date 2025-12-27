@@ -10,23 +10,16 @@ const openai = new OpenAI({
 /**
  * Generate Topics/Syllabus API
  * 
- * AI-generates topics for a given program/grade level and creates them in the database.
- * Can optionally map from an existing program's topics.
+ * AI-generates a hierarchical topic structure for a given program/grade level.
+ * Creates UNITS as parent topics and SUBTOPICS as child topics with parent_id set.
  * 
- * POST /api/syllabus/generate
- * {
- *   name: "IB Math HL Year 1", // Name/description for the syllabus
- *   description?: "...",
- *   targetProgramId?: "...", // Program to create topics for
- *   targetGradeLevelId: "...", // Grade level to create topics for (required)
- *   topicCount: 10, // Number of topics to generate
- *   depth: "standard", // "overview" | "standard" | "detailed"
- *   includeSubtopics: true,
- *   includeLearningObjectives: true,
- *   sourceProgramId?: "...", // Program to map from
- *   sourceGradeLevelId?: "...", // Grade level to map from
- *   customPrompt?: "..." // Additional instructions
- * }
+ * Structure Example:
+ *   Unit 1: Number (parent topic)
+ *     ├── 1A. Exponents and Surds (child topic)
+ *     └── 1B. Sequences (child topic)
+ *   Unit 2: Algebra (parent topic)
+ *     ├── 2A. Algebra (child topic)
+ *     └── 2B. Equations (child topic)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -38,9 +31,8 @@ export async function POST(request: NextRequest) {
       name,
       description,
       targetGradeLevelId,
-      topicCount, // Optional - AI will determine if not specified
+      topicCount,
       depth = 'standard',
-      includeSubtopics = true,
       includeLearningObjectives = true,
       sourceProgramId,
       sourceGradeLevelId,
@@ -86,7 +78,6 @@ export async function POST(request: NextRequest) {
     }
     
     // Build the AI prompt
-    // Handle the case where program could be an array (Supabase returns array for joins)
     const programData = targetGrade.program
     const program = Array.isArray(programData) ? programData[0] : programData
     const programInfo = program
@@ -101,69 +92,100 @@ export async function POST(request: NextRequest) {
     }
     const depthDescription = depthDescriptions[depth as string] || 'balanced level of detail'
     
-    // Build dynamic prompt based on whether topic count is specified
+    // Build dynamic prompt
     let userPrompt: string
     if (topicCount) {
-      // User specified exact count
-      userPrompt = `Create a mathematics curriculum with exactly ${topicCount} topics for:
+      userPrompt = `Create a mathematics curriculum with exactly ${topicCount} UNITS for:
 - Program: ${programInfo}
 - Grade Level: ${gradeInfo}
 - Topic Name/Theme: ${name}
 ${description ? `- Description: ${description}` : ''}
 - Detail Level: ${depthDescription}
-${includeSubtopics ? '- Include 3-5 subtopics for each main topic' : ''}
-${includeLearningObjectives ? '- Include 2-3 learning objectives for each topic' : ''}`
+
+IMPORTANT STRUCTURE REQUIREMENTS:
+- Create ${topicCount} main UNITS (e.g., "Number", "Algebra", "Functions", "Geometry")
+- Each UNIT MUST have 2-5 SUBTOPICS that belong to that unit
+- UNITS are broad categories, SUBTOPICS are specific skill areas within each unit
+${includeLearningObjectives ? '- Include 2-3 learning objectives for each SUBTOPIC' : ''}`
     } else {
-      // AI determines optimal count based on curriculum standards
       userPrompt = `Create a comprehensive mathematics curriculum for:
 - Program: ${programInfo}
 - Grade Level: ${gradeInfo}
 - Topic Name/Theme: ${name}
 ${description ? `- Description: ${description}` : ''}
 - Detail Level: ${depthDescription}
-${includeSubtopics ? '- Include 3-5 subtopics for each main topic' : ''}
-${includeLearningObjectives ? '- Include 2-3 learning objectives for each topic' : ''}
 
-Determine the optimal number of topics based on:
-- Standard curriculum expectations for this program and grade level
-- Typical semester/year duration (assume academic year unless specified otherwise)
-- International curriculum standards (IB, GCSE, etc.) for this grade level
-- Pedagogical best practices for topic coverage and depth
-
-Use your knowledge of curriculum standards to create an appropriate number of topics (typically 8-15 for a semester, 15-25 for a full year).`
+IMPORTANT STRUCTURE REQUIREMENTS:
+- Create main UNITS (e.g., "Number", "Algebra", "Functions", "Geometry", "Statistics & Probability")
+- Each UNIT MUST have 2-5 SUBTOPICS that belong to that unit
+- UNITS are broad categories (typically 4-8 for a year), SUBTOPICS are specific skill areas
+${includeLearningObjectives ? '- Include 2-3 learning objectives for each SUBTOPIC' : ''}`
     }
 
     if (sourceTopics.length > 0) {
-      userPrompt += `\n\nAdapt the following topics from another curriculum to fit ${programInfo} ${gradeInfo}:\n`
+      userPrompt += `\n\nAdapt the following topics from another curriculum:\n`
       userPrompt += sourceTopics.map(t => `- ${t.name}${t.description ? `: ${t.description}` : ''}`).join('\n')
     }
     
     if (customPrompt) {
-      userPrompt += `\n\nAdditional requirements: ${customPrompt}`
+      userPrompt += `\n\nCURRICULUM OUTLINE/REQUIREMENTS - PARSE THIS CAREFULLY:
+The user has provided a detailed curriculum outline below. You MUST:
+1. Extract each UNIT (typically marked as "Unit 1:", "Unit 2:", etc.)
+2. Extract each SUBTOPIC within each unit (typically marked as "1A.", "1B.", "2A.", etc. or bullet points)
+3. Extract any learning objectives or bullet points listed under each subtopic
+4. Preserve the exact names and structure from this outline
+
+USER'S CURRICULUM OUTLINE:
+${customPrompt}
+
+IMPORTANT: Create subtopics for EVERY unit listed above. Each subtopic should include the learning objectives/bullet points as its description.`
     }
 
     const systemPrompt = `You are an expert curriculum designer specializing in mathematics education.
-Create pedagogically-sound topics that follow proper learning progressions.
 
-Guidelines:
-- Organize topics from foundational to advanced
-- Ensure appropriate difficulty progression
-- Include real-world applications where relevant
-- Align with the specified curriculum standards
+CRITICAL REQUIREMENTS:
+1. You MUST create a HIERARCHICAL structure with UNITS and SUBTOPICS
+2. Every UNIT must have at least 2 SUBTOPICS - this is mandatory!
+3. If the user provides a curriculum outline, follow it EXACTLY
+4. NEVER name a subtopic the same as its parent unit (e.g., if unit is "Algebra", subtopics should be "Algebraic Expressions", "Equations", NOT "Algebra")
 
-Return your response as a JSON object with this exact structure:
+Structure:
+- UNITS: Broad categories (e.g., "Number", "Algebra", "Geometry")
+- SUBTOPICS: Specific topics within each unit (e.g., "Exponents and Surds", "Sequences", "Algebraic Expressions")
+- Subtopic names MUST be distinct from their parent unit name
+
+RESPONSE FORMAT - You MUST return valid JSON with this EXACT structure:
 {
-  "topics": [
+  "units": [
     {
-      "name": "Topic name",
-      "description": "Comprehensive description and learning objectives",
-      "difficulty": 1-5,
+      "name": "Number",
+      "description": "Brief description of this unit",
       "order_index": 0,
-      "subtopics": ["Subtopic 1", "Subtopic 2"],
-      "learning_objectives": ["Objective 1", "Objective 2"]
+      "subtopics": [
+        {
+          "name": "Exponents and Surds",
+          "description": "Covers laws of exponents, simplifying expressions, introduction to surds",
+          "order_index": 0,
+          "difficulty": 2,
+          "learning_objectives": [
+            "Laws of exponents including multiplication, division, powers of powers",
+            "Simplifying expressions with integer and fractional indices",
+            "Introduction to surds and simplifying radical expressions"
+          ]
+        },
+        {
+          "name": "Sequences",
+          "description": "Recognizing patterns, arithmetic sequences, finding nth term",
+          "order_index": 1,
+          "difficulty": 2,
+          "learning_objectives": ["Recognising and extending number patterns", "Arithmetic sequences"]
+        }
+      ]
     }
   ]
-}`
+}
+
+REMEMBER: Every unit in the "units" array MUST have a "subtopics" array with at least 2 items! No exceptions!`
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -180,51 +202,184 @@ Return your response as a JSON object with this exact structure:
       throw new Error('No response from AI')
     }
     
+    console.log('AI Response:', content)
+    
     const generated = JSON.parse(content)
     
-    if (!generated.topics || !Array.isArray(generated.topics)) {
-      throw new Error('Invalid response format from AI')
+    if (!generated.units || !Array.isArray(generated.units)) {
+      console.error('Invalid AI response structure:', generated)
+      throw new Error('Invalid response format from AI - expected "units" array')
     }
     
-    // Create the topics in the database
-    const topicsToInsert = generated.topics.map((topic: {
+    console.log(`Parsed ${generated.units.length} units from AI response`)
+    
+    // Validate that units have subtopics
+    let totalExpectedSubtopics = 0
+    generated.units.forEach((unit: { name: string; subtopics?: unknown[] }, idx: number) => {
+      const subtopicCount = unit.subtopics?.length || 0
+      console.log(`Unit ${idx + 1}: "${unit.name}" has ${subtopicCount} subtopics`)
+      totalExpectedSubtopics += subtopicCount
+    })
+    console.log(`Total expected subtopics: ${totalExpectedSubtopics}`)
+    
+    // Get the program_id from the grade level
+    const programId = program?.id || null
+    console.log(`Program ID: ${programId}, Grade Level ID: ${targetGradeLevelId}`)
+    
+    // Get existing topic names to avoid conflicts
+    const { data: existingTopics } = await supabase
+      .from('topics')
+      .select('name')
+      .eq('workspace_id', context.workspaceId)
+    
+    const existingNames = new Set(existingTopics?.map(t => t.name.toLowerCase()) || [])
+    
+    // Create UNIT topics (parent topics) first
+    const unitTopics = generated.units.map((unit: {
       name: string
       description?: string
-      difficulty?: number
       order_index?: number
-      subtopics?: string[]
-      learning_objectives?: string[]
     }, index: number) => ({
       workspace_id: context.workspaceId,
-      name: topic.name,
-      description: topic.description || null,
+      name: unit.name,
+      description: unit.description || null,
+      parent_id: null,
+      program_id: programId,
       grade_level_id: targetGradeLevelId,
-      order_index: topic.order_index ?? index,
+      order_index: unit.order_index ?? index,
+      is_core: true,
       metadata: {
-        difficulty: topic.difficulty,
-        subtopics: topic.subtopics || [],
-        learning_objectives: topic.learning_objectives || [],
+        type: 'unit',
         generated_from: sourceProgramId ? 'mapping' : 'ai',
         source_program_id: sourceProgramId || null,
         source_grade_level_id: sourceGradeLevelId || null,
       },
     }))
     
-    const { data: createdTopics, error: insertError } = await supabase
+    // Insert units first
+    console.log(`Inserting ${unitTopics.length} units...`)
+    const { data: createdUnits, error: unitsError } = await supabase
       .from('topics')
-      .insert(topicsToInsert)
+      .insert(unitTopics)
       .select('id, name')
     
-    if (insertError) {
-      console.error('Error inserting topics:', insertError)
-      return NextResponse.json({ error: 'Failed to save topics' }, { status: 500 })
+    if (unitsError) {
+      console.error('Error inserting units:', unitsError)
+      return NextResponse.json({ error: `Failed to save units: ${unitsError.message}` }, { status: 500 })
     }
+    
+    console.log(`Successfully created ${createdUnits?.length || 0} units:`, createdUnits?.map(u => u.name))
+    
+    // Now create subtopics with parent_id pointing to their unit
+    const subtopicsToInsert: Array<{
+      workspace_id: string
+      name: string
+      description: string | null
+      parent_id: string
+      program_id: string | null
+      grade_level_id: string
+      order_index: number
+      is_core: boolean
+      metadata: Record<string, unknown>
+    }> = []
+    
+    generated.units.forEach((unit: {
+      name: string
+      subtopics?: Array<{
+        name: string
+        description?: string
+        order_index?: number
+        difficulty?: number
+        learning_objectives?: string[]
+      }>
+    }, unitIndex: number) => {
+      const parentUnit = createdUnits?.find(u => u.name === unit.name)
+      if (!parentUnit) {
+        console.warn(`Could not find parent unit for: ${unit.name}`)
+        return
+      }
+      if (!unit.subtopics || unit.subtopics.length === 0) {
+        console.warn(`No subtopics for unit: ${unit.name}`)
+        return
+      }
+      
+      console.log(`Processing ${unit.subtopics.length} subtopics for unit: ${unit.name}`)
+      
+      unit.subtopics.forEach((subtopic, subIndex) => {
+        let subtopicName = subtopic.name
+        
+        // Check for name conflict with existing topics or the parent unit
+        if (existingNames.has(subtopicName.toLowerCase()) || subtopicName.toLowerCase() === unit.name.toLowerCase()) {
+          // Rename by appending a descriptive suffix
+          const originalName = subtopicName
+          subtopicName = `${subtopicName} - Fundamentals`
+          console.warn(`Name conflict detected: "${originalName}" conflicts with existing topic. Renamed to: "${subtopicName}"`)
+        }
+        
+        // Add the new name to our set
+        existingNames.add(subtopicName.toLowerCase())
+        
+        subtopicsToInsert.push({
+          workspace_id: context.workspaceId,
+          name: subtopicName,
+          description: subtopic.description || null,
+          parent_id: parentUnit.id,
+          program_id: programId,
+          grade_level_id: targetGradeLevelId,
+          order_index: subtopic.order_index ?? subIndex,
+          is_core: false,
+          metadata: {
+            type: 'subtopic',
+            difficulty: subtopic.difficulty,
+            learning_objectives: subtopic.learning_objectives || [],
+            unit_order: unitIndex,
+            generated_from: sourceProgramId ? 'mapping' : 'ai',
+            original_name: subtopic.name !== subtopicName ? subtopic.name : undefined,
+          },
+        })
+      })
+    })
+    
+    console.log(`Total subtopics to insert: ${subtopicsToInsert.length}`)
+    
+    // Insert subtopics
+    let createdSubtopics: Array<{ id: string; name: string }> | null = null
+    if (subtopicsToInsert.length > 0) {
+      console.log(`Inserting ${subtopicsToInsert.length} subtopics...`)
+      const { data: subs, error: subsError } = await supabase
+        .from('topics')
+        .insert(subtopicsToInsert)
+        .select('id, name')
+      
+      if (subsError) {
+        console.error('Error inserting subtopics:', subsError)
+        return NextResponse.json({
+          success: true,
+          warning: `Units created but subtopics failed: ${subsError.message}`,
+          topicsCreated: createdUnits?.length || 0,
+          unitsCreated: createdUnits?.length || 0,
+          subtopicsCreated: 0,
+          units: createdUnits,
+          subtopics: null,
+        })
+      } else {
+        createdSubtopics = subs
+        console.log(`Successfully created ${subs?.length || 0} subtopics`)
+      }
+    } else {
+      console.warn('No subtopics to insert - check AI response format')
+    }
+    
+    const totalCreated = (createdUnits?.length || 0) + (createdSubtopics?.length || 0)
     
     return NextResponse.json({
       success: true,
-      topicsCreated: createdTopics?.length || 0,
-      topics: createdTopics,
-      message: `Created ${createdTopics?.length || 0} topics for ${gradeInfo}`,
+      topicsCreated: totalCreated,
+      unitsCreated: createdUnits?.length || 0,
+      subtopicsCreated: createdSubtopics?.length || 0,
+      units: createdUnits,
+      subtopics: createdSubtopics,
+      message: `Created ${createdUnits?.length || 0} units with ${createdSubtopics?.length || 0} subtopics for ${gradeInfo}`,
     })
     
   } catch (error) {
