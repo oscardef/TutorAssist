@@ -17,6 +17,7 @@
     "@supabase/supabase-js": "^2.89.0",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
+    "fuse.js": "^7.1.0",
     "googleapis": "^169.0.0",
     "katex": "^0.16.27",
     "mathlive": "^0.108.2",
@@ -27,6 +28,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^6.6.0",
+    "use-debounce": "^10.0.6",
     "uuid": "^13.0.0",
     "zod": "^4.2.1"
   },

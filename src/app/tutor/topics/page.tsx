@@ -798,7 +798,7 @@ interface TopicRowProps {
 }
 
 function TopicRow({ topic, level, onEdit, onDelete, programs }: TopicRowProps) {
-  const [expanded, setExpanded] = useState(level === 0) // Units expanded by default, subtopics collapsed
+  const [expanded, setExpanded] = useState(false) // Start collapsed
   const questionCount = topic.questions?.[0]?.count || 0
   const hasChildren = topic.children.length > 0
   const isUnit = level === 0 // Units are top-level (parents)

@@ -25,6 +25,7 @@ export type JobType =
   | 'REGEN_VARIANT'
   | 'DAILY_SPACED_REP_REFRESH'
   | 'PROCESS_BATCH_RESULT'
+  | 'GENERATE_EMBEDDINGS'
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'batch_pending'
 

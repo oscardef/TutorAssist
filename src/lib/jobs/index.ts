@@ -5,6 +5,7 @@ import { handleGenerateQuestions, handleRegenVariant } from './handlers/generate
 import { handleBatchGenerate, handleProcessBatchResult } from './handlers/batch-generate'
 import { handleGeneratePdf } from './handlers/generate-pdf'
 import { handleSyllabusBatchGenerate } from './handlers/syllabus-generate'
+import { handleGenerateEmbedding } from './handlers/generate-embeddings'
 import { claimJobs } from './queue'
 
 type JobHandler = (job: Job) => Promise<void>
@@ -26,6 +27,7 @@ const handlers: Record<JobType, JobHandler> = {
   GENERATE_PDF: handleGeneratePdf,
   DAILY_SPACED_REP_REFRESH: handleDailySpacedRepRefresh,
   PROCESS_BATCH_RESULT: handleProcessBatchResult,
+  GENERATE_EMBEDDINGS: handleGenerateEmbedding,
 }
 
 // Process a single job

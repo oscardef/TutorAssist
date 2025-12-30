@@ -105,10 +105,10 @@ export function AnswerInput({
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
           placeholder="Type your detailed answer here..."
         />
-        {showCorrect && correctAnswerJson.value && (
+        {showCorrect && correctAnswerJson.value !== undefined && correctAnswerJson.value !== null && (
           <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
             <p className="text-sm font-medium text-green-800">Model Answer:</p>
-            <p className="text-sm text-green-700 mt-1">{correctAnswerJson.value}</p>
+            <p className="text-sm text-green-700 mt-1">{String(correctAnswerJson.value)}</p>
           </div>
         )}
       </div>
@@ -142,7 +142,7 @@ export function AnswerInput({
       {showCorrect && userAnswer && (
         <div className="mt-2 text-sm text-gray-600">
           Your answer: <span className="font-medium"><LatexRenderer content={formatMathForDisplay(userAnswer)} /></span>
-          {correctAnswerJson.value && (
+          {correctAnswerJson.value !== undefined && correctAnswerJson.value !== null && (
             <span className="ml-2">
               | Correct: <span className="font-medium text-green-600">
                 <LatexRenderer content={formatMathForDisplay(String(correctAnswerJson.value))} />

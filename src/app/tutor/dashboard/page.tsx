@@ -1,7 +1,7 @@
 import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { format, isToday, isTomorrow, isPast, differenceInDays } from 'date-fns'
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -20,14 +20,7 @@ export default async function TutorDashboard() {
     || authUser?.email?.split('@')[0]
     || 'Tutor'
 
-  // Get workspace info
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('name')
-    .eq('id', context.workspaceId)
-    .single()
-
-  // Get upcoming sessions
+  // Get upcoming sessions (today and tomorrow only)
   const { data: sessions } = await supabase
     .from('sessions')
     .select('*, student_profiles(name)')
@@ -36,93 +29,161 @@ export default async function TutorDashboard() {
     .order('starts_at')
     .limit(5)
 
-  // Get student profiles
+  // Get student profiles with their stats
   const { data: students } = await supabase
     .from('student_profiles')
     .select('*')
     .eq('workspace_id', context.workspaceId)
     .order('name')
 
-  // Get pending flags count
+  // Get pending flags count  
   const { count: flagCount } = await supabase
     .from('question_flags')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', context.workspaceId)
     .eq('status', 'pending')
 
-  // Get recent attempts (for activity monitoring)
-  const { data: recentAttempts } = await supabase
-    .from('attempts')
-    .select('*, questions(prompt_text), student_profiles:student_user_id(name)')
-    .eq('workspace_id', context.workspaceId)
-    .order('created_at', { ascending: false })
-    .limit(10)
-
-  // Get question count
-  const { count: questionCount } = await supabase
-    .from('questions')
-    .select('*', { count: 'exact', head: true })
+  // Get assignments that are due soon or overdue
+  const { data: assignments } = await supabase
+    .from('assignments')
+    .select('*, student_profiles(name)')
     .eq('workspace_id', context.workspaceId)
     .eq('status', 'active')
+    .order('due_at')
+
+  // Get student attempt stats for "needs attention" calculation
+  const twoWeeksAgo = new Date()
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+  
+  const { data: attemptStats } = await supabase
+    .from('attempts')
+    .select('student_user_id, is_correct')
+    .eq('workspace_id', context.workspaceId)
+    .gte('created_at', twoWeeksAgo.toISOString())
+
+  // Calculate students needing attention (accuracy < 50% in last 2 weeks with >= 5 attempts)
+  const studentStats = new Map<string, { correct: number; total: number }>()
+  attemptStats?.forEach(attempt => {
+    const existing = studentStats.get(attempt.student_user_id) || { correct: 0, total: 0 }
+    existing.total++
+    if (attempt.is_correct) existing.correct++
+    studentStats.set(attempt.student_user_id, existing)
+  })
+
+  const studentsNeedingAttention = students?.filter(student => {
+    if (!student.user_id) return false
+    const stats = studentStats.get(student.user_id)
+    if (!stats || stats.total < 5) return false
+    return (stats.correct / stats.total) < 0.5
+  }) || []
+
+  // Categorize assignments
+  const overdueAssignments = assignments?.filter(a => a.due_at && isPast(new Date(a.due_at))) || []
+  const dueSoonAssignments = assignments?.filter(a => {
+    if (!a.due_at) return false
+    const dueDate = new Date(a.due_at)
+    return !isPast(dueDate) && differenceInDays(dueDate, new Date()) <= 3
+  }) || []
+
+  // Get today's and tomorrow's sessions
+  const todaySessions = sessions?.filter(s => isToday(new Date(s.starts_at))) || []
+  const tomorrowSessions = sessions?.filter(s => isTomorrow(new Date(s.starts_at))) || []
+
+  // Determine what needs attention
+  const hasFlags = (flagCount || 0) > 0
+  const hasOverdue = overdueAssignments.length > 0
+  const hasStruggling = studentsNeedingAttention.length > 0
+  const hasActionItems = hasFlags || hasOverdue || hasStruggling
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {firstName}! 👋</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {firstName}!</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Managing {workspace?.name || 'your workspace'}
+          {hasActionItems ? "Here's what needs your attention" : "Everything looks good!"}
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="text-sm font-medium text-gray-500">Students</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{students?.length || 0}</div>
-          <Link href="/tutor/students" className="mt-2 text-sm text-blue-600 hover:text-blue-500">
-            View all →
-          </Link>
-        </div>
+      {/* Action Items - Only show if there's something to do */}
+      {hasActionItems && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {hasFlags && (
+            <Link
+              href="/tutor/flags"
+              className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-200">
+                  <svg className="h-5 w-5 text-amber-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-lg font-semibold text-amber-800">{flagCount} Flags</div>
+                  <div className="text-sm text-amber-600">Questions need review</div>
+                </div>
+              </div>
+            </Link>
+          )}
 
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="text-sm font-medium text-gray-500">Questions</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{questionCount || 0}</div>
-          <Link href="/tutor/questions" className="mt-2 text-sm text-blue-600 hover:text-blue-500">
-            Question bank →
-          </Link>
-        </div>
+          {hasOverdue && (
+            <Link
+              href="/tutor/assignments"
+              className="rounded-xl border-2 border-red-200 bg-red-50 p-4 hover:bg-red-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-200">
+                  <svg className="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-lg font-semibold text-red-800">{overdueAssignments.length} Overdue</div>
+                  <div className="text-sm text-red-600">Assignments past due</div>
+                </div>
+              </div>
+            </Link>
+          )}
 
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="text-sm font-medium text-gray-500">Pending Flags</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{flagCount || 0}</div>
-          <Link href="/tutor/flags" className="mt-2 text-sm text-blue-600 hover:text-blue-500">
-            Review flags →
-          </Link>
+          {hasStruggling && (
+            <Link
+              href="/tutor/students"
+              className="rounded-xl border-2 border-orange-200 bg-orange-50 p-4 hover:bg-orange-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-200">
+                  <svg className="h-5 w-5 text-orange-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-lg font-semibold text-orange-800">{studentsNeedingAttention.length} Struggling</div>
+                  <div className="text-sm text-orange-600">Students need help</div>
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
+      )}
 
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <div className="text-sm font-medium text-gray-500">Upcoming Sessions</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{sessions?.length || 0}</div>
-          <Link href="/tutor/sessions" className="mt-2 text-sm text-blue-600 hover:text-blue-500">
-            View calendar →
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Upcoming Sessions */}
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="font-semibold text-gray-900">Upcoming Sessions</h2>
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Today's Schedule */}
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 px-5 py-4">
+            <h2 className="font-semibold text-gray-900">Today&apos;s Schedule</h2>
           </div>
-          <div className="divide-y divide-gray-100">
-            {sessions && sessions.length > 0 ? (
-              sessions.map((session) => (
-                <div key={session.id} className="flex items-center justify-between px-6 py-4">
+          <div className="divide-y divide-gray-50">
+            {todaySessions.length > 0 ? (
+              todaySessions.map((session) => (
+                <div key={session.id} className="flex items-center justify-between px-5 py-4">
                   <div>
-                    <div className="font-medium text-gray-900">{session.title}</div>
+                    <div className="font-medium text-gray-900">
+                      {session.student_profiles?.name || session.title}
+                    </div>
                     <div className="text-sm text-gray-500">
-                      {session.student_profiles?.name || 'No student'} • {format(new Date(session.starts_at), 'MMM d, h:mm a')}
+                      {format(new Date(session.starts_at), 'h:mm a')}
                     </div>
                   </div>
                   {session.meet_link && (
@@ -130,151 +191,158 @@ export default async function TutorDashboard() {
                       href={session.meet_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-lg bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-100"
+                      className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
                     >
-                      Join Meet
+                      Join
                     </a>
                   )}
                 </div>
               ))
             ) : (
-              <div className="px-6 py-8 text-center text-sm text-gray-500">
-                No upcoming sessions
+              <div className="px-5 py-8 text-center text-sm text-gray-500">
+                No sessions scheduled for today
               </div>
             )}
           </div>
-          <div className="border-t border-gray-200 px-6 py-4">
+          {tomorrowSessions.length > 0 && (
+            <>
+              <div className="border-t border-gray-100 bg-gray-50 px-5 py-2">
+                <span className="text-xs font-medium text-gray-500 uppercase">Tomorrow</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {tomorrowSessions.slice(0, 2).map((session) => (
+                  <div key={session.id} className="flex items-center justify-between px-5 py-3">
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">
+                        {session.student_profiles?.name || session.title}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {format(new Date(session.starts_at), 'h:mm a')}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="border-t border-gray-100 px-5 py-3">
             <Link href="/tutor/sessions" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-              View all sessions →
+              View full calendar →
             </Link>
           </div>
         </div>
 
-        {/* Students */}
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="font-semibold text-gray-900">Students</h2>
+        {/* Assignments Due Soon */}
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 px-5 py-4">
+            <h2 className="font-semibold text-gray-900">Assignments Due Soon</h2>
           </div>
-          <div className="divide-y divide-gray-100">
-            {students && students.length > 0 ? (
-              students.slice(0, 5).map((student) => (
+          <div className="divide-y divide-gray-50">
+            {dueSoonAssignments.length > 0 ? (
+              dueSoonAssignments.slice(0, 5).map((assignment) => (
                 <Link
-                  key={student.id}
-                  href={`/tutor/students/${student.id}`}
-                  className="flex items-center justify-between px-6 py-4 hover:bg-gray-50"
+                  key={assignment.id}
+                  href={`/tutor/assignments/${assignment.id}`}
+                  className="flex items-center justify-between px-5 py-4 hover:bg-gray-50"
                 >
                   <div>
-                    <div className="font-medium text-gray-900">{student.name}</div>
+                    <div className="font-medium text-gray-900">{assignment.title}</div>
                     <div className="text-sm text-gray-500">
-                      {student.grade_current ? `Grade ${student.grade_current}` : 'No grade set'}
-                      {student.school && ` • ${student.school}`}
+                      {assignment.student_profiles?.name || 'All students'}
                     </div>
                   </div>
-                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                  </svg>
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${
+                      isToday(new Date(assignment.due_at)) ? 'text-red-600' : 
+                      isTomorrow(new Date(assignment.due_at)) ? 'text-orange-600' : 'text-gray-600'
+                    }`}>
+                      {isToday(new Date(assignment.due_at)) ? 'Today' :
+                       isTomorrow(new Date(assignment.due_at)) ? 'Tomorrow' :
+                       format(new Date(assignment.due_at), 'MMM d')}
+                    </div>
+                  </div>
                 </Link>
               ))
             ) : (
-              <div className="px-6 py-8 text-center text-sm text-gray-500">
-                No students yet. Create a student profile to get started.
+              <div className="px-5 py-8 text-center text-sm text-gray-500">
+                No assignments due soon
               </div>
             )}
           </div>
-          <div className="border-t border-gray-200 px-6 py-4">
-            <Link href="/tutor/students" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-              Manage students →
+          <div className="border-t border-gray-100 px-5 py-3">
+            <Link href="/tutor/assignments" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+              View all assignments →
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="font-semibold text-gray-900">Recent Activity</h2>
+      {/* Students Overview */}
+      <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Students ({students?.length || 0})</h2>
+          <Link
+            href="/tutor/students/new"
+            className="text-sm font-medium text-blue-600 hover:text-blue-500"
+          >
+            + Add student
+          </Link>
         </div>
-        <div className="divide-y divide-gray-100">
-          {recentAttempts && recentAttempts.length > 0 ? (
-            recentAttempts.map((attempt) => (
-              <div key={attempt.id} className="flex items-center gap-4 px-6 py-4">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                  attempt.is_correct ? 'bg-green-100' : 'bg-red-100'
-                }`}>
-                  {attempt.is_correct ? (
-                    <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
+        <div className="divide-y divide-gray-50">
+          {students && students.length > 0 ? (
+            students.slice(0, 5).map((student) => {
+              const stats = student.user_id ? studentStats.get(student.user_id) : null
+              const accuracy = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
+              
+              return (
+                <Link
+                  key={student.id}
+                  href={`/tutor/students/${student.id}`}
+                  className="flex items-center justify-between px-5 py-4 hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
+                      {student.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{student.name}</div>
+                      <div className="text-sm text-gray-500">
+                        {student.grade_current ? `Grade ${student.grade_current}` : ''}
+                        {student.school && student.grade_current ? ' • ' : ''}
+                        {student.school || ''}
+                      </div>
+                    </div>
+                  </div>
+                  {accuracy !== null && (
+                    <div className={`text-sm font-medium ${
+                      accuracy >= 70 ? 'text-green-600' : 
+                      accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {accuracy}%
+                    </div>
                   )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="truncate text-sm font-medium text-gray-900">
-                    {attempt.questions?.prompt_text?.slice(0, 60)}...
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {format(new Date(attempt.created_at), 'MMM d, h:mm a')}
-                  </div>
-                </div>
-              </div>
-            ))
+                </Link>
+              )
+            })
           ) : (
-            <div className="px-6 py-8 text-center text-sm text-gray-500">
-              No recent activity
+            <div className="px-5 py-8 text-center">
+              <p className="text-sm text-gray-500 mb-3">No students yet</p>
+              <Link
+                href="/tutor/students/new"
+                className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+              >
+                Add your first student
+              </Link>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Link
-          href="/tutor/students/new"
-          className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-6 hover:border-blue-300 hover:bg-blue-50 transition-colors"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-            <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-            </svg>
+        {students && students.length > 5 && (
+          <div className="border-t border-gray-100 px-5 py-3">
+            <Link href="/tutor/students" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+              View all {students.length} students →
+            </Link>
           </div>
-          <div>
-            <div className="font-medium text-gray-900">Add Student</div>
-            <div className="text-sm text-gray-500">Create a new student profile</div>
-          </div>
-        </Link>
-
-        <Link
-          href="/tutor/generate"
-          className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-6 hover:border-green-300 hover:bg-green-50 transition-colors"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-            <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-            </svg>
-          </div>
-          <div>
-            <div className="font-medium text-gray-900">Generate Questions</div>
-            <div className="text-sm text-gray-500">Create questions with AI</div>
-          </div>
-        </Link>
-
-        <Link
-          href="/tutor/assignments/new"
-          className="flex items-center gap-4 rounded-lg border border-gray-200 bg-white p-6 hover:border-purple-300 hover:bg-purple-50 transition-colors"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-            <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </div>
-          <div>
-            <div className="font-medium text-gray-900">Create Assignment</div>
-            <div className="text-sm text-gray-500">Assign questions to students</div>
-          </div>
-        </Link>
+        )}
       </div>
     </div>
   )

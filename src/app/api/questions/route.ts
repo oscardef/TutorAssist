@@ -15,6 +15,30 @@ export async function GET(request: Request) {
   }
   
   const { searchParams } = new URL(request.url)
+  const supabase = await createServerClient()
+  
+  // Single question fetch by ID (for edit page)
+  const id = searchParams.get('id')
+  if (id) {
+    const { data: question, error } = await supabase
+      .from('questions')
+      .select(`
+        *,
+        topics(id, name, program_id, grade_level_id),
+        primary_program:study_programs!questions_primary_program_id_fkey(id, code, name, color),
+        primary_grade_level:grade_levels!questions_primary_grade_level_id_fkey(id, code, name, year_number)
+      `)
+      .eq('id', id)
+      .eq('workspace_id', context.workspaceId)
+      .single()
+    
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    return NextResponse.json({ question })
+  }
+  
   const topicId = searchParams.get('topicId')
   const difficulty = searchParams.get('difficulty')
   const gradeLevel = searchParams.get('gradeLevel')
@@ -24,8 +48,6 @@ export async function GET(request: Request) {
   const aiGenerated = searchParams.get('aiGenerated')
   const limit = parseInt(searchParams.get('limit') || '50')
   const offset = parseInt(searchParams.get('offset') || '0')
-  
-  const supabase = await createServerClient()
   
   // Special mode: get questions due for spaced repetition review
   if (mode === 'review' && context.role === 'student') {
