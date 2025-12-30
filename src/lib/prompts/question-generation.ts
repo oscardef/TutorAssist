@@ -254,8 +254,6 @@ export interface GeneratedQuestion {
     // For multiple_choice
     choices?: { text: string; latex?: string }[]
     correct?: number
-    // For long_answer
-    rubric?: string[]
     // For fill_blank
     blanks?: { position: number; value: string; latex?: string; alternates?: string[] }[]
     // For matching
