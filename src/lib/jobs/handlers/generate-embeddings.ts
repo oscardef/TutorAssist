@@ -145,8 +145,8 @@ export async function findSimilarQuestions(
     return []
   }
 
-  return (data || []).map((row: { question_id: string; similarity: number }) => ({
-    questionId: row.question_id,
+  return (data || []).map((row: { similar_question_id: string; similarity: number }) => ({
+    questionId: row.similar_question_id,
     similarity: row.similarity,
   }))
 }

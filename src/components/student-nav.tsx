@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 const navItems = [
   { 
@@ -54,50 +57,88 @@ const navItems = [
 
 export function StudentNav() {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Initialize from localStorage (only runs on client)
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('student-nav-collapsed') === 'true'
+    }
+    return false
+  })
+
+  const toggleCollapsed = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem('student-nav-collapsed', String(newState))
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
   
   return (
-    <nav className="w-64 bg-white border-r border-gray-200 min-h-screen p-4">
-      <div className="mb-8">
-        <Link href="/student/dashboard" className="text-xl font-bold text-gray-900">
-          TutorAssist
-        </Link>
-        <p className="text-xs text-gray-500 mt-1">Student Portal</p>
+    <nav className={`flex h-screen flex-shrink-0 flex-col bg-white border-r border-gray-200 transition-all duration-200 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      <div className="flex h-16 items-center justify-between border-b border-gray-200 px-3">
+        {!isCollapsed && (
+          <div>
+            <Link href="/student/dashboard" className="text-xl font-bold text-gray-900">
+              TutorAssist
+            </Link>
+            <p className="text-xs text-gray-500">Student Portal</p>
+          </div>
+        )}
+        <button
+          onClick={toggleCollapsed}
+          className={`p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
+          </svg>
+        </button>
       </div>
       
-      <ul className="space-y-1">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                <span className={isActive ? 'text-blue-600' : 'text-gray-400'}>{item.icon}</span>
-                {item.label}
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      <div className="flex-1 overflow-y-auto py-4">
+        <ul className="space-y-1 px-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  title={isCollapsed ? item.label : undefined}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  } ${isCollapsed ? 'justify-center' : ''}`}
+                >
+                  <span className={`flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>{item.icon}</span>
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
       
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <Link
-          href="/api/auth/signout"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+      <div className="border-t border-gray-200 p-2">
+        <button
+          onClick={handleSignOut}
+          title={isCollapsed ? 'Sign out' : undefined}
+          className={`flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 ${isCollapsed ? 'justify-center' : ''}`}
         >
-          <span className="text-gray-400">
+          <span className="text-gray-400 flex-shrink-0">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
             </svg>
           </span>
-          Sign Out
-        </Link>
+          {!isCollapsed && <span>Sign Out</span>}
+        </button>
       </div>
     </nav>
   )

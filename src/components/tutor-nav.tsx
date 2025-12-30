@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -103,6 +104,19 @@ export function TutorNav() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Initialize from localStorage (only runs on client)
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tutor-nav-collapsed') === 'true'
+    }
+    return false
+  })
+
+  const toggleCollapsed = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem('tutor-nav-collapsed', String(newState))
+  }
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -111,29 +125,41 @@ export function TutorNav() {
   }
 
   return (
-    <nav className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white">
-      <div className="flex h-16 items-center border-b border-gray-200 px-6">
-        <Link href="/tutor/dashboard" className="text-xl font-bold text-gray-900">
-          TutorAssist
-        </Link>
+    <nav className={`flex h-screen flex-shrink-0 flex-col border-r border-gray-200 bg-white transition-all duration-200 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      <div className="flex h-16 items-center justify-between border-b border-gray-200 px-3">
+        {!isCollapsed && (
+          <Link href="/tutor/dashboard" className="text-xl font-bold text-gray-900 truncate">
+            TutorAssist
+          </Link>
+        )}
+        <button
+          onClick={toggleCollapsed}
+          className={`p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
+          </svg>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1 px-3">
+        <ul className="space-y-1 px-2">
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
             return (
               <li key={item.name}>
                 <Link
                   href={item.href}
+                  title={isCollapsed ? item.name : undefined}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  } ${isCollapsed ? 'justify-center' : ''}`}
                 >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  {!isCollapsed && <span className="truncate">{item.name}</span>}
                 </Link>
               </li>
             )
@@ -141,15 +167,16 @@ export function TutorNav() {
         </ul>
       </div>
 
-      <div className="border-t border-gray-200 p-4">
+      <div className="border-t border-gray-200 p-2">
         <button
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+          title={isCollapsed ? 'Sign out' : undefined}
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
           </svg>
-          Sign out
+          {!isCollapsed && <span>Sign out</span>}
         </button>
       </div>
     </nav>

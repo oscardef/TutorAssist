@@ -198,6 +198,9 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
         prompt_latex: q.questionLatex,
         answer_type: answerType,
         correct_answer_json: normalizeAnswer(q.correctAnswer, q.answerType),
+        // Inherit program/grade level from topic
+        primary_program_id: topic.program_id || null,
+        primary_grade_level_id: topic.grade_level_id || null,
         difficulty: Math.min(5, Math.max(1, q.difficulty || 3)),
         hints_json: q.hints || [],
         solution_steps_json: q.solutionSteps || [],
@@ -214,6 +217,29 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
     
     if (insertError) {
       throw new Error(`Failed to insert questions: ${insertError.message}`)
+    }
+    
+    // Also add to junction tables if topic has program/grade level
+    if (insertedQuestions && insertedQuestions.length > 0) {
+      const questionIds = insertedQuestions.map(q => q.id)
+      
+      // Add to question_programs junction table
+      if (topic.program_id) {
+        const programEntries = questionIds.map(id => ({
+          question_id: id,
+          program_id: topic.program_id,
+        }))
+        await supabase.from('question_programs').insert(programEntries)
+      }
+      
+      // Add to question_grade_levels junction table
+      if (topic.grade_level_id) {
+        const gradeEntries = questionIds.map(id => ({
+          question_id: id,
+          grade_level_id: topic.grade_level_id,
+        }))
+        await supabase.from('question_grade_levels').insert(gradeEntries)
+      }
     }
     
     await completeJob(job.id, {

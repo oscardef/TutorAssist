@@ -16,12 +16,17 @@ export default async function StudentDashboard() {
     .eq('workspace_id', context?.workspaceId)
     .single()
   
-  // Get user metadata for name
+  // Get user metadata for name - check multiple common metadata fields
   const { data: { user: authUser } } = await supabase.auth.getUser()
-  const firstName = authUser?.user_metadata?.full_name?.split(' ')[0] 
-    || profile?.name?.split(' ')[0]
-    || authUser?.email?.split('@')[0]
-    || 'Student'
+  const metadata = authUser?.user_metadata || {}
+  const firstName = 
+    profile?.name?.split(' ')[0] ||                  // Student profile name (first word)
+    metadata.first_name ||                           // Direct first_name field
+    metadata.name?.split(' ')[0] ||                  // name field (first word)
+    metadata.full_name?.split(' ')[0] ||             // full_name field (first word)
+    metadata.given_name ||                           // OAuth common field
+    authUser?.email?.split('@')[0] ||                // Fall back to email prefix
+    'Student'
   
   // Get recent attempts with questions
   const { data: recentAttempts } = await supabase

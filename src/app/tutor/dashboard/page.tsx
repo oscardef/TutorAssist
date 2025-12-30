@@ -14,11 +14,16 @@ export default async function TutorDashboard() {
   const context = await requireTutor()
   const supabase = await createServerClient()
 
-  // Get user metadata for name
+  // Get user metadata for name - check multiple common metadata fields
   const { data: { user: authUser } } = await supabase.auth.getUser()
-  const firstName = authUser?.user_metadata?.full_name?.split(' ')[0]
-    || authUser?.email?.split('@')[0]
-    || 'Tutor'
+  const metadata = authUser?.user_metadata || {}
+  const firstName = 
+    metadata.first_name ||                           // Direct first_name field
+    metadata.name?.split(' ')[0] ||                  // name field (first word)
+    metadata.full_name?.split(' ')[0] ||             // full_name field (first word)
+    metadata.given_name ||                           // OAuth common field
+    authUser?.email?.split('@')[0] ||                // Fall back to email prefix
+    'Tutor'
 
   // Get upcoming sessions (today and tomorrow only)
   const { data: sessions } = await supabase

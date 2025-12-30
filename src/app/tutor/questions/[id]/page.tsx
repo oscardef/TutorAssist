@@ -1,12 +1,30 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface Topic {
   id: string
   name: string
+  program_id?: string | null
+  grade_level_id?: string | null
+}
+
+interface StudyProgram {
+  id: string
+  code: string
+  name: string
+  color: string | null
+  grade_levels?: GradeLevel[]
+}
+
+interface GradeLevel {
+  id: string
+  program_id: string
+  code: string
+  name: string
+  year_number?: number | null
 }
 
 interface Question {
@@ -14,7 +32,7 @@ interface Question {
   topic_id: string | null
   prompt_text: string
   prompt_latex: string | null
-  answer_type: 'exact' | 'numeric' | 'multiple_choice'
+  answer_type: 'exact' | 'numeric' | 'multiple_choice' | 'short_answer' | 'long_answer' | 'expression' | 'true_false' | 'fill_blank' | 'matching'
   correct_answer_json: {
     value: string | number | string[]
     tolerance?: number
@@ -22,11 +40,15 @@ interface Question {
   }
   difficulty: number
   grade_level: number | null
-  hints: string[]
-  solution_steps: string[]
-  tags: string[]
+  primary_program_id: string | null
+  primary_grade_level_id: string | null
+  hints_json: string[]
+  solution_steps_json: string[]
+  tags_json: string[]
   status: string
   topics?: Topic
+  primary_program?: { id: string; code: string; name: string; color: string | null } | null
+  primary_grade_level?: { id: string; code: string; name: string; year_number?: number | null } | null
 }
 
 export default function EditQuestionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +56,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   const router = useRouter()
   const [question, setQuestion] = useState<Question | null>(null)
   const [topics, setTopics] = useState<Topic[]>([])
+  const [programs, setPrograms] = useState<StudyProgram[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,24 +72,31 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   const [correctOption, setCorrectOption] = useState(0)
   const [difficulty, setDifficulty] = useState(3)
   const [gradeLevel, setGradeLevel] = useState<number | null>(null)
+  const [primaryProgramId, setPrimaryProgramId] = useState<string>('')
+  const [primaryGradeLevelId, setPrimaryGradeLevelId] = useState<string>('')
   const [hints, setHints] = useState<string[]>([''])
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
   const [tags, setTags] = useState('')
   const [status, setStatus] = useState('active')
   
-  useEffect(() => {
-    fetchData()
-  }, [id])
+  // Get available grade levels for the selected program
+  const availableGradeLevels = primaryProgramId
+    ? programs.find(p => p.id === primaryProgramId)?.grade_levels || []
+    : []
   
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     try {
-      const [questionsRes, topicsRes] = await Promise.all([
+      const [questionsRes, topicsRes, programsRes] = await Promise.all([
         fetch(`/api/questions?id=${id}`),
-        fetch('/api/topics')
+        fetch('/api/topics'),
+        fetch('/api/programs')
       ])
       
       const questionsData = await questionsRes.json()
       const topicsData = await topicsRes.json()
+      const programsData = await programsRes.json()
+      
+      setPrograms(programsData.programs || [])
       
       if (questionsData.question) {
         const q = questionsData.question
@@ -77,9 +107,12 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         setAnswerType(q.answer_type || 'exact')
         setDifficulty(q.difficulty || 3)
         setGradeLevel(q.grade_level || null)
-        setHints(q.hints?.length > 0 ? q.hints : [''])
-        setSolutionSteps(q.solution_steps?.length > 0 ? q.solution_steps : [''])
-        setTags(q.tags?.join(', ') || '')
+        setPrimaryProgramId(q.primary_program_id || '')
+        setPrimaryGradeLevelId(q.primary_grade_level_id || '')
+        // Use correct field names from DB
+        setHints(q.hints_json?.length > 0 ? q.hints_json : [''])
+        setSolutionSteps(q.solution_steps_json?.length > 0 ? q.solution_steps_json : [''])
+        setTags(q.tags_json?.join(', ') || '')
         setStatus(q.status || 'active')
         
         // Parse answer based on type
@@ -101,7 +134,11 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
+  
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
   
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -136,6 +173,8 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           correct_answer_json: correctAnswerJson,
           difficulty,
           grade_level: gradeLevel,
+          primary_program_id: primaryProgramId || null,
+          primary_grade_level_id: primaryGradeLevelId || null,
           hints: hints.filter(h => h.trim()),
           solution_steps: solutionSteps.filter(s => s.trim()),
           tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -398,6 +437,48 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
                 <option value="15">Postgraduate</option>
               </optgroup>
             </select>
+          </div>
+          
+          {/* Study Program & Grade Level */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Study Program
+              </label>
+              <select
+                value={primaryProgramId}
+                onChange={(e) => {
+                  setPrimaryProgramId(e.target.value)
+                  setPrimaryGradeLevelId('') // Reset grade level when program changes
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Not specified</option>
+                {programs.map(program => (
+                  <option key={program.id} value={program.id}>
+                    {program.name} ({program.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Program Grade Level
+              </label>
+              <select
+                value={primaryGradeLevelId}
+                onChange={(e) => setPrimaryGradeLevelId(e.target.value)}
+                disabled={!primaryProgramId}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Not specified</option>
+                {availableGradeLevels.map(grade => (
+                  <option key={grade.id} value={grade.id}>
+                    {grade.name} ({grade.code})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           
           {/* Status */}

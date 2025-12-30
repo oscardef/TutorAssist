@@ -50,7 +50,7 @@ CREATE OR REPLACE FUNCTION find_similar_questions(
     match_count INT DEFAULT 10
 )
 RETURNS TABLE (
-    question_id UUID,
+    similar_question_id UUID,
     similarity FLOAT
 )
 LANGUAGE plpgsql
@@ -59,9 +59,9 @@ DECLARE
     target_embedding vector(1536);
 BEGIN
     -- Get the embedding for the target question
-    SELECT embedding INTO target_embedding
-    FROM question_embeddings
-    WHERE question_id = target_question_id;
+    SELECT qe.embedding INTO target_embedding
+    FROM question_embeddings qe
+    WHERE qe.question_id = target_question_id;
     
     IF target_embedding IS NULL THEN
         RETURN;
@@ -70,8 +70,8 @@ BEGIN
     -- Find similar questions using cosine similarity
     RETURN QUERY
     SELECT 
-        qe.question_id,
-        1 - (qe.embedding <=> target_embedding) AS similarity
+        qe.question_id AS similar_question_id,
+        (1 - (qe.embedding <=> target_embedding))::FLOAT AS similarity
     FROM question_embeddings qe
     WHERE qe.workspace_id = target_workspace_id
       AND qe.question_id != target_question_id
