@@ -31,13 +31,19 @@ export async function getUserContext(): Promise<UserContext | null> {
     return null
   }
   
-  // Get workspace membership
-  const { data: membership } = await supabase
+  // Get workspace membership - order by created_at to get the first workspace consistently
+  const { data: membership, error: membershipError } = await supabase
     .from('workspace_members')
     .select('workspace_id, role')
     .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
     .limit(1)
-    .single()
+    .maybeSingle()
+  
+  if (membershipError) {
+    console.error('Error fetching workspace membership:', membershipError)
+    return null
+  }
   
   if (!membership) {
     return null
@@ -50,7 +56,7 @@ export async function getUserContext(): Promise<UserContext | null> {
     .eq('user_id', user.id)
     .eq('role', 'platform_owner')
     .limit(1)
-    .single()
+    .maybeSingle()
   
   return {
     userId: user.id,
