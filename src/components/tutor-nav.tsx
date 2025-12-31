@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -104,13 +104,16 @@ export function TutorNav() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    // Initialize from localStorage (only runs on client)
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('tutor-nav-collapsed') === 'true'
-    }
-    return false
-  })
+  // Start with false to match server render, then sync from localStorage after hydration
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  // Sync with localStorage after hydration to avoid mismatch
+  useEffect(() => {
+    const stored = localStorage.getItem('tutor-nav-collapsed') === 'true'
+    setIsCollapsed(stored)
+    setIsHydrated(true)
+  }, [])
 
   const toggleCollapsed = () => {
     const newState = !isCollapsed

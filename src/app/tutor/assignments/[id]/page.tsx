@@ -11,7 +11,7 @@ interface Question {
   prompt_latex?: string
   difficulty: number
   hints_json?: string[]
-  solution_steps_json?: string[]
+  solution_steps_json?: Array<string | { step: string; latex?: string; result?: string }>
   correct_answer_json?: Record<string, unknown>
   topics?: { name: string }
 }
@@ -466,12 +466,31 @@ export default function TutorAssignmentDetailPage() {
                         <div className="bg-blue-50 p-3 rounded-lg">
                           <div className="text-xs font-medium text-blue-800 mb-2">Solution Steps</div>
                           <ol className="space-y-2">
-                            {solutionSteps.map((step, stepIdx) => (
-                              <li key={stepIdx} className="text-sm text-blue-900 flex gap-2">
-                                <span className="font-medium text-blue-700">{stepIdx + 1}.</span>
-                                <LatexRenderer content={step} />
-                              </li>
-                            ))}
+                            {solutionSteps.map((step, stepIdx) => {
+                              // Handle both string and object formats
+                              const stepText = typeof step === 'string' 
+                                ? step 
+                                : (step as { step?: string; latex?: string; result?: string })?.step || '';
+                              const stepLatex = typeof step === 'object' 
+                                ? (step as { latex?: string })?.latex 
+                                : undefined;
+                              const stepResult = typeof step === 'object' 
+                                ? (step as { result?: string })?.result 
+                                : undefined;
+                              
+                              return (
+                                <li key={stepIdx} className="text-sm text-blue-900">
+                                  <span className="font-medium text-blue-700">{stepIdx + 1}.</span>{' '}
+                                  <LatexRenderer content={stepText} />
+                                  {stepLatex && (
+                                    <span className="ml-2"><LatexRenderer content={stepLatex} /></span>
+                                  )}
+                                  {stepResult && (
+                                    <span className="ml-2 text-blue-600">→ <LatexRenderer content={stepResult} /></span>
+                                  )}
+                                </li>
+                              );
+                            })}
                           </ol>
                         </div>
                       )}

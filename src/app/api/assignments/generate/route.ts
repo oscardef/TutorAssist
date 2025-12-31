@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
 import { 
   ASSIGNMENT_GENERATION_SYSTEM_PROMPT,
+  ANSWER_FORMAT_SPEC,
   stripLatexToPlainText,
   normalizeAnswer,
 } from '@/lib/prompts/question-generation'
@@ -30,10 +31,16 @@ interface GenerateAssignmentRequest {
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed' | 'adaptive'
   dueDate?: string        // New: ISO date string
   instructions?: string   // New: instructions for students
+  customPrompt?: string   // Custom AI prompt for generation
   options?: {             // New: additional options
     timeLimit?: number | null
     shuffleQuestions?: boolean
     showResultsImmediately?: boolean
+    splitIntoSubAssignments?: boolean
+    questionsPerSubAssignment?: number
+    useExistingQuestions?: boolean
+    generateNewQuestions?: boolean
+    focusOnWeakAreas?: boolean
   }
   includeMarkscheme?: boolean
   includeSolutionSteps?: boolean
@@ -164,6 +171,234 @@ async function getStudentHistory(
     averageDifficulty: totalDifficulty / attempts.length,
     totalAttempts: attempts.length,
     overallAccuracy: totalCorrect / attempts.length,
+  }
+}
+
+// Generate new questions for an assignment and save them to the Question Bank
+async function generateQuestionsForAssignment(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  workspaceId: string,
+  userId: string,
+  topics: { id: string; name: string; description?: string | null }[],
+  count: number,
+  difficulty: 'easy' | 'medium' | 'hard' | 'mixed' | 'adaptive',
+  customPrompt?: string,
+  focusOnWeakAreas?: boolean
+): Promise<{ id: string }[]> {
+  if (topics.length === 0) {
+    console.log('No topics provided for question generation')
+    throw new Error('No topics selected for question generation')
+  }
+  
+  if (count <= 0) {
+    return []
+  }
+  
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('OPENAI_API_KEY is not configured')
+    throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment.')
+  }
+
+  // Build the generation prompt
+  const topicContext = topics.map(t => `- ${t.name}${t.description ? `: ${t.description}` : ''}`).join('\n')
+  
+  const difficultyGuidance = {
+    easy: 'Focus on basic concepts and straightforward applications. Difficulty level 1-2.',
+    medium: 'Include moderate complexity with some multi-step problems. Difficulty level 2-4.',
+    hard: 'Create challenging problems requiring deep understanding and multiple concepts. Difficulty level 4-5.',
+    mixed: 'Create a balanced mix of easy (30%), medium (40%), and hard (30%) questions.',
+    adaptive: 'Create a variety of difficulty levels to assess student understanding.',
+  }[difficulty]
+
+  const systemPrompt = `You are an expert math tutor creating practice questions. Generate exactly ${count} math questions covering the following topics:
+
+${topicContext}
+
+Difficulty guidance: ${difficultyGuidance}
+${customPrompt ? `\nAdditional instructions: ${customPrompt}` : ''}
+${focusOnWeakAreas ? '\nFocus on challenging areas that students commonly struggle with.' : ''}
+
+## CRITICAL: LaTeX Formatting Rules
+Use \\( ... \\) for inline math and \\[ ... \\] for display math. NEVER use bare $ delimiters.
+
+## Question Types
+Vary the question types! Use a mix of:
+- "short_answer" - Single value/expression (e.g., "7", "x+2")
+- "numeric" - Numerical answer with tolerance (for calculations)
+- "multiple_choice" - 4 options with one correct
+- "expression" - Algebraic expressions (e.g., "2x+3", "x^2-4")
+- "true_false" - True/False statements
+
+${ANSWER_FORMAT_SPEC}
+
+## IMPORTANT: Answer Consistency
+For answers that could be written multiple ways, ALWAYS include alternates:
+- Roots/zeros: value "(-2, 2)" with alternates ["-2, 2", "x = -2, x = 2", "x = ±2", "-2 and 2"]
+- Fractions: value "1/2" with alternates ["0.5", "1/2"]
+- Expressions: value "2x + 3" with alternates ["3 + 2x", "2*x + 3"]
+
+For each question, provide:
+1. questionText - The question with LaTeX (use \\( inline \\) or \\[ display \\])
+2. answerType - One of the types above
+3. correctAnswer - Object with "value", "latex", and "alternates" array
+4. difficulty - Number from 1-5
+5. topicName - Which topic this relates to
+6. hints - Array of 2-3 helpful hints with LaTeX where appropriate
+7. solutionSteps - Array of objects: {"step": "description", "latex": "\\\\(math work\\\\)", "result": "intermediate result"}
+
+Respond with a JSON object: { "questions": [...] }`
+
+  try {
+    console.log(`Calling OpenAI to generate ${count} questions for topics: ${topics.map(t => t.name).join(', ')}`)
+    
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Generate ${count} questions now.` },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 8000, // Increased to avoid truncation
+      temperature: 0.8,
+    })
+
+    const content = response.choices[0].message.content
+    console.log('OpenAI response received, parsing...')
+    
+    // Try to parse the JSON, with recovery for truncated responses
+    let result: { questions?: unknown[] }
+    try {
+      result = JSON.parse(content || '{"questions": []}')
+    } catch (parseError) {
+      // Try to salvage truncated JSON by finding the last complete question
+      console.warn('JSON parse failed, attempting to recover truncated response...')
+      const truncatedContent = content || ''
+      
+      // Find the last complete object in the questions array
+      const questionsMatch = truncatedContent.match(/"questions"\s*:\s*\[/)
+      if (questionsMatch) {
+        // Find all complete question objects (ending with })
+        const questionPattern = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g
+        const matches = truncatedContent.match(questionPattern) || []
+        
+        if (matches.length > 0) {
+          // Reconstruct valid JSON with complete questions only
+          const validQuestions = matches.slice(0, -1) // Skip last potentially incomplete one
+          if (validQuestions.length > 0) {
+            try {
+              const reconstructed = `{"questions": [${validQuestions.join(',')}]}`
+              result = JSON.parse(reconstructed)
+              console.log(`Recovered ${validQuestions.length} questions from truncated response`)
+            } catch {
+              throw new Error('Failed to parse AI response - JSON was truncated')
+            }
+          } else {
+            throw new Error('Failed to parse AI response - JSON was truncated')
+          }
+        } else {
+          throw new Error('Failed to parse AI response - JSON was truncated')
+        }
+      } else {
+        throw new Error('Failed to parse AI response - invalid JSON structure')
+      }
+    }
+    
+    const generatedQuestions = (result.questions || []) as Array<{
+      questionText?: string
+      answerType?: string
+      correctAnswer?: unknown
+      difficulty?: number
+      topicName?: string
+      hints?: string[]
+      solutionSteps?: unknown[]
+    }>
+
+    if (generatedQuestions.length === 0) {
+      console.log('No questions in OpenAI response')
+      throw new Error('AI returned no questions')
+    }
+    
+    console.log(`Parsed ${generatedQuestions.length} questions from AI response`)
+
+    // Map topic names to IDs
+    const topicNameToId = new Map(topics.map(t => [t.name.toLowerCase(), t.id]))
+
+    // Save questions to the database
+    const questionsToInsert = generatedQuestions.map((q) => {
+      // Find matching topic
+      const topicId = topicNameToId.get(q.topicName?.toLowerCase() || '') || topics[0]?.id
+      
+      // Normalize answer type - map to supported types
+      let answerType = 'short_answer'
+      const inputType = q.answerType?.toLowerCase() || ''
+      if (inputType === 'multiple_choice') answerType = 'multiple_choice'
+      else if (inputType === 'numeric') answerType = 'short_answer'
+      else if (inputType === 'exact' || inputType === 'short_answer') answerType = 'short_answer'
+      else if (inputType === 'expression') answerType = 'short_answer'
+      else if (inputType === 'true_false') answerType = 'short_answer'
+
+      // Normalize correct answer - preserve alternates for answer checking
+      let correctAnswerJson: unknown
+      const answer = q.correctAnswer as Record<string, unknown> | string | undefined
+      
+      if (q.answerType === 'multiple_choice' && typeof answer === 'object' && answer !== null) {
+        // Multiple choice - keep as-is with choices array
+        correctAnswerJson = answer
+      } else if (typeof answer === 'object' && answer !== null) {
+        // Object with value, latex, alternates - preserve all fields
+        correctAnswerJson = {
+          value: String((answer as Record<string, unknown>).value || ''),
+          latex: (answer as Record<string, unknown>).latex || undefined,
+          alternates: Array.isArray((answer as Record<string, unknown>).alternates) 
+            ? (answer as Record<string, unknown>).alternates 
+            : undefined,
+          tolerance: (answer as Record<string, unknown>).tolerance || undefined,
+        }
+      } else {
+        // Simple string/number answer
+        correctAnswerJson = { value: String(answer || '') }
+      }
+
+      return {
+        workspace_id: workspaceId,
+        topic_id: topicId,
+        origin: 'ai_generated' as const,
+        status: 'active' as const,
+        prompt_text: stripLatexToPlainText(q.questionText || ''),
+        prompt_latex: q.questionText || '',
+        answer_type: answerType,
+        correct_answer_json: correctAnswerJson,
+        difficulty: Math.min(5, Math.max(1, q.difficulty || 3)),
+        hints_json: q.hints || [],
+        solution_steps_json: q.solutionSteps || [],
+        created_by: userId,
+        generation_metadata: {
+          model: 'gpt-4o-mini',
+          generated_at: new Date().toISOString(),
+          source: 'assignment_generation',
+          custom_prompt: customPrompt || null,
+        },
+      }
+    })
+
+    console.log(`Inserting ${questionsToInsert.length} questions into database`)
+    
+    // Insert all questions
+    const { data: insertedQuestions, error: insertError } = await supabase
+      .from('questions')
+      .insert(questionsToInsert)
+      .select('id')
+
+    if (insertError) {
+      console.error('Failed to insert generated questions:', insertError)
+      throw new Error(`Database insert failed: ${insertError.message}`)
+    }
+
+    console.log(`Successfully inserted ${insertedQuestions?.length || 0} questions`)
+    return insertedQuestions || []
+  } catch (error) {
+    console.error('Error generating questions for assignment:', error)
+    throw error // Re-throw so caller can handle it
   }
 }
 
@@ -314,11 +549,28 @@ export async function POST(request: Request) {
       difficulty = 'adaptive',
       dueDate,
       instructions,
+      customPrompt,
       options = {},
       includeMarkscheme = true,
       includeSolutionSteps = true,
       focusOnWeakAreas = false,
     } = body
+
+    // Extract new options with defaults
+    const useExistingQuestions = options.useExistingQuestions ?? true
+    const generateNewQuestions = options.generateNewQuestions ?? true
+    const splitIntoSubAssignments = options.splitIntoSubAssignments ?? false
+    const questionsPerSubAssignment = options.questionsPerSubAssignment ?? 5
+    
+    console.log('Assignment generation request:', {
+      topicIds,
+      studentIds,
+      questionCount,
+      difficulty,
+      useExistingQuestions,
+      generateNewQuestions,
+      customPrompt: customPrompt?.slice(0, 100),
+    })
 
     const supabase = await createServerClient()
     
@@ -327,37 +579,116 @@ export async function POST(request: Request) {
     
     // NEW FORMAT: Create assignments from topic questions for multiple students
     if (targetStudentIds.length > 0 && topicIds?.length) {
-      // Get available questions from the selected topics
-      let questionsQuery = supabase
-        .from('questions')
-        .select(`
-          id,
-          difficulty,
-          topic_id
-        `)
-        .eq('workspace_id', context.workspaceId)
-        .eq('status', 'active')
-        .in('topic_id', topicIds)
+      // Get topics info for AI generation context
+      const { data: topicsData } = await supabase
+        .from('topics')
+        .select('id, name, description')
+        .in('id', topicIds)
       
-      // Apply difficulty filter
-      if (difficulty === 'easy') {
-        questionsQuery = questionsQuery.lte('difficulty', 2)
-      } else if (difficulty === 'medium') {
-        questionsQuery = questionsQuery.gte('difficulty', 2).lte('difficulty', 4)
-      } else if (difficulty === 'hard') {
-        questionsQuery = questionsQuery.gte('difficulty', 4)
+      // Get available existing questions from the selected topics (if using existing)
+      let existingQuestions: { id: string; difficulty: number; topic_id: string }[] = []
+      
+      if (useExistingQuestions) {
+        let questionsQuery = supabase
+          .from('questions')
+          .select(`
+            id,
+            difficulty,
+            topic_id
+          `)
+          .eq('workspace_id', context.workspaceId)
+          .eq('status', 'active')
+          .in('topic_id', topicIds)
+        
+        // Apply difficulty filter
+        if (difficulty === 'easy') {
+          questionsQuery = questionsQuery.lte('difficulty', 2)
+        } else if (difficulty === 'medium') {
+          questionsQuery = questionsQuery.gte('difficulty', 2).lte('difficulty', 4)
+        } else if (difficulty === 'hard') {
+          questionsQuery = questionsQuery.gte('difficulty', 4)
+        }
+        // For 'mixed' and 'adaptive', don't filter - include all difficulties
+        
+        const { data: questions, error: questionsError } = await questionsQuery
+        
+        if (questionsError) {
+          console.error('Failed to fetch existing questions:', questionsError)
+        } else {
+          existingQuestions = questions || []
+        }
       }
-      // For 'mixed' and 'adaptive', don't filter - include all difficulties
       
-      const { data: questions, error: questionsError } = await questionsQuery
+      // Check if we need to generate new questions
+      const needsMoreQuestions = existingQuestions.length < questionCount
+      let generatedQuestionIds: string[] = []
       
-      if (questionsError) {
-        return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
+      console.log('Question sourcing decision:', {
+        existingQuestionsCount: existingQuestions.length,
+        questionCount,
+        needsMoreQuestions,
+        useExistingQuestions,
+        generateNewQuestions,
+        willGenerate: generateNewQuestions && needsMoreQuestions,
+      })
+      
+      if (generateNewQuestions && needsMoreQuestions) {
+        const totalToGenerate = questionCount - existingQuestions.length
+        const BATCH_SIZE = 20 // Generate in smaller batches to avoid token limit truncation
+        
+        // Generate new questions in batches and save to Question Bank
+        try {
+          console.log(`Need to generate ${totalToGenerate} questions for topics:`, topicsData?.map(t => t.name))
+          
+          // Generate in batches to avoid timeout and improve reliability
+          let remainingToGenerate = totalToGenerate
+          while (remainingToGenerate > 0 && generatedQuestionIds.length < totalToGenerate) {
+            const batchSize = Math.min(remainingToGenerate, BATCH_SIZE)
+            console.log(`Generating batch of ${batchSize} questions (${generatedQuestionIds.length}/${totalToGenerate} done)`)
+            
+            const generatedQuestions = await generateQuestionsForAssignment(
+              supabase,
+              context.workspaceId,
+              user.id,
+              topicsData || [],
+              batchSize,
+              difficulty,
+              customPrompt || prompt,
+              options.focusOnWeakAreas || focusOnWeakAreas
+            )
+            
+            generatedQuestionIds.push(...generatedQuestions.map(q => q.id))
+            remainingToGenerate -= generatedQuestions.length
+            
+            // If we got fewer than requested, AI might be struggling - break to avoid infinite loop
+            if (generatedQuestions.length < batchSize * 0.5) {
+              console.log(`Batch returned fewer questions than expected (${generatedQuestions.length}/${batchSize}), stopping generation`)
+              break
+            }
+          }
+          
+          console.log(`Successfully generated ${generatedQuestionIds.length} questions total`)
+        } catch (genError) {
+          console.error('Failed to generate questions:', genError)
+          // If we have no existing questions and generation failed, return error
+          if (existingQuestions.length === 0 && generatedQuestionIds.length === 0) {
+            return NextResponse.json({ 
+              error: `Failed to generate questions: ${genError instanceof Error ? genError.message : 'Unknown error'}` 
+            }, { status: 500 })
+          }
+          // Otherwise continue with what we have
+        }
       }
       
-      if (!questions || questions.length === 0) {
+      // Combine existing and generated questions
+      const allQuestionIds = [
+        ...existingQuestions.map(q => q.id),
+        ...generatedQuestionIds,
+      ]
+      
+      if (allQuestionIds.length === 0) {
         return NextResponse.json({ 
-          error: 'No questions found for the selected topics. Generate questions first.' 
+          error: 'No questions available. Enable "Generate new questions" or create questions for the selected topics first.' 
         }, { status: 400 })
       }
       
@@ -373,101 +704,154 @@ export async function POST(request: Request) {
       }
       
       // Create assignments for each student
-      const createdAssignments: { studentId: string; studentName: string; assignmentId: string }[] = []
+      const createdAssignments: { studentId: string; studentName: string; assignmentId: string; subAssignments?: string[] }[] = []
       
       for (const student of students) {
-        // Select questions based on difficulty strategy
-        let selectedQuestions = [...questions]
+        // Select and shuffle questions for this student
+        let selectedQuestionIds = [...allQuestionIds]
         
-        // For 'mixed' difficulty, ensure variety across difficulty levels
-        if (difficulty === 'mixed' && questions.length >= questionCount) {
-          const easy = questions.filter(q => q.difficulty <= 2)
-          const medium = questions.filter(q => q.difficulty > 2 && q.difficulty <= 4)
-          const hard = questions.filter(q => q.difficulty > 4)
+        // Shuffle if enabled
+        if (options.shuffleQuestions !== false) {
+          selectedQuestionIds = selectedQuestionIds.sort(() => Math.random() - 0.5)
+        }
+        
+        // Limit to requested count
+        selectedQuestionIds = selectedQuestionIds.slice(0, questionCount)
+        
+        // Handle sub-assignment splitting
+        if (splitIntoSubAssignments && selectedQuestionIds.length > questionsPerSubAssignment) {
+          const subAssignmentIds: string[] = []
+          const chunks: string[][] = []
           
-          // Aim for balanced distribution (roughly 1/3 each)
-          const easyCount = Math.floor(questionCount / 3)
-          const mediumCount = Math.floor(questionCount / 3)
-          const hardCount = questionCount - easyCount - mediumCount
-          
-          selectedQuestions = [
-            ...easy.sort(() => Math.random() - 0.5).slice(0, Math.min(easyCount, easy.length)),
-            ...medium.sort(() => Math.random() - 0.5).slice(0, Math.min(mediumCount, medium.length)),
-            ...hard.sort(() => Math.random() - 0.5).slice(0, Math.min(hardCount, hard.length)),
-          ]
-          
-          // If we don't have enough in each category, fill from all
-          if (selectedQuestions.length < questionCount) {
-            const remaining = questions
-              .filter(q => !selectedQuestions.find(sq => sq.id === q.id))
-              .sort(() => Math.random() - 0.5)
-              .slice(0, questionCount - selectedQuestions.length)
-            selectedQuestions.push(...remaining)
+          for (let i = 0; i < selectedQuestionIds.length; i += questionsPerSubAssignment) {
+            chunks.push(selectedQuestionIds.slice(i, i + questionsPerSubAssignment))
           }
           
-          // Shuffle the final selection
-          if (options.shuffleQuestions !== false) {
-            selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5)
+          for (let idx = 0; idx < chunks.length; idx++) {
+            const chunk = chunks[idx]
+            const subTitle = `${title || 'Practice Set'} - Part ${idx + 1}`
+            
+            const { data: assignment, error: assignmentError } = await supabase
+              .from('assignments')
+              .insert({
+                workspace_id: context.workspaceId,
+                created_by: user.id,
+                student_profile_id: student.id,
+                assigned_student_user_id: student.user_id,
+                title: subTitle,
+                description: instructions || null,
+                due_at: dueDate || null,
+                settings_json: {
+                  timeLimit: options.timeLimit || null,
+                  shuffleQuestions: options.shuffleQuestions ?? true,
+                  showResultsImmediately: options.showResultsImmediately ?? false,
+                  generatedFrom: 'ai-studio',
+                  topicIds,
+                  partNumber: idx + 1,
+                  totalParts: chunks.length,
+                  customPrompt: customPrompt || undefined,
+                },
+                status: 'active',
+              })
+              .select('id')
+              .single()
+            
+            if (assignmentError || !assignment) {
+              console.error('Failed to create sub-assignment:', assignmentError)
+              continue
+            }
+            
+            const assignmentItems = chunk.map((qId, qIdx) => ({
+              assignment_id: assignment.id,
+              question_id: qId,
+              order_index: qIdx,
+              points: 1,
+            }))
+            
+            const { error: itemsError } = await supabase.from('assignment_items').insert(assignmentItems)
+            
+            if (itemsError) {
+              console.error('Failed to create assignment items:', itemsError)
+              await supabase.from('assignments').delete().eq('id', assignment.id)
+              continue
+            }
+            
+            subAssignmentIds.push(assignment.id)
+          }
+          
+          if (subAssignmentIds.length > 0) {
+            createdAssignments.push({
+              studentId: student.id,
+              studentName: student.name,
+              assignmentId: subAssignmentIds[0],
+              subAssignments: subAssignmentIds,
+            })
           }
         } else {
-          // Standard shuffle and slice
-          if (options.shuffleQuestions !== false) {
-            selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5)
+          // Create single assignment
+          const { data: assignment, error: assignmentError } = await supabase
+            .from('assignments')
+            .insert({
+              workspace_id: context.workspaceId,
+              created_by: user.id,
+              student_profile_id: student.id,
+              assigned_student_user_id: student.user_id,
+              title: title || 'AI-Generated Assignment',
+              description: instructions || null,
+              due_at: dueDate || null,
+              settings_json: {
+                timeLimit: options.timeLimit || null,
+                shuffleQuestions: options.shuffleQuestions ?? true,
+                showResultsImmediately: options.showResultsImmediately ?? false,
+                generatedFrom: 'ai-studio',
+                topicIds,
+                customPrompt: customPrompt || undefined,
+              },
+              status: 'active',
+            })
+            .select('id')
+            .single()
+          
+          if (assignmentError || !assignment) {
+            console.error('Failed to create assignment for student:', student.id, assignmentError)
+            continue
           }
-          selectedQuestions = selectedQuestions.slice(0, questionCount)
-        }
-        
-        // Create the assignment
-        const { data: assignment, error: assignmentError } = await supabase
-          .from('assignments')
-          .insert({
-            workspace_id: context.workspaceId,
-            created_by: user.id,
-            student_profile_id: student.id,
-            assigned_student_user_id: student.user_id,
-            title: title || 'AI-Generated Assignment',
-            description: instructions || null,
-            due_at: dueDate || null,
-            settings_json: {
-              timeLimit: options.timeLimit || null,
-              shuffleQuestions: options.shuffleQuestions ?? true,
-              showResultsImmediately: options.showResultsImmediately ?? false,
-              generatedFrom: 'ai-studio',
-              topicIds,
-            },
-            status: 'active',
+          
+          // Create assignment items (link questions to assignment)
+          const assignmentItems = selectedQuestionIds.map((qId, idx) => ({
+            assignment_id: assignment.id,
+            question_id: qId,
+            order_index: idx,
+            points: 1,
+          }))
+          
+          const { error: itemsError } = await supabase.from('assignment_items').insert(assignmentItems)
+          
+          if (itemsError) {
+            console.error('Failed to create assignment items:', itemsError)
+            await supabase.from('assignments').delete().eq('id', assignment.id)
+            continue
+          }
+          
+          createdAssignments.push({
+            studentId: student.id,
+            studentName: student.name,
+            assignmentId: assignment.id,
           })
-          .select('id')
-          .single()
-        
-        if (assignmentError || !assignment) {
-          console.error('Failed to create assignment for student:', student.id, assignmentError)
-          continue
         }
-        
-        // Create assignment items (link questions to assignment)
-        const assignmentItems = selectedQuestions.map((q, idx) => ({
-          workspace_id: context.workspaceId,
-          assignment_id: assignment.id,
-          question_id: q.id,
-          order_index: idx,
-          points: 1,
-        }))
-        
-        await supabase.from('assignment_items').insert(assignmentItems)
-        
-        createdAssignments.push({
-          studentId: student.id,
-          studentName: student.name,
-          assignmentId: assignment.id,
-        })
       }
+      
+      const totalAssignments = createdAssignments.reduce((sum, a) => 
+        sum + (a.subAssignments?.length || 1), 0
+      )
       
       return NextResponse.json({
         success: true,
-        assignmentsCreated: createdAssignments.length,
+        assignmentsCreated: totalAssignments,
         assignments: createdAssignments,
-        message: `Created ${createdAssignments.length} assignment(s) with ${questionCount} questions each`,
+        questionsGenerated: generatedQuestionIds.length,
+        questionsFromBank: existingQuestions.length,
+        message: `Created ${totalAssignments} assignment(s) for ${createdAssignments.length} student(s)`,
       })
     }
 

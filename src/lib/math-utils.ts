@@ -134,7 +134,50 @@ export function normalizeMathAnswer(answer: string): string {
   // Only strip if the rest is numeric
   const withoutUnits = normalized.replace(/\s*(square|cubic|sq|cu)?\s*(meters?|metres?|centimeters?|centimetres?|kilometers?|kilometres?|cm|mm|km|m|feet|ft|inches?|in|yards?|yd|miles?|mi|seconds?|sec|s|minutes?|min|hours?|hr|h|days?|d|years?|yr|kilograms?|kg|grams?|g|pounds?|lb|ounces?|oz|liters?|litres?|l|milliliters?|millilitres?|ml|gallons?|gal|degrees?|deg|radians?|rad)$/i, '')
   
-  return withoutUnits
+  // Step 9: Normalize coordinate-style answers for roots/zeros
+  // "(-2, 2)" -> "-2,2", "(−2, 2)" -> "-2,2", "x = -2, x = 2" -> "-2,2"
+  let result = withoutUnits
+  
+  // Remove "x=" prefix from answers like "x=5" or "x = 5"
+  result = result.replace(/x\s*=\s*/g, '')
+  
+  // Normalize "and" to comma
+  result = result.replace(/\band\b/g, ',')
+  
+  // Normalize "or" to comma  
+  result = result.replace(/\bor\b/g, ',')
+  
+  // Remove outer parentheses from comma-separated lists like "(2, 3)"
+  if (/^\([^()]+,[^()]+\)$/.test(result)) {
+    result = result.slice(1, -1)
+  }
+  
+  // Normalize ± notation: "±2" -> "-2,2" for comparison
+  if (/^\+?-?[0-9.]+$/.test(result.replace(/[+-]/g, ''))) {
+    const plusMinusMatch = withoutUnits.match(/^\+?-?\s*(\d+\.?\d*)$/)
+    if (plusMinusMatch) {
+      // Check if original had ± 
+      if (answer.includes('±') || answer.includes('+-')) {
+        const num = plusMinusMatch[1]
+        result = `-${num},${num}`
+      }
+    }
+  }
+  
+  // Sort comma-separated values for consistent comparison
+  if (result.includes(',')) {
+    const parts = result.split(',').map(p => p.trim()).filter(p => p)
+    // Try to sort numerically if all parts are numbers
+    const allNumeric = parts.every(p => !isNaN(parseFloat(p)))
+    if (allNumeric) {
+      parts.sort((a, b) => parseFloat(a) - parseFloat(b))
+    } else {
+      parts.sort()
+    }
+    result = parts.join(',')
+  }
+  
+  return result
 }
 
 /**

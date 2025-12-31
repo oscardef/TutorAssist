@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import NumberInput from '@/components/number-input'
 
 interface Topic {
   id: string
@@ -95,6 +96,14 @@ export default function GeneratePage() {
   const [timeLimit, setTimeLimit] = useState<number | null>(null)
   const [shuffleQuestions, setShuffleQuestions] = useState(true)
   const [showResultsImmediately, setShowResultsImmediately] = useState(false)
+  
+  // New assignment generation options
+  const [assignmentCustomPrompt, setAssignmentCustomPrompt] = useState('')
+  const [questionsPerSubAssignment, setQuestionsPerSubAssignment] = useState<number>(5)
+  const [splitIntoSubAssignments, setSplitIntoSubAssignments] = useState(false)
+  const [useExistingQuestions, setUseExistingQuestions] = useState(true)
+  const [generateNewQuestions, setGenerateNewQuestions] = useState(true)
+  const [focusOnWeakAreas, setFocusOnWeakAreas] = useState(false)
 
   // Available grade levels based on selected program
   const availableGradeLevels = selectedProgram
@@ -431,6 +440,11 @@ export default function GeneratePage() {
       return
     }
     
+    if (!useExistingQuestions && !generateNewQuestions) {
+      setError('Please enable at least one question source (existing questions or AI generation)')
+      return
+    }
+    
     setGenerating(true)
     setError(null)
     setSuccess(null)
@@ -447,10 +461,16 @@ export default function GeneratePage() {
           difficulty: assignmentDifficulty,
           dueDate: assignmentDueDate || undefined,
           instructions: assignmentInstructions || undefined,
+          customPrompt: assignmentCustomPrompt || undefined,
           options: {
             timeLimit,
             shuffleQuestions,
             showResultsImmediately,
+            splitIntoSubAssignments,
+            questionsPerSubAssignment,
+            useExistingQuestions,
+            generateNewQuestions,
+            focusOnWeakAreas,
           },
         }),
       })
@@ -693,10 +713,9 @@ export default function GeneratePage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Number of Questions
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     value={questionCount}
-                    onChange={(e) => setQuestionCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 5)))}
+                    onChange={(val) => setQuestionCount(val ?? 5)}
                     min={1}
                     max={100}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -887,16 +906,13 @@ export default function GeneratePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Number of Units (optional)
                     </label>
-                    <input
-                      type="number"
-                      value={syllabusTopicCount || ''}
-                      onChange={(e) => {
-                        const val = e.target.value ? parseInt(e.target.value) : null
-                        setSyllabusTopicCount(val ? Math.max(1, Math.min(50, val)) : null)
-                      }}
-                      placeholder="Let AI decide"
+                    <NumberInput
+                      value={syllabusTopicCount}
+                      onChange={(val) => setSyllabusTopicCount(val)}
                       min={1}
                       max={50}
+                      allowNull
+                      placeholder="Let AI decide"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <p className="text-xs text-gray-500 mt-1">Units (e.g., Number, Algebra). Each will have 2-5 subtopics.</p>
@@ -1073,16 +1089,53 @@ Or add specific requirements like:
                         onChange={() => toggleTopic(topic.id)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="ml-3 text-sm font-medium text-gray-900 truncate">{topic.name}</span>
+                      <div className="ml-3 flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-900 truncate block">{topic.name}</span>
+                        {topic.questions?.[0]?.count !== undefined && (
+                          <span className="text-xs text-gray-500">{topic.questions[0].count} questions in bank</span>
+                        )}
+                      </div>
                     </label>
                   ))}
+                </div>
+              )}
+              
+              {selectedTopics.length > 0 && (
+                <div className="mt-3 text-sm text-blue-600">
+                  {selectedTopics.length} topic(s) selected
+                  {(() => {
+                    const totalQuestions = selectedTopics.reduce((sum, topicId) => {
+                      const topic = filteredTopics.find(t => t.id === topicId)
+                      return sum + (topic?.questions?.[0]?.count || 0)
+                    }, 0)
+                    return totalQuestions > 0 ? ` • ${totalQuestions} existing questions available` : ''
+                  })()}
                 </div>
               )}
             </div>
             
             {/* Student Selection */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Assign to Students</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Assign to Students</h2>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStudents(students.map(s => s.id))}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStudents([])}
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
               
               {students.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
@@ -1144,12 +1197,11 @@ Or add specific requirements like:
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Number of Questions
                     </label>
-                    <input
-                      type="number"
+                    <NumberInput
                       value={assignmentQuestionCount}
-                      onChange={(e) => setAssignmentQuestionCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 10)))}
+                      onChange={(val) => setAssignmentQuestionCount(val ?? 10)}
                       min={1}
-                      max={50}
+                      max={100}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -1189,12 +1241,13 @@ Or add specific requirements like:
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Time Limit (minutes)
                     </label>
-                    <input
-                      type="number"
-                      value={timeLimit || ''}
-                      onChange={(e) => setTimeLimit(e.target.value ? parseInt(e.target.value) : null)}
-                      placeholder="No limit"
+                    <NumberInput
+                      value={timeLimit}
+                      onChange={(val) => setTimeLimit(val)}
                       min={5}
+                      max={300}
+                      allowNull
+                      placeholder="No limit"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -1213,7 +1266,7 @@ Or add specific requirements like:
                   />
                 </div>
                 
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -1233,7 +1286,130 @@ Or add specific requirements like:
                     />
                     <span className="text-sm text-gray-700">Show results immediately</span>
                   </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={focusOnWeakAreas}
+                      onChange={(e) => setFocusOnWeakAreas(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Focus on weak areas</span>
+                  </label>
                 </div>
+              </div>
+            </div>
+            
+            {/* Question Source Options */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Question Source</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Choose where questions come from. Generated questions are automatically saved to your Question Bank.
+              </p>
+              
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={useExistingQuestions}
+                    onChange={(e) => setUseExistingQuestions(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                  />
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Use existing questions</div>
+                    <div className="text-xs text-gray-500">Select from your Question Bank based on selected topics</div>
+                  </div>
+                </label>
+                
+                <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={generateNewQuestions}
+                    onChange={(e) => setGenerateNewQuestions(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                  />
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">Generate new questions with AI</div>
+                    <div className="text-xs text-gray-500">Create fresh questions and add them to your Question Bank</div>
+                  </div>
+                </label>
+              </div>
+              
+              {!useExistingQuestions && !generateNewQuestions && (
+                <p className="mt-3 text-sm text-red-600">Please select at least one question source</p>
+              )}
+            </div>
+            
+            {/* Advanced Options */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Advanced Options</h2>
+              
+              <div className="space-y-4">
+                {/* Split into sub-assignments */}
+                <label className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={splitIntoSubAssignments}
+                    onChange={(e) => setSplitIntoSubAssignments(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-700">Split into sub-assignments</div>
+                    <div className="text-xs text-gray-500 mb-2">Break large assignments into smaller practice sets</div>
+                    
+                    {splitIntoSubAssignments && (
+                      <div className="mt-2">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Questions per sub-assignment
+                        </label>
+                        <NumberInput
+                          value={questionsPerSubAssignment}
+                          onChange={(val) => setQuestionsPerSubAssignment(val ?? 5)}
+                          min={3}
+                          max={20}
+                          className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          This will create {Math.ceil(assignmentQuestionCount / questionsPerSubAssignment)} sub-assignment(s)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+            </div>
+            
+            {/* Custom AI Prompt */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">AI Customization Prompt</h2>
+              <p className="text-sm text-gray-500 mb-3">
+                Provide additional context or instructions for the AI when generating/selecting questions.
+              </p>
+              <textarea
+                value={assignmentCustomPrompt}
+                onChange={(e) => setAssignmentCustomPrompt(e.target.value)}
+                placeholder="e.g., 'This is a winter study pack for the student - give a strong and solid mix of items covering fundamentals that they can work through during the break. Include review of previous concepts and gradually introduce more challenging problems.'"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="text-xs text-gray-500">Quick suggestions:</span>
+                {[
+                  'Focus on exam preparation',
+                  'Include word problems',
+                  'Holiday practice pack',
+                  'Review fundamentals',
+                  'Challenge problems',
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setAssignmentCustomPrompt(prev => prev ? `${prev} ${suggestion}.` : suggestion)}
+                    className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                  >
+                    + {suggestion}
+                  </button>
+                ))}
               </div>
             </div>
           </>
@@ -1268,38 +1444,7 @@ Or add specific requirements like:
         )}
       </form>
       
-      {/* Tips Section */}
-      <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
-        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <span>💡</span> Tips for Better Results
-        </h3>
-        <ul className="text-sm text-gray-600 space-y-2">
-          {generationType === 'questions' && (
-            <>
-              <li>• <strong>Select multiple topics</strong> for varied practice sets</li>
-              <li>• Use <strong>custom instructions</strong> for specific requirements</li>
-              <li>• <strong>Exam style</strong> option formats questions like official exams</li>
-              <li>• <strong>Batch API</strong> is cheaper for 20+ questions</li>
-            </>
-          )}
-          {generationType === 'topics' && (
-            <>
-              <li>• <strong>Map from existing programs</strong> to adapt curricula</li>
-              <li>• <strong>Detailed depth</strong> creates more granular topics</li>
-              <li>• <strong>Learning objectives</strong> help track student progress</li>
-              <li>• Review and edit generated topics as needed</li>
-            </>
-          )}
-          {generationType === 'assignment' && (
-            <>
-              <li>• <strong>Adaptive difficulty</strong> adjusts based on student level</li>
-              <li>• <strong>Shuffle questions</strong> to prevent copying</li>
-              <li>• Set <strong>time limits</strong> for timed practice</li>
-              <li>• Use clear <strong>instructions</strong> for students</li>
-            </>
-          )}
-        </ul>
-      </div>
+
     </div>
   )
 }

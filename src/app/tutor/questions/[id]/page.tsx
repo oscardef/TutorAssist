@@ -43,7 +43,7 @@ interface Question {
   primary_program_id: string | null
   primary_grade_level_id: string | null
   hints_json: string[]
-  solution_steps_json: string[]
+  solution_steps_json: Array<string | { step: string; latex?: string; result?: string }>
   tags_json: string[]
   status: string
   topics?: Topic
@@ -111,7 +111,11 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         setPrimaryGradeLevelId(q.primary_grade_level_id || '')
         // Use correct field names from DB
         setHints(q.hints_json?.length > 0 ? q.hints_json : [''])
-        setSolutionSteps(q.solution_steps_json?.length > 0 ? q.solution_steps_json : [''])
+        // Handle both string and object formats for solution steps
+        const steps = q.solution_steps_json?.map((s: string | { step: string }) => 
+          typeof s === 'string' ? s : s.step || ''
+        ) || ['']
+        setSolutionSteps(steps.length > 0 ? steps : [''])
         setTags(q.tags_json?.join(', ') || '')
         setStatus(q.status || 'active')
         
