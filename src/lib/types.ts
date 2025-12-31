@@ -26,6 +26,8 @@ export type JobType =
   | 'DAILY_SPACED_REP_REFRESH'
   | 'PROCESS_BATCH_RESULT'
   | 'GENERATE_EMBEDDINGS'
+  | 'RECONCILE_STATS'
+  | 'REFRESH_MATERIALIZED_VIEWS'
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'batch_pending'
 
@@ -81,6 +83,13 @@ export interface StudentProfile {
   private_notes: string | null
   tags: string[]
   settings_json: Record<string, unknown>
+  // Program/Grade associations
+  study_program_id: string | null
+  grade_level_id: string | null
+  // Cohort tracking (Migration 013)
+  academic_year: number | null
+  cohort_id: string | null
+  cohort_name: string | null
   created_at: string
   updated_at: string
 }
@@ -178,6 +187,10 @@ export interface Question {
   // Program/Grade fields
   primary_program_id: string | null
   primary_grade_level_id: string | null
+  // AI Generation tracking (Migration 013)
+  generation_metadata: QuestionGenerationMetadata
+  batch_id: string | null
+  // Timestamps
   created_by: string | null
   created_at: string
   updated_at: string
@@ -257,6 +270,8 @@ export interface Attempt {
   feedback_json: AttemptFeedback
   error_taxonomy_json: ErrorTaxonomy[]
   reflection_text: string | null
+  // Analytics context (Migration 013)
+  context_json: AttemptContext
   created_at: string
 }
 
@@ -331,6 +346,13 @@ export interface Session {
   status: 'scheduled' | 'confirmed' | 'cancelled' | 'completed'
   change_request_text: string | null
   change_request_at: string | null
+  // Session tracking (Migration 013)
+  actual_start: string | null
+  actual_end: string | null
+  topics_covered: string[] | null
+  questions_reviewed: string[] | null
+  session_notes: string | null
+  session_metadata: SessionMetadata
   created_at: string
   updated_at: string
 }
@@ -433,4 +455,215 @@ export function formatDate(date: Date | string): string {
 export function formatDateTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleString('en-GB') // DD/MM/YYYY, HH:MM:SS
+}
+
+// ============================================
+// AI GENERATION METADATA TYPES
+// ============================================
+
+export interface QuestionGenerationMetadata {
+  // Model information
+  model?: 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4-turbo' | string
+  model_version?: string
+  prompt_version?: string
+  temperature?: number
+  
+  // Generation context
+  generated_at?: string  // ISO timestamp
+  batch_id?: string      // OpenAI batch ID
+  job_id?: string        // Internal job ID
+  
+  // Cost & performance
+  tokens_used?: {
+    input: number
+    output: number
+    total: number
+  }
+  generation_time_ms?: number
+  cost_usd?: number
+  
+  // Quality control
+  validation_passed?: boolean
+  auto_fixes_applied?: string[]
+  quality_checks?: {
+    latex_valid: boolean
+    answer_parseable: boolean
+    difficulty_appropriate: boolean
+  }
+  
+  // Source context
+  source_context?: {
+    material_id?: string
+    material_page?: number
+    similar_questions?: string[]
+    topic_context?: string
+  }
+  
+  // Pedagogical metadata
+  pedagogical?: {
+    blooms_level?: 'remember' | 'understand' | 'apply' | 'analyze' | 'evaluate' | 'create'
+    skill_type?: 'procedural' | 'conceptual' | 'factual'
+    prerequisites?: string[]
+    cognitive_load?: 'low' | 'medium' | 'high'
+  }
+  
+  // Legacy migration marker
+  legacy_migration?: boolean
+}
+
+export interface AttemptContext {
+  // Device & environment
+  device_type?: 'mobile' | 'tablet' | 'desktop'
+  browser?: string
+  screen_size?: { width: number; height: number }
+  
+  // Input method
+  input_method?: 'keyboard' | 'mathlive_palette' | 'voice' | 'paste'
+  answer_changes_count?: number
+  
+  // Help usage
+  hints_viewed_at?: string[]  // ISO timestamps
+  solution_viewed_at?: string
+  
+  // Question state
+  question_difficulty_at_attempt?: number
+  question_version?: string
+  
+  // Session context
+  session_id?: string
+  previous_attempts_count?: number
+  time_since_last_attempt_hours?: number
+  
+  // Peer context (populated post-attempt for analytics)
+  class_average_time?: number
+  class_accuracy_rate?: number
+  student_percentile?: number
+}
+
+export interface SessionMetadata {
+  // Actual timing
+  actual_duration_minutes?: number
+  started_late_minutes?: number
+  
+  // Content covered
+  topics_covered?: Array<{
+    topic_id: string
+    time_spent_minutes: number
+    mastery_level: 'introduced' | 'practicing' | 'mastered'
+  }>
+  
+  // Questions reviewed
+  questions_reviewed?: Array<{
+    question_id: string
+    student_struggled: boolean
+    time_spent_minutes: number
+  }>
+  
+  // Student state
+  student_preparation?: 'unprepared' | 'somewhat_prepared' | 'well_prepared'
+  student_engagement?: 'low' | 'medium' | 'high'
+  student_understanding?: 'struggling' | 'progressing' | 'excelling'
+  
+  // Session outcomes
+  homework_assigned?: string[]
+  goals_for_next_session?: string[]
+  tutor_notes?: string
+  
+  // Technical issues
+  connection_issues?: boolean
+  issues_description?: string
+}
+
+// ============================================
+// AI USAGE & BATCH TRACKING TYPES
+// ============================================
+
+export interface AIUsageLog {
+  id: string
+  workspace_id: string | null
+  user_id: string | null
+  operation_type: string
+  model: string
+  tokens_input: number | null
+  tokens_output: number | null
+  tokens_total: number | null
+  cost_usd: number | null
+  duration_ms: number | null
+  success: boolean
+  error_message: string | null
+  job_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface QuestionBatch {
+  id: string
+  workspace_id: string
+  created_by: string | null
+  openai_batch_id: string | null
+  job_id: string | null
+  total_requested: number
+  topics_requested: string[] | null
+  difficulty_distribution: Record<string, number> | null
+  generation_options: Record<string, unknown>
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial'
+  total_generated: number
+  total_failed: number
+  questions_generated: string[] | null
+  total_tokens: number | null
+  total_cost_usd: number | null
+  created_at: string
+  started_at: string | null
+  completed_at: string | null
+  error_message: string | null
+}
+
+// ============================================
+// STUDENT ANALYTICS TYPES
+// ============================================
+
+export interface StudentPerformance {
+  student_user_id: string
+  workspace_id: string
+  total_attempts: number
+  correct_attempts: number
+  accuracy_pct: number | null
+  avg_time_seconds: number | null
+  unique_questions: number
+  days_active: number
+  last_attempt_at: string | null
+  first_attempt_at: string | null
+}
+
+export interface TopicPerformance {
+  workspace_id: string
+  topic_id: string | null
+  topic_name: string | null
+  total_attempts: number
+  correct_attempts: number
+  accuracy_pct: number | null
+  students_attempted: number
+  questions_in_topic: number
+  avg_time_seconds: number | null
+}
+
+// ============================================
+// HELPER FUNCTION FOR AI COST ESTIMATION
+// ============================================
+
+export function estimateAICost(
+  model: string,
+  tokensInput: number,
+  tokensOutput: number
+): number {
+  // Costs per 1M tokens (as of Dec 2024)
+  const rates: Record<string, { input: number; output: number }> = {
+    'gpt-4o': { input: 2.50, output: 10.00 },
+    'gpt-4o-mini': { input: 0.15, output: 0.60 },
+    'text-embedding-3-small': { input: 0.02, output: 0 },
+    'text-embedding-3-large': { input: 0.13, output: 0 },
+  }
+  
+  const rate = rates[model] || rates['gpt-4o-mini']
+  return (tokensInput * rate.input / 1_000_000) + (tokensOutput * rate.output / 1_000_000)
 }

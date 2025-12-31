@@ -46,7 +46,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     }
     
-    // Record attempt
+    // Record attempt with context for analytics
+    const attemptContext = {
+      device: request.headers.get('user-agent') || 'unknown',
+      sessionType: assignmentId ? 'assignment' : 'practice',
+      timestamp: new Date().toISOString(),
+    }
+    
     const { data: attempt, error } = await supabase
       .from('attempts')
       .insert({
@@ -59,6 +65,7 @@ export async function POST(request: Request) {
         time_spent_seconds: timeSpentSeconds || null,
         hints_viewed: hintsUsed,
         submitted_at: new Date().toISOString(),
+        context_json: attemptContext,
       })
       .select()
       .single()
@@ -70,10 +77,9 @@ export async function POST(request: Request) {
     // Update spaced repetition
     await updateSpacedRepetition(supabase, user.id, questionId, isCorrect)
     
-    // Update question stats
+    // Update question stats via database function
     await supabase.rpc('update_question_stats', {
-      question_id_param: questionId,
-      is_correct_param: isCorrect,
+      p_question_id: questionId,
     })
     
     return NextResponse.json({ attempt })

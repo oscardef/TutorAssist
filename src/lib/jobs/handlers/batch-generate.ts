@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Job } from '@/lib/types'
 import { completeJob, failJob, setBatchId } from '../queue'
+import { logAIUsage, createGenerationMetadata, AI_MODELS, PROMPT_VERSIONS } from '@/lib/ai-usage'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -157,6 +158,24 @@ Return JSON with "questions" array of exactly ${req.count} questions.`,
     
     // Note: Batch results will be processed by a separate webhook/polling job
     console.log(`Batch created: ${batch.id} for job ${job.id}`)
+    
+    // Log batch submission (actual usage will be logged when batch completes)
+    await logAIUsage({
+      workspaceId: requests[0]?.workspaceId || job.workspace_id,
+      userId: job.created_by_user_id,
+      operationType: 'batch_generate_submit',
+      model: AI_MODELS.GPT4O_MINI,
+      tokensInput: 0, // Not known until batch completes
+      tokensOutput: 0,
+      durationMs: 0,
+      success: true,
+      batchId: batch.id,
+      jobId: job.id,
+      metadata: {
+        requestCount: requests.length,
+        totalQuestionsRequested: requests.reduce((sum, r) => sum + r.count, 0),
+      },
+    })
   } catch (error) {
     console.error('Batch generate failed:', error)
     await failJob(
@@ -246,6 +265,11 @@ export async function checkBatchStatus(jobId: string): Promise<boolean> {
             tags_json: q.tags || [],
             quality_score: 1.0,
             created_by: job.created_by_user_id,
+            generation_metadata: createGenerationMetadata({
+              model: AI_MODELS.GPT4O_MINI,
+              promptVersion: PROMPT_VERSIONS.QUESTION_GEN,
+              batchId: batch.id,
+            }),
           }))
           
           await supabase.from('questions').insert(questionsToInsert)

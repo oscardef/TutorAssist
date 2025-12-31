@@ -15,27 +15,28 @@ export default async function StudentsPage() {
   // Get all student user_ids for batch queries
   const studentUserIds = students?.filter(s => s.user_id).map(s => s.user_id) || []
 
-  // Get attempt stats per student
+  // Get attempt stats per student (includes both practice and assignment attempts)
   const { data: attempts } = studentUserIds.length > 0 
     ? await supabase
         .from('attempts')
-        .select('student_user_id, is_correct')
+        .select('student_user_id, is_correct, assignment_id')
         .eq('workspace_id', context.workspaceId)
         .in('student_user_id', studentUserIds)
     : { data: [] }
 
-  // Get assignment completion per student
-  const { data: assignmentAttempts } = studentUserIds.length > 0
+  // Get assignments assigned to students
+  const { data: assignments } = studentUserIds.length > 0
     ? await supabase
-        .from('assignment_attempts')
-        .select('student_user_id, status')
+        .from('assignments')
+        .select('id, assigned_student_user_id, status')
         .eq('workspace_id', context.workspaceId)
-        .in('student_user_id', studentUserIds)
+        .in('assigned_student_user_id', studentUserIds)
     : { data: [] }
 
   // Calculate stats per student
   const studentStats = new Map<string, { correct: number; total: number; completed: number; assigned: number }>()
   
+  // Process attempts for accuracy stats
   attempts?.forEach(attempt => {
     const existing = studentStats.get(attempt.student_user_id) || { correct: 0, total: 0, completed: 0, assigned: 0 }
     existing.total++
@@ -43,11 +44,13 @@ export default async function StudentsPage() {
     studentStats.set(attempt.student_user_id, existing)
   })
 
-  assignmentAttempts?.forEach(aa => {
-    const existing = studentStats.get(aa.student_user_id) || { correct: 0, total: 0, completed: 0, assigned: 0 }
+  // Process assignments for completion stats
+  assignments?.forEach(assignment => {
+    if (!assignment.assigned_student_user_id) return
+    const existing = studentStats.get(assignment.assigned_student_user_id) || { correct: 0, total: 0, completed: 0, assigned: 0 }
     existing.assigned++
-    if (aa.status === 'completed') existing.completed++
-    studentStats.set(aa.student_user_id, existing)
+    if (assignment.status === 'completed') existing.completed++
+    studentStats.set(assignment.assigned_student_user_id, existing)
   })
 
   return (

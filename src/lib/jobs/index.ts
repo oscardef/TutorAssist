@@ -18,6 +18,47 @@ async function handleDailySpacedRepRefresh(job: Job): Promise<void> {
   // Implementation would go here
 }
 
+// Placeholder for reconciling question stats (runs periodically)
+async function handleReconcileStats(job: Job): Promise<void> {
+  // This job recalculates question statistics from attempts
+  // Useful for fixing any discrepancies between cached stats and actual data
+  const supabase = await createAdminClient()
+  console.log(`Reconciling stats for workspace ${job.workspace_id}`)
+  
+  // Get all questions that have attempts
+  const { data: questions } = await supabase
+    .from('questions')
+    .select('id')
+    .eq('workspace_id', job.workspace_id)
+  
+  if (questions) {
+    for (const q of questions) {
+      // Call the update_question_stats function for each question
+      await supabase.rpc('update_question_stats', { p_question_id: q.id })
+    }
+  }
+  console.log(`Reconciled stats for ${questions?.length || 0} questions`)
+}
+
+// Placeholder for refreshing materialized views (runs periodically)
+async function handleRefreshMaterializedViews(job: Job): Promise<void> {
+  // This job refreshes materialized views for dashboard analytics
+  const supabase = await createAdminClient()
+  console.log(`Refreshing materialized views for workspace ${job.workspace_id}`)
+  
+  // Refresh the topic performance view
+  await supabase.rpc('refresh_topic_performance_view', { 
+    p_workspace_id: job.workspace_id 
+  })
+  
+  // Refresh the student progress view  
+  await supabase.rpc('refresh_student_progress_view', {
+    p_workspace_id: job.workspace_id
+  })
+  
+  console.log('Materialized views refreshed')
+}
+
 const handlers: Record<JobType, JobHandler> = {
   EXTRACT_MATERIAL: handleExtractMaterial,
   GENERATE_QUESTIONS: handleGenerateQuestions,
@@ -28,6 +69,8 @@ const handlers: Record<JobType, JobHandler> = {
   DAILY_SPACED_REP_REFRESH: handleDailySpacedRepRefresh,
   PROCESS_BATCH_RESULT: handleProcessBatchResult,
   GENERATE_EMBEDDINGS: handleGenerateEmbedding,
+  RECONCILE_STATS: handleReconcileStats,
+  REFRESH_MATERIALIZED_VIEWS: handleRefreshMaterializedViews,
 }
 
 // Process a single job

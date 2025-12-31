@@ -9,6 +9,12 @@ import {
   normalizeAnswer,
   type GeneratedQuestion 
 } from '@/lib/prompts/question-generation'
+import { 
+  logAIUsage, 
+  createGenerationMetadata, 
+  PROMPT_VERSIONS, 
+  AI_MODELS 
+} from '@/lib/ai-usage'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -94,8 +100,12 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
     
     console.log(`[GenerateQuestions] Calling OpenAI API for ${count} questions...`)
     
+    const generationStartTime = Date.now()
+    const modelName = AI_MODELS.QUESTION_GENERATION
+    const temperature = 0.7
+    
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: modelName,
       messages: [
         { role: 'system', content: QUESTION_GENERATION_SYSTEM_PROMPT },
         {
@@ -115,10 +125,15 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
       ],
       response_format: { type: 'json_object' },
       max_tokens: 4000,
-      temperature: 0.7,  // Lower temperature for more consistent output
+      temperature,
     })
     
-    console.log(`[GenerateQuestions] OpenAI response received`)
+    const generationEndTime = Date.now()
+    const generationTimeMs = generationEndTime - generationStartTime
+    const tokensInput = response.usage?.prompt_tokens || 0
+    const tokensOutput = response.usage?.completion_tokens || 0
+    
+    console.log(`[GenerateQuestions] OpenAI response received (${generationTimeMs}ms, ${tokensInput}+${tokensOutput} tokens)`)
     
     const result = JSON.parse(response.choices[0].message.content || '{}')
     const questions: GeneratedQuestion[] = result.questions || []
@@ -185,8 +200,27 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
       return 'short_answer'
     }
     
-    const questionsToInsert = uniqueQuestions.map((q) => {
+    // Create generation metadata for tracking
+    const generationMetadata = createGenerationMetadata({
+      model: modelName,
+      promptVersion: PROMPT_VERSIONS.QUESTION_GENERATION,
+      temperature,
+      generatedAt: new Date(),
+      jobId: job.id,
+      tokensInput,
+      tokensOutput,
+      generationTimeMs,
+      validationPassed: true,
+      autoFixesApplied: [],
+      sourceContext: {
+        materialId: fromMaterialId || undefined,
+        topicContext: topic.name,
+      },
+    })
+    
+    const questionsToInsert = uniqueQuestions.map((q, index) => {
       const answerType = normalizeAnswerType(q.answerType)
+      const wasAutoFixed = validQuestions[index] !== q // Check if this was auto-fixed
       console.log(`[GenerateQuestions] Question answer type: "${q.answerType}" -> "${answerType}"`)
       return {
         workspace_id: workspaceId,
@@ -207,6 +241,12 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
         tags_json: q.tags || [],
         quality_score: 1.0,  // Starts at 1.0, can decrease with flags
         created_by: job.created_by_user_id,
+        // New: Generation metadata for tracking
+        generation_metadata: {
+          ...generationMetadata,
+          question_index: index,
+          auto_fixes_applied: wasAutoFixed ? ['latex_formatting'] : [],
+        },
       }
     })
     
@@ -242,12 +282,35 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
       }
     }
     
+    // Log AI usage for cost tracking
+    await logAIUsage({
+      workspaceId,
+      userId: job.created_by_user_id,
+      operationType: 'generate_questions',
+      model: modelName,
+      tokensInput,
+      tokensOutput,
+      durationMs: generationTimeMs,
+      success: true,
+      jobId: job.id,
+      metadata: {
+        topicId,
+        topicName: topic.name,
+        questionsRequested: count,
+        questionsGenerated: uniqueQuestions.length,
+        duplicatesFiltered: validQuestions.length - uniqueQuestions.length,
+        invalidFiltered: invalidQuestions.length,
+      },
+    })
+    
     await completeJob(job.id, {
       success: true,
       questionsGenerated: uniqueQuestions.length,
       questionIds: insertedQuestions?.map((q) => q.id) || [],
       duplicatesFiltered: validQuestions.length - uniqueQuestions.length,
       invalidFiltered: invalidQuestions.length,
+      tokensUsed: tokensInput + tokensOutput,
+      generationTimeMs,
     })
   } catch (error) {
     console.error('Generate questions failed:', error)
