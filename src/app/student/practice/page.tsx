@@ -6,6 +6,8 @@ import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
 import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
+import { useSounds } from '@/lib/sounds'
+import { useConfetti } from '@/lib/confetti'
 
 interface Question {
   id: string
@@ -76,6 +78,8 @@ export default function PracticePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const modeParam = searchParams.get('mode') as PracticeMode | null
+  const sounds = useSounds()
+  const confetti = useConfetti()
   const topicParam = searchParams.get('topic')
   
   const [mode, setMode] = useState<PracticeMode>(modeParam || 'select')
@@ -396,12 +400,6 @@ export default function PracticePage() {
       correct: prev.correct + (correct ? 1 : 0)
     }))
 
-    if (correct) {
-      setStreak(s => s + 1)
-    } else {
-      setStreak(0)
-    }
-
     // Record attempt
     try {
       const timeSpent = Math.round((Date.now() - startTime) / 1000)
@@ -420,8 +418,30 @@ export default function PracticePage() {
       if (data.attempt?.id) {
         setCurrentAttemptId(data.attempt.id)
       }
+      
+      // Play sound effects and confetti after state is updated
+      if (correct) {
+        sounds.playCorrect()
+        confetti.fireCorrect()
+        const newStreak = streak + 1
+        setStreak(newStreak)
+        if (newStreak >= 3) {
+          confetti.fireStreak(newStreak)
+          sounds.playStreak(newStreak)
+        }
+      } else {
+        sounds.playIncorrect()
+        setStreak(0)
+      }
     } catch (error) {
       console.error('Failed to record attempt:', error)
+      // Still play sounds even if API fails
+      if (correct) {
+        sounds.playCorrect()
+        confetti.fireCorrect()
+      } else {
+        sounds.playIncorrect()
+      }
     }
   }
   

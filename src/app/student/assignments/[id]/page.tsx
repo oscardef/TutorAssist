@@ -6,6 +6,8 @@ import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
 import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
+import { useSounds } from '@/lib/sounds'
+import { useConfetti } from '@/lib/confetti'
 
 interface Question {
   id: string
@@ -56,6 +58,8 @@ export default function StudentAssignmentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const assignmentId = params.id as string
+  const sounds = useSounds()
+  const confetti = useConfetti()
 
   const [loading, setLoading] = useState(true)
   const [assignment, setAssignment] = useState<Assignment | null>(null)
@@ -72,6 +76,7 @@ export default function StudentAssignmentDetailPage() {
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string } | null>(null)
   const [showSolution, setShowSolution] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [streak, setStreak] = useState(0)
 
   // Flagging state
   const [showFlagModal, setShowFlagModal] = useState(false)
@@ -88,7 +93,6 @@ export default function StudentAssignmentDetailPage() {
       
       if (data.assignment) {
         setAssignment(data.assignment)
-        // Sort items by order_index
         const sortedItems = (data.assignment.assignment_items || [])
           .sort((a: AssignmentItem, b: AssignmentItem) => a.order_index - b.order_index)
         setItems(sortedItems)
@@ -144,7 +148,6 @@ export default function StudentAssignmentDetailPage() {
     setFlagComment('')
   }, [currentIndex])
 
-  // Handle "I was right" claim
   async function handleClaimCorrect() {
     if (!currentQuestion || claimedCorrect) return
     
@@ -172,7 +175,6 @@ export default function StudentAssignmentDetailPage() {
     }
   }
   
-  // Handle flagging question
   async function handleSubmitFlag() {
     if (!currentQuestion || !flagType) return
     
@@ -215,24 +217,16 @@ export default function StudentAssignmentDetailPage() {
       userAnswer = String(selectedChoice)
       isCorrect = selectedChoice === correctAnswer.correct
     } else if (currentQuestion.answer_type === 'numeric') {
-      // Use the robust numeric comparison
       isCorrect = compareNumericAnswers(
         answer, 
         parseFloat(String(correctAnswer.value)), 
         correctAnswer.tolerance || 0.01
       )
     } else {
-      // Use robust math answer comparison (handles LaTeX, Unicode, etc.)
-      // Cast to access potential alternates field from API response
       const alternates = (correctAnswer as { alternates?: string[] }).alternates
-      isCorrect = compareMathAnswers(
-        answer, 
-        String(correctAnswer.value),
-        alternates
-      )
+      isCorrect = compareMathAnswers(answer, String(correctAnswer.value), alternates)
     }
 
-    // If hints were used, mark as incorrect (no credit for using hints)
     const usedHints = showHints && visibleHintCount > 0
     const finalIsCorrect = usedHints ? false : isCorrect
 
@@ -260,21 +254,29 @@ export default function StudentAssignmentDetailPage() {
       }))
 
       setFeedback({
-        correct: isCorrect, // Show if answer was mathematically correct
+        correct: isCorrect,
         message: usedHints 
           ? (isCorrect ? 'Correct answer, but no credit for using hints.' : getRandomIncorrectMessage())
           : (isCorrect ? getRandomCorrectMessage() : getRandomIncorrectMessage()),
       })
+
+      // Play sound effects and confetti after feedback is shown
+      if (finalIsCorrect) {
+        sounds.playCorrect()
+        confetti.fireCorrect()
+        setStreak(s => s + 1)
+        if (streak >= 2) {
+          confetti.fireStreak(streak + 1)
+          sounds.playStreak(streak + 1)
+        }
+      } else {
+        sounds.playIncorrect()
+        setStreak(0)
+      }
     } catch (err) {
       console.error('Failed to submit answer:', err)
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  function goToQuestion(index: number) {
-    if (index >= 0 && index < items.length) {
-      setCurrentIndex(index)
     }
   }
 
@@ -285,7 +287,9 @@ export default function StudentAssignmentDetailPage() {
   }
 
   async function handleCompleteAssignment() {
-    // Mark assignment as completed
+    sounds.playCompletion()
+    confetti.fireCompletion()
+    
     try {
       await fetch('/api/assignments', {
         method: 'PATCH',
@@ -302,12 +306,11 @@ export default function StudentAssignmentDetailPage() {
   }
 
   async function handleRedoAssignment() {
-    // Clear local attempts state but keep history in database
     setAttempts({})
     setCurrentIndex(0)
     setShowCompletionModal(false)
+    setStreak(0)
     
-    // Update assignment status back to active for redo
     try {
       await fetch('/api/assignments', {
         method: 'PATCH',
@@ -323,12 +326,12 @@ export default function StudentAssignmentDetailPage() {
   }
 
   function getRandomCorrectMessage() {
-    const messages = ['Correct!', 'Well done!', 'Perfect!', 'Great job!', 'Excellent!']
+    const messages = ['Correct! 🎉', 'Well done! ⭐', 'Perfect! 💯', 'Great job! 🌟', 'Excellent! ✨']
     return messages[Math.floor(Math.random() * messages.length)]
   }
 
   function getRandomIncorrectMessage() {
-    const messages = ['Not quite right.', 'Try again.', 'Keep going!', 'Almost there!']
+    const messages = ['Not quite right.', 'Try again next time!', 'Keep going!', 'Almost there!']
     return messages[Math.floor(Math.random() * messages.length)]
   }
 
@@ -341,7 +344,7 @@ export default function StudentAssignmentDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
       </div>
     )
   }
@@ -349,8 +352,9 @@ export default function StudentAssignmentDetailPage() {
   if (!assignment || items.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">Assignment not found or has no questions.</p>
-        <Link href="/student/assignments" className="text-blue-600 hover:underline mt-4 inline-block">
+        <div className="text-6xl mb-4">📋</div>
+        <p className="text-gray-600 text-lg">Assignment not found or has no questions.</p>
+        <Link href="/student/assignments" className="text-blue-600 hover:underline mt-4 inline-block font-medium">
           ← Back to Assignments
         </Link>
       </div>
@@ -361,8 +365,11 @@ export default function StudentAssignmentDetailPage() {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <Link href="/student/assignments" className="text-gray-600 hover:text-gray-900 text-sm">
-          ← Back to Assignments
+        <Link href="/student/assignments" className="text-gray-500 hover:text-gray-700 text-sm font-medium inline-flex items-center gap-1">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back to Assignments
         </Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-2">{assignment.title}</h1>
         {assignment.description && (
@@ -371,55 +378,66 @@ export default function StudentAssignmentDetailPage() {
       </div>
 
       {/* Progress Bar */}
-      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">Progress</span>
-          <span className="text-sm text-gray-600">
-            {correctCount}/{items.length} correct ({progress}%)
-          </span>
+      <div className="mb-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-sm font-semibold text-gray-700">Progress</span>
+          <div className="flex items-center gap-4">
+            {streak > 1 && (
+              <span className="text-sm font-semibold text-orange-600 flex items-center gap-1">
+                🔥 {streak} streak
+              </span>
+            )}
+            <span className="text-sm text-gray-600">
+              {correctCount}/{items.length} correct
+            </span>
+          </div>
         </div>
-        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
           <div 
             className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
-        {/* Question dots */}
-        <div className="flex gap-1 mt-3 flex-wrap">
+        
+        {/* Question dots - READ ONLY, no clicking */}
+        <div className="flex gap-1.5 mt-4 flex-wrap">
           {items.map((item, idx) => {
             const attempt = attempts[item.question_id]
+            const isCurrent = idx === currentIndex
+            const isAccessible = idx <= currentIndex || attempt
+            
             return (
-              <button
+              <div
                 key={item.id}
-                onClick={() => goToQuestion(idx)}
-                className={`w-8 h-8 rounded-full text-xs font-medium transition-all ${
-                  idx === currentIndex
-                    ? 'ring-2 ring-blue-500 ring-offset-2'
-                    : ''
+                className={`w-9 h-9 rounded-full text-xs font-bold flex items-center justify-center transition-all ${
+                  isCurrent ? 'ring-2 ring-blue-500 ring-offset-2 scale-110' : ''
                 } ${
                   attempt
                     ? attempt.isCorrect
                       ? 'bg-green-500 text-white'
                       : 'bg-red-500 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    : isAccessible
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-100 text-gray-400'
                 }`}
               >
-                {idx + 1}
-              </button>
+                {attempt ? (attempt.isCorrect ? '✓' : '✗') : idx + 1}
+              </div>
             )
           })}
         </div>
+        <p className="text-xs text-gray-500 mt-2">Complete each question in order to proceed.</p>
       </div>
 
       {/* Question Card */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Question Header */}
-        <div className="border-b border-gray-200 p-4 flex items-center justify-between">
+        <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
           <div className="flex items-center gap-3">
-            <span className="text-lg font-semibold text-gray-900">
+            <span className="text-lg font-bold text-gray-900">
               Question {currentIndex + 1}
             </span>
-            <span className={`text-xs px-2 py-0.5 rounded ${
+            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
               currentQuestion?.difficulty <= 2 ? 'bg-green-100 text-green-700' :
               currentQuestion?.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
               'bg-red-100 text-red-700'
@@ -428,30 +446,30 @@ export default function StudentAssignmentDetailPage() {
                currentQuestion?.difficulty <= 3 ? 'Medium' : 'Hard'}
             </span>
             {currentQuestion?.topics?.name && (
-              <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">
                 {currentQuestion.topics.name}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3">
             {currentAttempt && (
-              <span className={`text-sm font-medium ${
+              <span className={`text-sm font-semibold ${
                 currentAttempt.isCorrect ? 'text-green-600' : claimedCorrect ? 'text-yellow-600' : 'text-red-600'
               }`}>
-                {currentAttempt.isCorrect ? '✓ Answered correctly' : claimedCorrect ? '⏳ Under review' : '✗ Incorrect'}
+                {currentAttempt.isCorrect ? '✓ Correct' : claimedCorrect ? '⏳ Under review' : '✗ Incorrect'}
               </span>
             )}
             <button
               onClick={() => setShowFlagModal(true)}
               disabled={flagSubmitted}
-              className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 flagSubmitted 
                   ? 'bg-orange-50 border-orange-200 text-orange-600'
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
               </svg>
               {flagSubmitted ? 'Flagged' : 'Flag'}
             </button>
@@ -460,8 +478,8 @@ export default function StudentAssignmentDetailPage() {
 
         {/* Question Content */}
         <div className="p-6">
-          <div className="prose max-w-none mb-6">
-            <div className="text-lg text-gray-800">
+          <div className="prose max-w-none mb-8">
+            <div className="text-xl text-gray-800 leading-relaxed">
               <LatexRenderer content={currentQuestion?.prompt_latex || currentQuestion?.prompt_text || ''} />
             </div>
           </div>
@@ -474,10 +492,10 @@ export default function StudentAssignmentDetailPage() {
                   key={idx}
                   onClick={() => !currentAttempt && setSelectedChoice(idx)}
                   disabled={!!currentAttempt}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                  className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
                     selectedChoice === idx
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   } ${currentAttempt ? 'cursor-default' : 'cursor-pointer'} ${
                     currentAttempt && idx === currentQuestion.correct_answer_json.correct
                       ? 'border-green-500 bg-green-50'
@@ -486,8 +504,12 @@ export default function StudentAssignmentDetailPage() {
                       : ''
                   }`}
                 >
-                  <span className="font-medium mr-3">{String.fromCharCode(65 + idx)}.</span>
-                  <LatexRenderer content={choice.text} />
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-bold mr-4">
+                    {String.fromCharCode(65 + idx)}
+                  </span>
+                  <span className="text-gray-800">
+                    <LatexRenderer content={choice.text} />
+                  </span>
                 </button>
               ))}
             </div>
@@ -499,21 +521,21 @@ export default function StudentAssignmentDetailPage() {
                 disabled={!!currentAttempt}
                 placeholder={currentQuestion?.answer_type === 'numeric' ? 'Enter a number' : 'Type your answer'}
                 onSubmit={() => {
-                  if (!currentAttempt) {
-                    handleSubmit()
-                  }
+                  if (!currentAttempt) handleSubmit()
                 }}
                 status={currentAttempt ? (currentAttempt.isCorrect ? 'correct' : 'incorrect') : undefined}
               />
               {currentAttempt && (
-                <div className="mt-3 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-600">
-                  Your answer: <span className="font-medium"><LatexRenderer content={formatMathForDisplay(currentAttempt.answer)} /></span>
+                <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                  <p className="text-sm text-gray-600">
+                    Your answer: <span className="font-semibold text-gray-900"><LatexRenderer content={formatMathForDisplay(currentAttempt.answer)} /></span>
+                  </p>
                   {!currentAttempt.isCorrect && currentQuestion?.correct_answer_json.value && (
-                    <span className="ml-2">
-                      | Correct: <span className="font-medium text-green-600">
+                    <p className="text-sm text-gray-600 mt-1">
+                      Correct answer: <span className="font-semibold text-green-600">
                         <LatexRenderer content={formatMathForDisplay(String(currentQuestion.correct_answer_json.value))} />
                       </span>
-                    </span>
+                    </p>
                   )}
                 </div>
               )}
@@ -522,35 +544,40 @@ export default function StudentAssignmentDetailPage() {
 
           {/* Feedback */}
           {feedback && (
-            <div className={`mt-4 p-4 rounded-lg ${
-              feedback.correct ? 'bg-green-50 text-green-800' : claimedCorrect ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'
+            <div className={`mt-6 p-5 rounded-xl ${
+              feedback.correct ? 'bg-green-50 border-2 border-green-200' : claimedCorrect ? 'bg-yellow-50 border-2 border-yellow-200' : 'bg-red-50 border-2 border-red-200'
             }`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {feedback.correct ? (
-                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
+                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    </div>
                   ) : claimedCorrect ? (
-                    <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                    </svg>
+                    <div className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
                   ) : (
-                    <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
+                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
                   )}
-                  <span className="font-medium">
+                  <span className={`text-lg font-bold ${feedback.correct ? 'text-green-800' : claimedCorrect ? 'text-yellow-800' : 'text-red-800'}`}>
                     {feedback.correct ? feedback.message : claimedCorrect ? 'Under review' : feedback.message}
                   </span>
                 </div>
                 
-                {/* "I was right" button - only show when marked incorrect */}
                 {!feedback.correct && !claimedCorrect && (
                   <button
                     onClick={handleClaimCorrect}
                     disabled={flagSubmitting}
-                    className="text-sm px-3 py-1 border border-gray-300 rounded-lg hover:bg-white/50 text-gray-700 hover:text-gray-900 disabled:opacity-50"
+                    className="text-sm px-4 py-2 border-2 border-gray-300 rounded-xl hover:bg-white text-gray-700 hover:text-gray-900 disabled:opacity-50 font-medium"
                   >
                     {flagSubmitting ? 'Submitting...' : 'I was right'}
                   </button>
@@ -558,50 +585,44 @@ export default function StudentAssignmentDetailPage() {
               </div>
               
               {claimedCorrect && (
-                <p className="mt-2 text-sm text-yellow-700">
-                  Your claim has been submitted for review. Your tutor will check if your answer should be accepted.
+                <p className="mt-3 text-sm text-yellow-700">
+                  Your claim has been submitted. Your tutor will review it.
                 </p>
               )}
             </div>
           )}
 
-          {/* Hints - Display cumulatively */}
+          {/* Hints */}
           {currentQuestion?.hints_json && currentQuestion.hints_json.length > 0 && 
            assignment.settings_json.showHints !== false && (
             <div className="mt-6">
               {!showHints ? (
                 <button
-                  onClick={() => {
-                    setShowHints(true)
-                    setVisibleHintCount(1)
-                  }}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                  onClick={() => { setShowHints(true); setVisibleHintCount(1) }}
+                  className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
                   </svg>
                   Show Hint ({currentQuestion.hints_json.length} available)
                 </button>
               ) : (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
-                  <p className="text-sm font-medium text-yellow-800">
-                    Hints ({visibleHintCount} of {currentQuestion.hints_json.length})
+                <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-5">
+                  <p className="text-sm font-semibold text-amber-800 mb-3">
+                    💡 Hints ({visibleHintCount} of {currentQuestion.hints_json.length})
                   </p>
-                  {/* Display all visible hints */}
                   {currentQuestion.hints_json.slice(0, visibleHintCount).map((hint, idx) => (
-                    <div key={idx} className="pl-4 border-l-2 border-yellow-300">
-                      <p className="text-xs text-yellow-600 mb-1">Hint {idx + 1}</p>
-                      <p className="text-yellow-800">
-                        <LatexRenderer content={hint} />
-                      </p>
+                    <div key={idx} className="pl-4 border-l-4 border-amber-400 mb-3">
+                      <p className="text-xs text-amber-600 mb-1 font-medium">Hint {idx + 1}</p>
+                      <p className="text-amber-900"><LatexRenderer content={hint} /></p>
                     </div>
                   ))}
                   {visibleHintCount < currentQuestion.hints_json.length && (
                     <button
                       onClick={() => setVisibleHintCount(prev => prev + 1)}
-                      className="text-yellow-700 hover:text-yellow-900 text-sm font-medium flex items-center gap-1"
+                      className="text-amber-700 hover:text-amber-900 text-sm font-medium flex items-center gap-1"
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
                       Show next hint
@@ -620,23 +641,19 @@ export default function StudentAssignmentDetailPage() {
               {!showSolution ? (
                 <button
                   onClick={() => setShowSolution(true)}
-                  className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                  className="text-purple-600 hover:text-purple-800 font-medium"
                 >
                   View Solution
                 </button>
               ) : (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-purple-800 mb-3">Solution Steps</p>
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
+                  <p className="text-sm font-semibold text-purple-800 mb-3">📝 Solution Steps</p>
                   <ol className="list-decimal list-inside space-y-2">
                     {currentQuestion.solution_steps_json.map((step, idx) => (
-                      <li key={idx} className="text-purple-800">
-                        <span className="font-medium">
-                          <LatexRenderer content={step.step} />
-                        </span>
+                      <li key={idx} className="text-purple-900">
+                        <span className="font-medium"><LatexRenderer content={step.step} /></span>
                         {step.result && (
-                          <span className="ml-2 text-purple-600">
-                            → <LatexRenderer content={step.result} />
-                          </span>
+                          <span className="ml-2 text-purple-600">→ <LatexRenderer content={step.result} /></span>
                         )}
                       </li>
                     ))}
@@ -648,107 +665,97 @@ export default function StudentAssignmentDetailPage() {
         </div>
 
         {/* Actions */}
-        <div className="border-t border-gray-200 p-4 flex justify-between items-center">
-          <button
-            onClick={() => goToQuestion(currentIndex - 1)}
-            disabled={currentIndex === 0}
-            className="px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            ← Previous
-          </button>
-
-          <div className="flex gap-3">
-            {!currentAttempt ? (
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || (currentQuestion?.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())}
-                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                    Checking...
-                  </>
-                ) : (
-                  'Check Answer'
-                )}
-              </button>
-            ) : currentIndex < items.length - 1 ? (
-              <button
-                onClick={nextQuestion}
-                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
-              >
-                Next Question →
-              </button>
-            ) : (
-              <button
-                onClick={handleCompleteAssignment}
-                className="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
-              >
-                Complete Assignment ✓
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => goToQuestion(currentIndex + 1)}
-            disabled={currentIndex === items.length - 1}
-            className="px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next →
-          </button>
+        <div className="border-t border-gray-100 px-6 py-4 bg-gray-50 flex justify-end">
+          {!currentAttempt ? (
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || (currentQuestion?.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())}
+              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all hover:scale-105"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  Check Answer
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </>
+              )}
+            </button>
+          ) : currentIndex < items.length - 1 ? (
+            <button
+              onClick={nextQuestion}
+              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 flex items-center gap-2 transition-all hover:scale-105"
+            >
+              Next Question
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              onClick={handleCompleteAssignment}
+              className="px-8 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 flex items-center gap-2 transition-all hover:scale-105"
+            >
+              Complete Assignment
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Completion Modal */}
       {showCompletionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full mx-4 p-8 animate-in zoom-in-95">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Assignment Complete!
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Assignment Complete! 🎉
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 mb-6">
                 You scored {correctCount} out of {items.length} ({Math.round((correctCount / items.length) * 100)}%)
               </p>
               
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Correct</p>
-                    <p className="text-xl font-bold text-green-600">{correctCount}</p>
+              <div className="bg-gray-50 rounded-2xl p-5 mb-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-green-600">{correctCount}</p>
+                    <p className="text-sm text-gray-500">Correct</p>
                   </div>
-                  <div>
-                    <p className="text-gray-500">Incorrect</p>
-                    <p className="text-xl font-bold text-red-600">{items.length - correctCount}</p>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-red-500">{items.length - correctCount}</p>
+                    <p className="text-sm text-gray-500">Incorrect</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 <button
-                  onClick={() => {
-                    setShowCompletionModal(false)
-                    router.push('/student/assignments')
-                  }}
-                  className="w-full px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                  onClick={() => { setShowCompletionModal(false); router.push('/student/assignments') }}
+                  className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
                 >
                   Back to Assignments
                 </button>
                 <button
                   onClick={handleRedoAssignment}
-                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+                  className="w-full px-6 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   Redo Assignment
                 </button>
                 <button
                   onClick={() => setShowCompletionModal(false)}
-                  className="w-full px-4 py-2 text-gray-500 hover:text-gray-700"
+                  className="w-full px-6 py-3 text-gray-500 hover:text-gray-700 font-medium"
                 >
                   Review Answers
                 </button>
@@ -761,24 +768,16 @@ export default function StudentAssignmentDetailPage() {
       {/* Flag Modal */}
       {showFlagModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Report an Issue</h3>
-              <button
-                onClick={() => setShowFlagModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              <h3 className="text-lg font-bold text-gray-900">Report an Issue</h3>
+              <button onClick={() => setShowFlagModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             
-            <p className="text-sm text-gray-600 mb-4">
-              Help us improve by reporting any issues with this question.
-            </p>
-            
-            {/* Flag Type Selection */}
             <div className="space-y-2 mb-4">
               <label className="block text-sm font-medium text-gray-700">What&apos;s the issue?</label>
               <div className="grid gap-2">
@@ -787,13 +786,12 @@ export default function StudentAssignmentDetailPage() {
                   { type: 'unclear', label: 'The question is confusing' },
                   { type: 'typo', label: 'There is a typo' },
                   { type: 'too_hard', label: 'Too difficult for this level' },
-                  { type: 'multiple_valid', label: 'Multiple valid answers exist' },
                   { type: 'other', label: 'Other issue' },
                 ].map(({ type, label }) => (
                   <button
                     key={type}
                     onClick={() => setFlagType(type)}
-                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    className={`text-left px-4 py-3 rounded-xl border-2 text-sm transition-colors ${
                       flagType === type
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700'
@@ -805,32 +803,25 @@ export default function StudentAssignmentDetailPage() {
               </div>
             </div>
             
-            {/* Additional Comment */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Additional details (optional)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Additional details (optional)</label>
               <textarea
                 value={flagComment}
                 onChange={(e) => setFlagComment(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Describe the issue in more detail..."
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
+                placeholder="Describe the issue..."
               />
             </div>
             
-            {/* Actions */}
             <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowFlagModal(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-              >
+              <button onClick={() => setShowFlagModal(false)} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">
                 Cancel
               </button>
               <button
                 onClick={handleSubmitFlag}
                 disabled={!flagType || flagSubmitting}
-                className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 disabled:opacity-50 font-medium"
               >
                 {flagSubmitting ? 'Submitting...' : 'Submit Report'}
               </button>
