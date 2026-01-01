@@ -8,9 +8,37 @@ export default async function StudentsPage() {
 
   const { data: students } = await supabase
     .from('student_profiles')
-    .select('*')
+    .select(`
+      *,
+      study_programs (
+        id,
+        code,
+        name,
+        color
+      ),
+      grade_levels (
+        id,
+        code,
+        name
+      )
+    `)
     .eq('workspace_id', context.workspaceId)
     .order('name')
+
+  // Get tutor assignments separately
+  const tutorIds = students?.filter(s => s.assigned_tutor_id).map(s => s.assigned_tutor_id) || []
+  const { data: tutorProfiles } = tutorIds.length > 0 
+    ? await supabase
+        .from('profiles')
+        .select('user_id, name, email')
+        .in('user_id', tutorIds)
+    : { data: [] }
+  
+  // Build a map of tutor info
+  const tutorMap = new Map<string, { user_id: string; name: string; email: string }>()
+  tutorProfiles?.forEach(t => {
+    tutorMap.set(t.user_id, t)
+  })
 
   // Get all student user_ids for batch queries
   const studentUserIds = students?.filter(s => s.user_id).map(s => s.user_id) || []
@@ -71,7 +99,7 @@ export default async function StudentsPage() {
       </div>
 
       {students && students.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -79,7 +107,10 @@ export default async function StudentsPage() {
                   Student
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Grade
+                  Program / Grade
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Assigned Tutor
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
                   Accuracy
@@ -99,9 +130,12 @@ export default async function StudentsPage() {
               {students.map((student) => {
                 const stats = student.user_id ? studentStats.get(student.user_id) : null
                 const accuracy = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
+                const studyProgram = student.study_programs as { id: string; code: string; name: string; color: string | null } | null
+                const gradeLevel = student.grade_levels as { id: string; code: string; name: string } | null
+                const assignedTutor = student.assigned_tutor_id ? tutorMap.get(student.assigned_tutor_id) : null
                 
                 return (
-                  <tr key={student.id} className="hover:bg-gray-50">
+                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                     <td className="whitespace-nowrap px-6 py-4">
                       <Link href={`/tutor/students/${student.id}`} className="flex items-center group">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
@@ -117,27 +151,59 @@ export default async function StudentsPage() {
                         </div>
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {student.grade_current ? `Grade ${student.grade_current}` : '-'}
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="flex flex-wrap gap-1.5">
+                        {studyProgram ? (
+                          <span 
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ 
+                              backgroundColor: studyProgram.color ? `${studyProgram.color}20` : '#e5e7eb',
+                              color: studyProgram.color || '#374151'
+                            }}
+                          >
+                            {studyProgram.code}
+                          </span>
+                        ) : null}
+                        {gradeLevel ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {gradeLevel.code}
+                          </span>
+                        ) : null}
+                        {!studyProgram && !gradeLevel && (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      {assignedTutor ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-medium text-indigo-600">
+                            {assignedTutor.name?.charAt(0).toUpperCase() || 'T'}
+                          </div>
+                          <span className="text-gray-700">{assignedTutor.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-center">
                       {accuracy !== null ? (
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           accuracy >= 70 ? 'bg-green-100 text-green-800' : 
-                          accuracy >= 50 ? 'bg-yellow-100 text-yellow-800' : 
+                          accuracy >= 50 ? 'bg-amber-100 text-amber-800' : 
                           'bg-red-100 text-red-800'
                         }`}>
                           {accuracy}%
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-400">-</span>
+                        <span className="text-sm text-gray-400">—</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-center text-sm text-gray-500">
                       {stats && stats.assigned > 0 ? (
                         <span>{stats.completed}/{stats.assigned}</span>
                       ) : (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
@@ -146,7 +212,7 @@ export default async function StudentsPage() {
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                           Pending
                         </span>
                       )}

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
-import MathSymbolsPanel from '@/components/math-symbols-panel'
+import MathInput from '@/components/math-input'
 import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
 
 interface Question {
@@ -408,34 +408,20 @@ export default function StudentAssignmentDetailPage() {
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Your Answer
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type={currentQuestion?.answer_type === 'numeric' ? 'number' : 'text'}
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  disabled={!!currentAttempt}
-                  className="flex-1 px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
-                  placeholder={currentQuestion?.answer_type === 'numeric' ? 'Enter a number' : 'Type your answer'}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !currentAttempt) {
-                      handleSubmit()
-                    }
-                  }}
-                />
-                {!currentAttempt && (
-                  <MathSymbolsPanel
-                    onInsert={(symbol) => setAnswer(prev => prev + symbol)}
-                  />
-                )}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Use the math symbols button or type normally. Common notations: × ÷ √ π
-              </p>
+              <MathInput
+                value={answer}
+                onChange={setAnswer}
+                disabled={!!currentAttempt}
+                placeholder={currentQuestion?.answer_type === 'numeric' ? 'Enter a number' : 'Type your answer'}
+                onSubmit={() => {
+                  if (!currentAttempt) {
+                    handleSubmit()
+                  }
+                }}
+                status={currentAttempt ? (currentAttempt.isCorrect ? 'correct' : 'incorrect') : undefined}
+              />
               {currentAttempt && (
-                <div className="mt-2 text-sm text-gray-600">
+                <div className="mt-3 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-600">
                   Your answer: <span className="font-medium"><LatexRenderer content={formatMathForDisplay(currentAttempt.answer)} /></span>
                   {!currentAttempt.isCorrect && currentQuestion?.correct_answer_json.value && (
                     <span className="ml-2">

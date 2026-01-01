@@ -2,6 +2,28 @@ import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
+interface Assignment {
+  id: string
+  title: string
+  description: string | null
+  status: string
+  due_at: string | null
+  completed_at: string | null
+  parent_assignment_id: string | null
+  settings_json: {
+    isParent?: boolean
+    partNumber?: number
+    totalParts?: number
+  } | null
+  assignment_items: { id: string; question_id: string }[]
+}
+
+interface AssignmentWithProgress extends Assignment {
+  totalQuestions: number
+  completedQuestions: number
+  children: AssignmentWithProgress[]
+}
+
 export default async function StudentAssignmentsPage() {
   const user = await requireUser()
   const context = await getUserContext()
@@ -40,13 +62,57 @@ export default async function StudentAssignmentsPage() {
       return {
         ...assignment,
         totalQuestions: items.length,
-        completedQuestions: Math.min(uniqueAttempted, items.length), // Cap at total
-      }
+        completedQuestions: Math.min(uniqueAttempted, items.length),
+        children: [] as AssignmentWithProgress[],
+      } as AssignmentWithProgress
     })
   )
   
-  const pendingAssignments = assignmentsWithProgress.filter((a) => a.status === 'active')
-  const completedAssignments = assignmentsWithProgress.filter((a) => a.status === 'completed')
+  // Group children under parents
+  const groupAssignments = (list: AssignmentWithProgress[]): AssignmentWithProgress[] => {
+    const parentMap = new Map<string, AssignmentWithProgress>()
+    const childAssignments: AssignmentWithProgress[] = []
+    const standalone: AssignmentWithProgress[] = []
+    
+    for (const assignment of list) {
+      if (assignment.parent_assignment_id) {
+        childAssignments.push(assignment)
+      } else if (assignment.settings_json?.isParent) {
+        parentMap.set(assignment.id, { ...assignment, children: [] })
+      } else {
+        standalone.push(assignment)
+      }
+    }
+    
+    // Attach children to parents
+    for (const child of childAssignments) {
+      const parent = parentMap.get(child.parent_assignment_id!)
+      if (parent) {
+        parent.children.push(child)
+      } else {
+        // Orphan child, show as standalone
+        standalone.push(child)
+      }
+    }
+    
+    // Sort children by partNumber
+    for (const parent of parentMap.values()) {
+      parent.children.sort((a, b) => {
+        const partA = a.settings_json?.partNumber || 0
+        const partB = b.settings_json?.partNumber || 0
+        return partA - partB
+      })
+      // Calculate parent totals from children
+      parent.totalQuestions = parent.children.reduce((sum, c) => sum + c.totalQuestions, 0)
+      parent.completedQuestions = parent.children.reduce((sum, c) => sum + c.completedQuestions, 0)
+    }
+    
+    return [...parentMap.values(), ...standalone]
+  }
+  
+  const grouped = groupAssignments(assignmentsWithProgress)
+  const pendingAssignments = grouped.filter((a) => a.status === 'active')
+  const completedAssignments = grouped.filter((a) => a.status === 'completed')
   
   return (
     <div>
@@ -65,56 +131,9 @@ export default async function StudentAssignmentsPage() {
         
         {pendingAssignments.length > 0 ? (
           <div className="grid gap-4">
-            {pendingAssignments.map((assignment) => {
-              const dueDate = assignment.due_at ? new Date(assignment.due_at) : null
-              const isOverdue = dueDate && dueDate < new Date()
-              const { totalQuestions, completedQuestions } = assignment
-              const progress = totalQuestions > 0 
-                ? Math.round((completedQuestions / totalQuestions) * 100) 
-                : 0
-              
-              return (
-                <Link
-                  key={assignment.id}
-                  href={`/student/assignments/${assignment.id}`}
-                  className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${
-                    isOverdue ? 'border-red-300' : ''
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
-                      {assignment.description && (
-                        <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
-                      )}
-                    </div>
-                    {dueDate && (
-                      <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                        {isOverdue ? 'Overdue' : `Due ${dueDate.toLocaleDateString('en-GB')}`}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>{completedQuestions} of {totalQuestions} completed</span>
-                        <span>{progress}%</span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-600 rounded-full transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-blue-600 text-sm font-medium">
-                      Continue →
-                    </span>
-                  </div>
-                </Link>
-              )
-            })}
+            {pendingAssignments.map((assignment) => (
+              <AssignmentCard key={assignment.id} assignment={assignment} />
+            ))}
           </div>
         ) : (
           <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
@@ -131,35 +150,223 @@ export default async function StudentAssignmentsPage() {
           </h2>
           
           <div className="grid gap-4">
-            {completedAssignments.map((assignment) => {
-              const { totalQuestions } = assignment
-              
-              return (
-                <Link
-                  key={assignment.id}
-                  href={`/student/assignments/${assignment.id}`}
-                  className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow opacity-75"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-600">✓</span>
-                        <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {totalQuestions} questions • Completed {new Date(assignment.completed_at!).toLocaleDateString('en-GB')}
-                      </p>
-                    </div>
-                    <span className="text-gray-400 text-sm">
-                      View Results →
-                    </span>
-                  </div>
-                </Link>
-              )
-            })}
+            {completedAssignments.map((assignment) => (
+              <CompletedAssignmentCard key={assignment.id} assignment={assignment} />
+            ))}
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) {
+  const hasChildren = assignment.children && assignment.children.length > 0
+  const dueDate = assignment.due_at ? new Date(assignment.due_at) : null
+  const isOverdue = dueDate && dueDate < new Date()
+  const { totalQuestions, completedQuestions } = assignment
+  const progress = totalQuestions > 0 
+    ? Math.round((completedQuestions / totalQuestions) * 100) 
+    : 0
+  
+  // Find the first incomplete child to continue with
+  const firstIncompleteChild = hasChildren 
+    ? assignment.children.find(c => c.completedQuestions < c.totalQuestions) || assignment.children[0]
+    : null
+
+  if (hasChildren) {
+    return (
+      <div className={`bg-white rounded-lg shadow-sm border ${isOverdue ? 'border-red-300' : ''}`}>
+        {/* Header section */}
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                {assignment.title}
+                <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                  {assignment.children.length} parts
+                </span>
+              </h3>
+              {assignment.description && (
+                <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
+              )}
+            </div>
+            {dueDate && (
+              <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                {isOverdue ? 'Overdue' : `Due ${dueDate.toLocaleDateString('en-GB')}`}
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>{completedQuestions} of {totalQuestions} completed</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-600 rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+            {firstIncompleteChild && (
+              <Link 
+                href={`/student/assignments/${firstIncompleteChild.id}`}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Continue →
+              </Link>
+            )}
+          </div>
+        </div>
+        
+        {/* Sub-assignments list */}
+        <div className="border-t border-gray-100 divide-y divide-gray-100">
+          {assignment.children.map((child, idx) => {
+            const childProgress = child.totalQuestions > 0 
+              ? Math.round((child.completedQuestions / child.totalQuestions) * 100) 
+              : 0
+            const isComplete = child.completedQuestions >= child.totalQuestions
+            
+            return (
+              <Link
+                key={child.id}
+                href={`/student/assignments/${child.id}`}
+                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  isComplete 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {isComplete ? '✓' : idx + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900 truncate">{child.title}</div>
+                  <div className="text-sm text-gray-500">
+                    {child.completedQuestions} of {child.totalQuestions} questions • {childProgress}%
+                  </div>
+                </div>
+                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={`/student/assignments/${assignment.id}`}
+      className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${
+        isOverdue ? 'border-red-300' : ''
+      }`}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
+          {assignment.description && (
+            <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
+          )}
+        </div>
+        {dueDate && (
+          <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+            {isOverdue ? 'Overdue' : `Due ${dueDate.toLocaleDateString('en-GB')}`}
+          </span>
+        )}
+      </div>
+      
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <div className="flex justify-between text-sm text-gray-600 mb-1">
+            <span>{completedQuestions} of {totalQuestions} completed</span>
+            <span>{progress}%</span>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-blue-600 rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+        <span className="text-blue-600 text-sm font-medium">
+          Continue →
+        </span>
+      </div>
+    </Link>
+  )
+}
+
+function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) {
+  const hasChildren = assignment.children && assignment.children.length > 0
+  const { totalQuestions } = assignment
+
+  if (hasChildren) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border opacity-75">
+        {/* Header */}
+        <div className="p-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-green-600">✓</span>
+              <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
+              <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                {assignment.children.length} parts
+              </span>
+            </div>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">
+            {totalQuestions} questions • Completed {assignment.completed_at ? new Date(assignment.completed_at).toLocaleDateString('en-GB') : ''}
+          </p>
+        </div>
+        
+        {/* Sub-assignments list */}
+        <div className="border-t border-gray-100 divide-y divide-gray-100">
+          {assignment.children.map((child) => (
+            <Link
+              key={child.id}
+              href={`/student/assignments/${child.id}`}
+              className="flex items-center gap-4 px-6 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700">
+                ✓
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-700 truncate">{child.title}</div>
+                <div className="text-xs text-gray-500">{child.totalQuestions} questions</div>
+              </div>
+              <span className="text-gray-400 text-sm">View →</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={`/student/assignments/${assignment.id}`}
+      className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow opacity-75"
+    >
+      <div className="flex justify-between items-center">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-green-600">✓</span>
+            <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">
+            {totalQuestions} questions • Completed {assignment.completed_at ? new Date(assignment.completed_at).toLocaleDateString('en-GB') : ''}
+          </p>
+        </div>
+        <span className="text-gray-400 text-sm">
+          View Results →
+        </span>
+      </div>
+    </Link>
   )
 }

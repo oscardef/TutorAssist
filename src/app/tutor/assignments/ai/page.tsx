@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
@@ -59,6 +59,7 @@ interface StudentHistory {
 
 export default function AIAssignmentPage() {
   const router = useRouter()
+  const errorRef = useRef<HTMLDivElement>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -90,6 +91,13 @@ export default function AIAssignmentPage() {
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [dueDate, setDueDate] = useState('')
+
+  // Scroll to error when it appears
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [error])
 
   useEffect(() => {
     fetchStudents()
@@ -463,7 +471,7 @@ export default function AIAssignmentPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div ref={errorRef} className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
         </div>
       )}

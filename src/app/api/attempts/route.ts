@@ -75,12 +75,18 @@ export async function POST(request: Request) {
     }
     
     // Update spaced repetition
-    await updateSpacedRepetition(supabase, user.id, questionId, isCorrect)
+    await updateSpacedRepetition(supabase, user.id, questionId, isCorrect, context.workspaceId)
     
     // Update question stats via database function
-    await supabase.rpc('update_question_stats', {
-      p_question_id: questionId,
-    })
+    try {
+      await supabase.rpc('update_question_stats', {
+        question_id_param: questionId,
+        is_correct_param: isCorrect,
+      })
+    } catch (statsError) {
+      // Non-critical error - log but don't fail the request
+      console.warn('Failed to update question stats:', statsError)
+    }
     
     return NextResponse.json({ attempt })
   } catch (error) {
@@ -185,54 +191,89 @@ async function updateSpacedRepetition(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   studentId: string,
   questionId: string,
-  isCorrect: boolean
+  isCorrect: boolean,
+  workspaceId?: string
 ) {
-  // Get current SR data
-  const { data: srData } = await supabase
-    .from('spaced_repetition')
-    .select('*')
-    .eq('student_id', studentId)
-    .eq('question_id', questionId)
-    .single()
-  
-  // SM-2 algorithm simplified
-  const now = new Date()
-  let easeFactor = srData?.ease_factor || 2.5
-  let interval = srData?.interval_days || 1
-  let repetitions = srData?.repetitions || 0
-  
-  if (isCorrect) {
-    repetitions += 1
+  try {
+    // Get current SR data using correct column names
+    const { data: srData } = await supabase
+      .from('spaced_repetition')
+      .select('*')
+      .eq('student_user_id', studentId)
+      .eq('question_id', questionId)
+      .single()
     
-    if (repetitions === 1) {
-      interval = 1
-    } else if (repetitions === 2) {
-      interval = 6
+    // SM-2 algorithm simplified
+    const now = new Date()
+    let ease = srData?.ease || 2.5
+    let interval = srData?.interval_days || 1
+    let streak = srData?.streak || 0
+    let totalReviews = srData?.total_reviews || 0
+    let totalCorrect = srData?.total_correct || 0
+    
+    totalReviews += 1
+    
+    if (isCorrect) {
+      streak += 1
+      totalCorrect += 1
+      
+      if (streak === 1) {
+        interval = 1
+      } else if (streak === 2) {
+        interval = 6
+      } else {
+        interval = Math.round(interval * ease)
+      }
+      
+      ease = Math.max(1.3, ease + 0.1)
     } else {
-      interval = Math.round(interval * easeFactor)
+      streak = 0
+      interval = 1
+      ease = Math.max(1.3, ease - 0.2)
     }
     
-    easeFactor = Math.max(1.3, easeFactor + 0.1)
-  } else {
-    repetitions = 0
-    interval = 1
-    easeFactor = Math.max(1.3, easeFactor - 0.2)
+    const nextDue = new Date(now.getTime() + interval * 24 * 60 * 60 * 1000)
+    
+    // Get workspace_id from existing record or from question
+    let wsId = srData?.workspace_id || workspaceId
+    if (!wsId) {
+      const { data: question } = await supabase
+        .from('questions')
+        .select('workspace_id')
+        .eq('id', questionId)
+        .single()
+      wsId = question?.workspace_id
+    }
+    
+    if (!wsId) {
+      console.warn('Could not determine workspace_id for spaced_repetition')
+      return
+    }
+    
+    // Upsert SR data using correct column names
+    const { error } = await supabase
+      .from('spaced_repetition')
+      .upsert({
+        workspace_id: wsId,
+        student_user_id: studentId,
+        question_id: questionId,
+        ease: ease,
+        interval_days: interval,
+        streak: streak,
+        next_due: nextDue.toISOString(),
+        last_seen: now.toISOString(),
+        last_outcome: isCorrect ? 'correct' : 'incorrect',
+        total_reviews: totalReviews,
+        total_correct: totalCorrect,
+      }, {
+        onConflict: 'workspace_id,student_user_id,question_id',
+      })
+    
+    if (error) {
+      console.warn('Failed to update spaced repetition:', error)
+    }
+  } catch (error) {
+    // Non-critical, log but don't fail
+    console.warn('Error in updateSpacedRepetition:', error)
   }
-  
-  const nextReviewDate = new Date(now.getTime() + interval * 24 * 60 * 60 * 1000)
-  
-  // Upsert SR data
-  await supabase
-    .from('spaced_repetition')
-    .upsert({
-      student_id: studentId,
-      question_id: questionId,
-      ease_factor: easeFactor,
-      interval_days: interval,
-      repetitions,
-      next_review_date: nextReviewDate.toISOString(),
-      last_review_date: now.toISOString(),
-    }, {
-      onConflict: 'student_id,question_id',
-    })
 }

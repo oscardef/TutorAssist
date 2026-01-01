@@ -8,13 +8,37 @@ export default async function StudentDashboard() {
   const context = await getUserContext()
   const supabase = await createServerClient()
   
-  // Get student profile
+  // Get student profile with assigned tutor and program/grade info
   const { data: profile } = await supabase
     .from('student_profiles')
-    .select('*')
+    .select(`
+      *,
+      study_programs (
+        id,
+        code,
+        name,
+        color
+      ),
+      grade_levels (
+        id,
+        code,
+        name
+      )
+    `)
     .eq('user_id', user?.id)
     .eq('workspace_id', context?.workspaceId)
     .single()
+
+  // Get assigned tutor info
+  let assignedTutor = null
+  if (profile?.assigned_tutor_id) {
+    const { data: tutorProfile } = await supabase
+      .from('profiles')
+      .select('user_id, name, email')
+      .eq('user_id', profile.assigned_tutor_id)
+      .single()
+    assignedTutor = tutorProfile
+  }
   
   // Get user metadata for name - check multiple common metadata fields
   const { data: { user: authUser } } = await supabase.auth.getUser()
@@ -109,14 +133,16 @@ export default async function StudentDashboard() {
   
   let currentStreak = 0
   if (streakData && streakData.length > 0) {
+    const now = new Date()
     const dates = new Set(
       streakData.map(a => format(new Date(a.submitted_at!), 'yyyy-MM-dd'))
     )
-    const today = format(new Date(), 'yyyy-MM-dd')
-    const yesterday = format(new Date(Date.now() - 86400000), 'yyyy-MM-dd')
+    const today = format(now, 'yyyy-MM-dd')
+    const yesterdayDate = new Date(now.getTime() - 86400000)
+    const yesterday = format(yesterdayDate, 'yyyy-MM-dd')
     
     if (dates.has(today) || dates.has(yesterday)) {
-      let checkDate = dates.has(today) ? new Date() : new Date(Date.now() - 86400000)
+      let checkDate = dates.has(today) ? now : yesterdayDate
       while (dates.has(format(checkDate, 'yyyy-MM-dd'))) {
         currentStreak++
         checkDate = new Date(checkDate.getTime() - 86400000)
@@ -137,10 +163,54 @@ export default async function StudentDashboard() {
         <h1 className="text-3xl font-bold text-gray-900">
           {greeting}, {firstName}! 👋
         </h1>
-        <p className="text-gray-500 mt-2">
-          {getMotivationalMessage(accuracy, currentStreak, dueItems?.length || 0)}
-        </p>
+        <div className="flex flex-wrap items-center gap-3 mt-2">
+          <p className="text-gray-500">
+            {getMotivationalMessage(accuracy, currentStreak, dueItems?.length || 0)}
+          </p>
+          {profile?.study_programs && (
+            <span 
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+              style={{ 
+                backgroundColor: profile.study_programs.color ? `${profile.study_programs.color}20` : '#e5e7eb',
+                color: profile.study_programs.color || '#374151'
+              }}
+            >
+              {profile.study_programs.name}
+            </span>
+          )}
+          {profile?.grade_levels && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {profile.grade_levels.name}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Assigned Tutor Banner */}
+      {assignedTutor && (
+        <div className="mb-6 rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white font-semibold text-lg">
+              {assignedTutor.name?.charAt(0).toUpperCase() || 'T'}
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-indigo-600 uppercase tracking-wide">Your Tutor</p>
+              <p className="text-base font-semibold text-gray-900">{assignedTutor.name}</p>
+            </div>
+            {assignedTutor.email && (
+              <a 
+                href={`mailto:${assignedTutor.email}`}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-white rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+                Contact
+              </a>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

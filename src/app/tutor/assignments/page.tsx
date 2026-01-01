@@ -3,6 +3,32 @@ import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { format } from 'date-fns'
 
+interface Assignment {
+  id: string
+  title: string
+  description: string | null
+  status: string
+  due_at: string | null
+  created_at: string
+  parent_assignment_id: string | null
+  settings_json: {
+    isParent?: boolean
+    partNumber?: number
+    totalParts?: number
+  } | null
+  student_profiles: { id: string; name: string } | null
+  assignment_items: { id: string }[] | null
+}
+
+interface AssignmentWithChildren extends Assignment {
+  children: Assignment[]
+}
+
+interface StudentGroup {
+  student: { id: string; name: string } | null
+  assignments: AssignmentWithChildren[]
+}
+
 export default async function AssignmentsPage() {
   const context = await requireTutor()
   const supabase = await createServerClient()
@@ -18,13 +44,12 @@ export default async function AssignmentsPage() {
     .eq('workspace_id', context.workspaceId)
     .order('created_at', { ascending: false })
 
-  // Get students for assignment creation - available for future dropdown
-  const { data: _students } = await supabase
+  // Get students for assignment creation
+  const { data: students } = await supabase
     .from('student_profiles')
     .select('id, name')
     .eq('workspace_id', context.workspaceId)
     .order('name')
-  void _students // Reserved for student dropdown feature
 
   // Get questions count
   const { count: questionCount } = await supabase
@@ -33,9 +58,75 @@ export default async function AssignmentsPage() {
     .eq('workspace_id', context.workspaceId)
     .eq('status', 'active')
 
-  const activeAssignments = assignments?.filter(a => a.status === 'active') || []
-  const draftAssignments = assignments?.filter(a => a.status === 'draft') || []
-  const completedAssignments = assignments?.filter(a => a.status === 'completed') || []
+  // Group assignments by student, nesting children under parents
+  const groupByStudent = (assignmentList: Assignment[]): StudentGroup[] => {
+    const groups = new Map<string, StudentGroup>()
+    
+    // First pass: identify parent and standalone assignments
+    const parentMap = new Map<string, AssignmentWithChildren>()
+    const childAssignments: Assignment[] = []
+    
+    for (const assignment of assignmentList) {
+      if (assignment.parent_assignment_id) {
+        childAssignments.push(assignment)
+      } else {
+        parentMap.set(assignment.id, { ...assignment, children: [] })
+      }
+    }
+    
+    // Second pass: attach children to parents
+    for (const child of childAssignments) {
+      const parent = parentMap.get(child.parent_assignment_id!)
+      if (parent) {
+        parent.children.push(child)
+      } else {
+        // Orphan child - treat as standalone
+        parentMap.set(child.id, { ...child, children: [] })
+      }
+    }
+    
+    // Sort children by part number
+    for (const parent of parentMap.values()) {
+      parent.children.sort((a, b) => {
+        const partA = a.settings_json?.partNumber || 0
+        const partB = b.settings_json?.partNumber || 0
+        return partA - partB
+      })
+    }
+    
+    // Group by student
+    for (const assignment of parentMap.values()) {
+      const studentId = assignment.student_profiles?.id || 'unassigned'
+      
+      if (!groups.has(studentId)) {
+        groups.set(studentId, {
+          student: assignment.student_profiles || null,
+          assignments: []
+        })
+      }
+      groups.get(studentId)!.assignments.push(assignment)
+    }
+    
+    // Sort by student name, with unassigned at the end
+    return Array.from(groups.values()).sort((a, b) => {
+      if (!a.student) return 1
+      if (!b.student) return -1
+      return a.student.name.localeCompare(b.student.name)
+    })
+  }
+
+  // Filter out child assignments from the main count since they're grouped
+  const allAssignments = assignments as Assignment[] || []
+  const topLevelActive = allAssignments.filter(a => a.status === 'active' && !a.parent_assignment_id)
+  const topLevelDraft = allAssignments.filter(a => a.status === 'draft' && !a.parent_assignment_id)
+  const topLevelCompleted = allAssignments.filter(a => a.status === 'completed' && !a.parent_assignment_id)
+  
+  const activeAssignments = allAssignments.filter(a => a.status === 'active')
+  const draftAssignments = allAssignments.filter(a => a.status === 'draft' && !a.parent_assignment_id)
+  const completedAssignments = allAssignments.filter(a => a.status === 'completed')
+
+  const activeByStudent = groupByStudent(activeAssignments)
+  const completedByStudent = groupByStudent(completedAssignments)
 
   return (
     <div className="space-y-6">
@@ -66,31 +157,41 @@ export default async function AssignmentsPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="grid gap-4 sm:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="text-sm font-medium text-gray-500">Students</div>
+          <div className="mt-1 text-2xl font-semibold text-gray-900">{students?.length || 0}</div>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="text-sm font-medium text-gray-500">Active</div>
-          <div className="mt-1 text-2xl font-semibold text-gray-900">{activeAssignments.length}</div>
+          <div className="mt-1 text-2xl font-semibold text-green-600">{topLevelActive.length}</div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-sm font-medium text-gray-500">Draft</div>
-          <div className="mt-1 text-2xl font-semibold text-gray-900">{draftAssignments.length}</div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="text-sm font-medium text-gray-500">Drafts</div>
+          <div className="mt-1 text-2xl font-semibold text-gray-600">{topLevelDraft.length}</div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="text-sm font-medium text-gray-500">Completed</div>
-          <div className="mt-1 text-2xl font-semibold text-gray-900">{completedAssignments.length}</div>
+          <div className="mt-1 text-2xl font-semibold text-blue-600">{topLevelCompleted.length}</div>
         </div>
       </div>
 
       {/* Assignments List */}
       {assignments && assignments.length > 0 ? (
-        <div className="space-y-6">
-          {/* Active Assignments */}
-          {activeAssignments.length > 0 && (
+        <div className="space-y-8">
+          {/* Active Assignments - Grouped by Student */}
+          {activeByStudent.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Active Assignments</h2>
-              <div className="space-y-3">
-                {activeAssignments.map((assignment) => (
-                  <AssignmentCard key={assignment.id} assignment={assignment} />
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                Active Assignments
+              </h2>
+              <div className="space-y-6">
+                {activeByStudent.map((group) => (
+                  <StudentAssignmentGroup 
+                    key={group.student?.id || 'unassigned'} 
+                    group={group} 
+                  />
                 ))}
               </div>
             </div>
@@ -99,29 +200,39 @@ export default async function AssignmentsPage() {
           {/* Draft Assignments */}
           {draftAssignments.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Drafts</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                Drafts
+              </h2>
               <div className="space-y-3">
                 {draftAssignments.map((assignment) => (
-                  <AssignmentCard key={assignment.id} assignment={assignment} />
+                  <AssignmentCard key={assignment.id} assignment={assignment as Assignment} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Completed Assignments */}
-          {completedAssignments.length > 0 && (
+          {/* Completed Assignments - Grouped by Student */}
+          {completedByStudent.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Completed</h2>
-              <div className="space-y-3">
-                {completedAssignments.map((assignment) => (
-                  <AssignmentCard key={assignment.id} assignment={assignment} />
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                Completed
+              </h2>
+              <div className="space-y-6">
+                {completedByStudent.map((group) => (
+                  <StudentAssignmentGroup 
+                    key={group.student?.id || 'unassigned'} 
+                    group={group}
+                    collapsed 
+                  />
                 ))}
               </div>
             </div>
           )}
         </div>
       ) : (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+        <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
           <svg
             className="mx-auto h-12 w-12 text-gray-400"
             fill="none"
@@ -172,7 +283,120 @@ export default async function AssignmentsPage() {
   )
 }
 
-function AssignmentCard({ assignment }: { assignment: Record<string, unknown> }) {
+function StudentAssignmentGroup({ group, collapsed = false }: { group: StudentGroup; collapsed?: boolean }) {
+  const studentName = group.student?.name || 'Unassigned'
+  const initials = studentName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Student Header */}
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+          {initials}
+        </div>
+        <div className="flex-1">
+          <span className="font-medium text-gray-900">{studentName}</span>
+          <span className="text-sm text-gray-500 ml-2">
+            ({group.assignments.length} assignment{group.assignments.length !== 1 ? 's' : ''})
+          </span>
+        </div>
+      </div>
+      
+      {/* Assignments */}
+      <div className={`divide-y divide-gray-100 ${collapsed ? 'max-h-60 overflow-auto' : ''}`}>
+        {group.assignments.map((assignment) => (
+          <AssignmentRow key={assignment.id} assignment={assignment} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AssignmentRow({ assignment }: { assignment: AssignmentWithChildren }) {
+  const hasChildren = assignment.children && assignment.children.length > 0
+  const totalQuestions = hasChildren 
+    ? assignment.children.reduce((sum, c) => sum + (c.assignment_items?.length || 0), 0)
+    : (assignment.assignment_items?.length || 0)
+
+  if (hasChildren) {
+    return (
+      <div className="group">
+        <div className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors">
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-gray-900 truncate flex items-center gap-2">
+              {assignment.title}
+              <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                {assignment.children.length} parts
+              </span>
+            </div>
+            <div className="text-sm text-gray-500 flex items-center gap-3">
+              <span>{totalQuestions} questions total</span>
+              {assignment.due_at && (
+                <>
+                  <span>•</span>
+                  <span>Due {format(new Date(assignment.due_at), 'MMM d')}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <Link
+            href={`/tutor/assignments/${assignment.id}`}
+            className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            Overview
+          </Link>
+        </div>
+        <div className="border-t border-gray-100 bg-gray-50/50">
+          {assignment.children.map((child, idx) => (
+            <Link
+              key={child.id}
+              href={`/tutor/assignments/${child.id}`}
+              className="flex items-center gap-4 px-4 py-2.5 pl-12 hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-b-0"
+            >
+              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                {idx + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-700 truncate">{child.title}</div>
+                <div className="text-xs text-gray-500">
+                  {child.assignment_items?.length || 0} questions
+                </div>
+              </div>
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </Link>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={`/tutor/assignments/${assignment.id}`}
+      className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors"
+    >
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-gray-900 truncate">{assignment.title}</div>
+        <div className="text-sm text-gray-500 flex items-center gap-3">
+          <span>{assignment.assignment_items?.length || 0} questions</span>
+          {assignment.due_at && (
+            <>
+              <span>•</span>
+              <span>Due {format(new Date(assignment.due_at), 'MMM d')}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+      </svg>
+    </Link>
+  )
+}
+
+function AssignmentCard({ assignment }: { assignment: Assignment }) {
   const statusColors = {
     draft: 'bg-gray-100 text-gray-700',
     active: 'bg-green-100 text-green-700',
@@ -181,38 +405,33 @@ function AssignmentCard({ assignment }: { assignment: Record<string, unknown> })
   }
 
   const status = assignment.status as keyof typeof statusColors
-  const studentProfile = assignment.student_profiles as { name: string } | null
-  const items = assignment.assignment_items as { id: string }[] | null
+  const studentProfile = assignment.student_profiles
+  const items = assignment.assignment_items
 
   return (
     <Link
       href={`/tutor/assignments/${assignment.id}`}
-      className="block rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="block rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900 truncate">{String(assignment.title)}</h3>
+            <h3 className="font-semibold text-gray-900 truncate">{assignment.title}</h3>
             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[status]}`}>
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </span>
           </div>
           <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
-            <span>
-              {studentProfile?.name || 'All students'}
-            </span>
+            <span>{studentProfile?.name || 'All students'}</span>
             <span>•</span>
             <span>{items?.length || 0} questions</span>
-            {assignment.due_at ? (
+            {assignment.due_at && (
               <>
                 <span>•</span>
-                <span>Due {format(new Date(String(assignment.due_at)), 'MMM d, yyyy')}</span>
+                <span>Due {format(new Date(assignment.due_at), 'MMM d, yyyy')}</span>
               </>
-            ) : null}
+            )}
           </div>
-          {assignment.description ? (
-            <p className="mt-2 text-sm text-gray-600 line-clamp-2">{String(assignment.description)}</p>
-          ) : null}
         </div>
         <svg className="h-5 w-5 text-gray-400 ml-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />

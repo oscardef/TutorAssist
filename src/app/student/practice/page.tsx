@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
-import MathSymbolsPanel from '@/components/math-symbols-panel'
+import MathInput from '@/components/math-input'
 import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
 
 interface Question {
@@ -55,6 +55,13 @@ interface TopicStats {
   accuracy: number
 }
 
+interface StudentProfile {
+  study_program_id: string | null
+  grade_level_id: string | null
+  study_program?: { id: string; code: string; name: string } | null
+  grade_level?: { id: string; code: string; name: string } | null
+}
+
 type PracticeMode = 'select' | 'topic' | 'review' | 'weak' | 'browse'
 
 function getGradeLevelLabel(level: number | null): string {
@@ -82,6 +89,7 @@ export default function PracticePage() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [question, setQuestion] = useState<Question | null>(null)
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null)
   
   // Question state
   const [answer, setAnswer] = useState('')
@@ -109,6 +117,20 @@ export default function PracticePage() {
     async function fetchData() {
       setLoading(true)
       try {
+        // Fetch student profile to get their program/grade
+        const profileRes = await fetch('/api/students/profile')
+        const profileData = await profileRes.json()
+        if (profileData.profile) {
+          setStudentProfile(profileData.profile)
+          // Auto-select student's program if they have one
+          if (profileData.profile.study_program_id) {
+            setSelectedProgram(profileData.profile.study_program_id)
+          }
+          if (profileData.profile.grade_level_id) {
+            setSelectedGradeLevel(profileData.profile.grade_level_id)
+          }
+        }
+        
         // Fetch programs
         const programsRes = await fetch('/api/programs')
         const programsData = await programsRes.json()
@@ -153,6 +175,14 @@ export default function PracticePage() {
         params.set('mode', 'weak') // Topics with low accuracy
       }
       
+      // Filter by student's program and grade level
+      if (studentProfile?.study_program_id) {
+        params.set('programId', studentProfile.study_program_id)
+      }
+      if (studentProfile?.grade_level_id) {
+        params.set('gradeLevelId', studentProfile.grade_level_id)
+      }
+      
       const response = await fetch(`/api/questions?${params}`)
       const data = await response.json()
       
@@ -168,7 +198,7 @@ export default function PracticePage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [studentProfile])
 
   // Start practice when mode/topic changes
   useEffect(() => {
@@ -759,52 +789,18 @@ export default function PracticePage() {
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Your Answer
-              </label>
-              <div className="relative">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    disabled={submitted}
-                    className={`flex-1 px-4 py-3 text-lg border-2 rounded-lg focus:outline-none transition-colors ${
-                      submitted 
-                        ? isCorrect 
-                          ? 'border-green-500 bg-green-50' 
-                          : 'border-red-500 bg-red-50'
-                        : 'border-gray-300 focus:border-blue-500'
-                    } disabled:bg-gray-50`}
-                    placeholder={question.answer_type === 'numeric' ? 'Enter a number (e.g., 3.14, 1/2)' : 'Type your answer (e.g., 2x+1, √2)'}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !submitted && answer.trim()) {
-                        handleSubmit()
-                      }
-                    }}
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck="false"
-                  />
-                  {!submitted && (
-                    <MathSymbolsPanel onInsert={(symbol) => setAnswer(prev => prev + symbol)} />
-                  )}
-                </div>
-                
-                {/* Live preview of answer */}
-                {answer && !submitted && (
-                  <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
-                    <span className="text-xs text-gray-500 mr-2">Preview:</span>
-                    <LatexRenderer content={formatMathForDisplay(answer)} className="text-gray-800" />
-                  </div>
-                )}
-              </div>
-              
-              <p className="mt-2 text-xs text-gray-500">
-                💡 Tips: Type fractions as &ldquo;1/2&rdquo;, exponents as &ldquo;x^2&rdquo;, roots as &ldquo;√&rdquo; or &ldquo;sqrt&rdquo;. 
-                Use the math symbols button for special characters.
-              </p>
+              <MathInput
+                value={answer}
+                onChange={setAnswer}
+                disabled={submitted}
+                placeholder={question.answer_type === 'numeric' ? 'Enter a number (e.g., 3.14, 1/2)' : 'Type your answer (e.g., 2x+1, √2)'}
+                onSubmit={() => {
+                  if (!submitted && answer.trim()) {
+                    handleSubmit()
+                  }
+                }}
+                status={submitted ? (isCorrect ? 'correct' : 'incorrect') : undefined}
+              />
               
               {submitted && (
                 <div className={`mt-4 p-3 rounded-lg ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>

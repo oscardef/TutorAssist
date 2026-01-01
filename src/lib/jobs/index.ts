@@ -33,8 +33,24 @@ async function handleReconcileStats(job: Job): Promise<void> {
   
   if (questions) {
     for (const q of questions) {
-      // Call the update_question_stats function for each question
-      await supabase.rpc('update_question_stats', { p_question_id: q.id })
+      // Get attempt stats for this question
+      const { data: stats } = await supabase
+        .from('attempts')
+        .select('is_correct')
+        .eq('question_id', q.id)
+      
+      const timesAttempted = stats?.length || 0
+      const timesCorrect = stats?.filter(s => s.is_correct).length || 0
+      
+      // Update question stats directly
+      await supabase
+        .from('questions')
+        .update({ 
+          times_attempted: timesAttempted,
+          times_correct: timesCorrect,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', q.id)
     }
   }
   console.log(`Reconciled stats for ${questions?.length || 0} questions`)

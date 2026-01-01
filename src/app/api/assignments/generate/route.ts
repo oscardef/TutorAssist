@@ -727,6 +727,37 @@ export async function POST(request: Request) {
             chunks.push(selectedQuestionIds.slice(i, i + questionsPerSubAssignment))
           }
           
+          // Create parent assignment first (no questions, just a container)
+          const { data: parentAssignment, error: parentError } = await supabase
+            .from('assignments')
+            .insert({
+              workspace_id: context.workspaceId,
+              created_by: user.id,
+              student_profile_id: student.id,
+              assigned_student_user_id: student.user_id,
+              title: title || 'Practice Set',
+              description: instructions || null,
+              due_at: dueDate || null,
+              settings_json: {
+                timeLimit: options.timeLimit || null,
+                shuffleQuestions: options.shuffleQuestions ?? true,
+                showResultsImmediately: options.showResultsImmediately ?? false,
+                generatedFrom: 'ai-studio',
+                topicIds,
+                totalParts: chunks.length,
+                isParent: true,
+                customPrompt: customPrompt || undefined,
+              },
+              status: 'active',
+            })
+            .select('id')
+            .single()
+          
+          if (parentError || !parentAssignment) {
+            console.error('Failed to create parent assignment:', parentError)
+            continue
+          }
+          
           for (let idx = 0; idx < chunks.length; idx++) {
             const chunk = chunks[idx]
             const subTitle = `${title || 'Practice Set'} - Part ${idx + 1}`
@@ -738,6 +769,7 @@ export async function POST(request: Request) {
                 created_by: user.id,
                 student_profile_id: student.id,
                 assigned_student_user_id: student.user_id,
+                parent_assignment_id: parentAssignment.id,
                 title: subTitle,
                 description: instructions || null,
                 due_at: dueDate || null,
@@ -783,7 +815,7 @@ export async function POST(request: Request) {
             createdAssignments.push({
               studentId: student.id,
               studentName: student.name,
-              assignmentId: subAssignmentIds[0],
+              assignmentId: parentAssignment.id,
               subAssignments: subAssignmentIds,
             })
           }
