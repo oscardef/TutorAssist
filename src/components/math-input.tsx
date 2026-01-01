@@ -167,7 +167,7 @@ interface MathInputProps {
   disabled?: boolean
   placeholder?: string
   className?: string
-  showPreview?: boolean
+  showPreview?: boolean  // Now defaults to true for better UX
   answerType?: 'numeric' | 'expression' | 'short_answer' | 'exact'
   onSubmit?: () => void
   status?: 'correct' | 'incorrect'
@@ -179,7 +179,7 @@ export function MathInput({
   disabled = false,
   placeholder = 'Type your answer...',
   className = '',
-  showPreview = false,
+  showPreview = true,  // Default to true for better student experience
   onSubmit,
   status,
 }: MathInputProps) {
@@ -312,11 +312,16 @@ export function MathInput({
             className={`mathlive-field ${status ? `mathlive-${status}` : ''}`}
           />
           
-          {/* Virtual keyboard hint */}
+          {/* Input tips - more comprehensive */}
           {!disabled && (
-            <p className="text-xs text-gray-500 mt-2">
-              💡 <strong>Tips:</strong> Type <code className="bg-gray-100 px-1 rounded">sqrt</code> then space for √, use <code className="bg-gray-100 px-1 rounded">^</code> for exponents (x^2), <code className="bg-gray-100 px-1 rounded">/</code> for fractions, <code className="bg-gray-100 px-1 rounded">pi</code> for π
-            </p>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-gray-500">
+                💡 <strong>Input tips:</strong> Type <code className="bg-gray-100 px-1 rounded">sqrt</code> for √, <code className="bg-gray-100 px-1 rounded">^</code> for powers (x^2), <code className="bg-gray-100 px-1 rounded">/</code> for fractions, <code className="bg-gray-100 px-1 rounded">pi</code> for π
+              </p>
+              <p className="text-xs text-green-600">
+                ✓ <strong>Accepted formats:</strong> Fractions (1/2), decimals (0.5), mixed numbers (1 1/2), percentages (50%), scientific notation (3e2)
+              </p>
+            </div>
           )}
         </div>
       )}

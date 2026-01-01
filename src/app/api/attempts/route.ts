@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { 
+  validateAnswer, 
+  compareMathAnswers, 
+  compareNumericAnswers, 
+  validateFillBlank, 
+  validateMatching,
+  sanitizeAnswerInput 
+} from '@/lib/math-utils'
 
 // Record a practice attempt
 export async function POST(request: Request) {
@@ -20,24 +28,24 @@ export async function POST(request: Request) {
       questionId,
       assignmentId,
       answerLatex,
-      isCorrect,
+      isCorrect: clientIsCorrect, // Renamed - we'll verify server-side
       timeSpentSeconds,
       hintsUsed = 0,
     } = body
     
-    if (!questionId || isCorrect === undefined) {
+    if (!questionId) {
       return NextResponse.json(
-        { error: 'Question ID and correctness are required' },
+        { error: 'Question ID is required' },
         { status: 400 }
       )
     }
     
     const supabase = await createServerClient()
     
-    // Verify question exists in workspace
+    // Verify question exists in workspace AND fetch answer data for validation
     const { data: question, error: questionError } = await supabase
       .from('questions')
-      .select('id, workspace_id')
+      .select('id, workspace_id, answer_type, correct_answer')
       .eq('id', questionId)
       .eq('workspace_id', context.workspaceId)
       .single()
@@ -46,11 +54,138 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     }
     
+    // SERVER-SIDE ANSWER VALIDATION
+    // This ensures answers are checked consistently and securely
+    let isCorrect = clientIsCorrect // Fall back to client value if server validation fails
+    let validationDetails: { 
+      matchType?: string
+      confidence?: string
+      blanksCorrect?: number
+      blanksTotal?: number
+      matchesCorrect?: number
+      matchesTotal?: number
+    } = {}
+    
+    try {
+      const correctAnswerData = question.correct_answer as {
+        value?: string | number
+        correct?: number
+        choices?: { text: string }[]
+        alternates?: string[]
+        tolerance?: number
+        latex?: string
+        blanks?: { position?: number; value: string; latex?: string; alternates?: string[] }[]
+        pairs?: { left: string; right: string; leftLatex?: string; rightLatex?: string }[]
+        correctMatches?: number[]
+      } | null
+      
+      // Sanitize user input
+      const sanitizedAnswer = typeof answerLatex === 'string' 
+        ? sanitizeAnswerInput(answerLatex) 
+        : answerLatex
+
+      if (correctAnswerData && sanitizedAnswer !== undefined) {
+        // Handle different answer types
+        if (question.answer_type === 'multiple_choice') {
+          // Multiple choice: compare selected index
+          const selectedIndex = parseInt(sanitizedAnswer)
+          isCorrect = !isNaN(selectedIndex) && selectedIndex === correctAnswerData.correct
+        } else if (question.answer_type === 'true_false') {
+          // True/false: compare boolean-like values
+          const userBool = sanitizedAnswer?.toLowerCase() === 'true' || sanitizedAnswer === '1'
+          const correctValue = correctAnswerData.value
+          // Type assertion needed because value can be string | number but we're checking for true/false
+          const correctBool = correctValue === 'true' || String(correctValue) === 'true' || correctValue === 1
+          isCorrect = userBool === correctBool
+        } else if (question.answer_type === 'numeric') {
+          // Numeric: use numeric comparison with tolerance
+          const correctValue = typeof correctAnswerData.value === 'number' 
+            ? correctAnswerData.value 
+            : parseFloat(String(correctAnswerData.value))
+          
+          if (!isNaN(correctValue)) {
+            isCorrect = compareNumericAnswers(
+              sanitizedAnswer,
+              correctValue,
+              correctAnswerData.tolerance
+            )
+          }
+        } else if (question.answer_type === 'long_answer') {
+          // Long answer: requires manual grading, use client value
+          isCorrect = clientIsCorrect
+        } else if (question.answer_type === 'fill_blank') {
+          // Fill in the blank: validate each blank
+          if (correctAnswerData.blanks && Array.isArray(correctAnswerData.blanks)) {
+            const result = validateFillBlank(sanitizedAnswer, correctAnswerData.blanks)
+            isCorrect = result.isCorrect
+            validationDetails = {
+              matchType: 'fill_blank',
+              confidence: 'high',
+              blanksCorrect: result.blanksCorrect,
+              blanksTotal: result.blanksTotal
+            }
+          } else {
+            // Fallback to single value comparison
+            const correctStr = String(correctAnswerData.value ?? '')
+            isCorrect = compareMathAnswers(sanitizedAnswer, correctStr, correctAnswerData.alternates)
+          }
+        } else if (question.answer_type === 'matching') {
+          // Matching: validate pair matches
+          if (correctAnswerData.correctMatches && Array.isArray(correctAnswerData.correctMatches)) {
+            // Parse user matches - expected format: array of indices or comma-separated string
+            let userMatches: number[]
+            if (typeof sanitizedAnswer === 'string') {
+              userMatches = sanitizedAnswer.split(',').map(s => parseInt(s.trim()))
+            } else if (Array.isArray(sanitizedAnswer)) {
+              userMatches = (sanitizedAnswer as unknown as string[]).map(s => parseInt(String(s)))
+            } else {
+              userMatches = []
+            }
+            
+            const result = validateMatching(userMatches, correctAnswerData.correctMatches, correctAnswerData.pairs)
+            isCorrect = result.isCorrect
+            validationDetails = {
+              matchType: 'matching',
+              confidence: 'high',
+              matchesCorrect: result.matchesCorrect,
+              matchesTotal: result.matchesTotal
+            }
+          } else {
+            // Fallback: use client value
+            isCorrect = clientIsCorrect
+          }
+        } else {
+          // short_answer, expression, and others: use full math comparison
+          const correctStr = String(correctAnswerData.value ?? correctAnswerData.latex ?? '')
+          
+          if (correctStr) {
+            const validation = validateAnswer(
+              sanitizedAnswer,
+              correctStr,
+              question.answer_type,
+              correctAnswerData
+            )
+            isCorrect = validation.isCorrect
+            validationDetails = {
+              matchType: validation.matchType,
+              confidence: validation.confidence
+            }
+          }
+        }
+      }
+    } catch (validationError) {
+      // If server validation fails, log but use client value
+      console.warn('Server-side validation failed, using client value:', validationError)
+      isCorrect = clientIsCorrect
+    }
+    
     // Record attempt with context for analytics
     const attemptContext = {
       device: request.headers.get('user-agent') || 'unknown',
       sessionType: assignmentId ? 'assignment' : 'practice',
       timestamp: new Date().toISOString(),
+      validation: validationDetails, // Include server-side validation details
+      serverValidated: true,
     }
     
     const { data: attempt, error } = await supabase

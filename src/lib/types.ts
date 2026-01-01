@@ -6,15 +6,14 @@ export type UserRole = 'platform_owner' | 'tutor' | 'student'
 export type QuestionOrigin = 'manual' | 'ai_generated' | 'imported' | 'variant'
 export type QuestionStatus = 'active' | 'needs_review' | 'archived' | 'draft'
 export type AnswerType = 
-  | 'short_answer'    // Short text answer (replaces 'exact')
+  | 'short_answer'    // Short text answer (general math/text)
   | 'long_answer'     // Essay/paragraph answer
-  | 'numeric'         // Number answer
-  | 'expression'      // Math expression
+  | 'numeric'         // Pure number with tolerance checking
+  | 'expression'      // Algebraic expression with symbolic equivalence
   | 'multiple_choice' // Multiple choice with options
   | 'true_false'      // True/False question
   | 'fill_blank'      // Fill in the blank
   | 'matching'        // Matching pairs
-  | 'exact'           // Legacy - being phased out
 
 export type JobType = 
   | 'EXTRACT_MATERIAL'
