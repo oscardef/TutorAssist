@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ questions, total: questions?.length || 0 })
   }
   
-  // Special mode: get questions from topics where student is weak
+  // Special mode: get questions from topics where student is weakest
   if (mode === 'weak' && context.role === 'student') {
     // Get student's topic performance
     const { data: attempts } = await supabase
@@ -86,34 +86,61 @@ export async function GET(request: Request) {
       .eq('student_user_id', user.id)
       .eq('workspace_id', context.workspaceId)
     
-    // Find topics with <60% accuracy and at least 3 attempts
-    const topicStats = new Map<string, { total: number; correct: number }>()
+    // Calculate accuracy per topic
+    const topicStats = new Map<string, { total: number; correct: number; accuracy: number }>()
     for (const attempt of attempts || []) {
       const questions = attempt.questions as unknown as { topic_id: string } | { topic_id: string }[] | null
       const topicId = Array.isArray(questions) ? questions[0]?.topic_id : questions?.topic_id
       if (!topicId) continue
       
-      const existing = topicStats.get(topicId) || { total: 0, correct: 0 }
+      const existing = topicStats.get(topicId) || { total: 0, correct: 0, accuracy: 0 }
       existing.total += 1
       if (attempt.is_correct) existing.correct += 1
+      existing.accuracy = existing.total > 0 ? existing.correct / existing.total : 0
       topicStats.set(topicId, existing)
     }
     
-    const weakTopicIds = Array.from(topicStats.entries())
-      .filter(([, stats]) => stats.total >= 3 && (stats.correct / stats.total) < 0.6)
-      .map(([id]) => id)
+    // Convert to array and sort by accuracy (lowest first)
+    const sortedTopics = Array.from(topicStats.entries())
+      .filter(([, stats]) => stats.total >= 2) // At least 2 attempts
+      .sort((a, b) => a[1].accuracy - b[1].accuracy) // Lowest accuracy first
     
-    if (weakTopicIds.length === 0) {
-      return NextResponse.json({ questions: [], total: 0 })
+    // Get the weakest topics - take up to 5 topics that are below average or the weakest ones
+    let weakTopicIds: string[] = []
+    
+    if (sortedTopics.length > 0) {
+      // Calculate average accuracy
+      const avgAccuracy = sortedTopics.reduce((sum, [, s]) => sum + s.accuracy, 0) / sortedTopics.length
+      
+      // Take topics that are below average, or if all are good, take the bottom half
+      const belowAverage = sortedTopics.filter(([, s]) => s.accuracy < avgAccuracy)
+      
+      if (belowAverage.length > 0) {
+        // Take below-average topics (up to 5)
+        weakTopicIds = belowAverage.slice(0, 5).map(([id]) => id)
+      } else {
+        // All topics are at/above average - take the bottom 2-3 for continued improvement
+        weakTopicIds = sortedTopics.slice(0, Math.min(3, sortedTopics.length)).map(([id]) => id)
+      }
     }
     
-    const { data: questions, error } = await supabase
+    if (weakTopicIds.length === 0) {
+      return NextResponse.json({ questions: [], total: 0, message: 'Not enough practice data yet' })
+    }
+    
+    // Filter by student's program if set
+    let questionsQuery = supabase
       .from('questions')
       .select('*, topics(id, name)')
       .in('topic_id', weakTopicIds)
       .eq('workspace_id', context.workspaceId)
       .eq('status', 'active')
-      .limit(limit)
+    
+    if (programId) {
+      questionsQuery = questionsQuery.eq('primary_program_id', programId)
+    }
+    
+    const { data: questions, error } = await questionsQuery.limit(limit)
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

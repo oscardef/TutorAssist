@@ -290,10 +290,12 @@ CREATE TABLE question_flags (
     student_user_id UUID NOT NULL REFERENCES auth.users(id),
     question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
     
-    flag_type TEXT NOT NULL CHECK (flag_type IN ('incorrect_answer', 'unclear', 'typo', 'too_hard', 'other')),
+    flag_type TEXT NOT NULL CHECK (flag_type IN ('incorrect_answer', 'unclear', 'typo', 'too_hard', 'claim_correct', 'missing_content', 'multiple_valid', 'other')),
     comment TEXT,
+    student_answer TEXT,
+    attempt_id UUID REFERENCES attempts(id) ON DELETE SET NULL,
     
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'fixed', 'dismissed')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'fixed', 'dismissed', 'accepted')),
     reviewed_by UUID REFERENCES auth.users(id),
     reviewed_at TIMESTAMPTZ,
     review_notes TEXT,

@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     .from('question_flags')
     .select(`
       *,
-      questions(id, prompt_text, correct_answer_json, alternate_answers_json)
+      questions(id, prompt_text, prompt_latex, correct_answer_json, alternate_answers_json)
     `)
     .eq('workspace_id', context.workspaceId)
     .order('created_at', { ascending: false })

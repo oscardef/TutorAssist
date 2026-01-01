@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
@@ -62,7 +62,7 @@ interface StudentProfile {
   grade_level?: { id: string; code: string; name: string } | null
 }
 
-type PracticeMode = 'select' | 'topic' | 'review' | 'weak' | 'browse'
+type PracticeMode = 'select' | 'topic' | 'review' | 'weak' | 'browse' | 'custom'
 
 function getGradeLevelLabel(level: number | null): string {
   if (!level) return ''
@@ -111,6 +111,15 @@ export default function PracticePage() {
   const [flagSubmitted, setFlagSubmitted] = useState(false)
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null)
   const [claimedCorrect, setClaimedCorrect] = useState(false)
+  
+  // Browse/select questions state
+  const [browseQuestions, setBrowseQuestions] = useState<Question[]>([])
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set())
+  const [browseLoading, setBrowseLoading] = useState(false)
+  const [browseSearch, setBrowseSearch] = useState('')
+  const [browseTopicFilter, setBrowseTopicFilter] = useState<string>('')
+  const [browseDifficulties, setBrowseDifficulties] = useState<number[]>([])
+  const [browseSortBy, setBrowseSortBy] = useState<'newest' | 'easiest' | 'hardest' | 'topic'>('newest')
 
   // Fetch topics and stats on mount
   useEffect(() => {
@@ -209,7 +218,118 @@ export default function PracticePage() {
     } else if (mode === 'weak') {
       fetchQuestions('weak')
     }
+    // Note: 'custom' mode is handled in startCustomPractice which sets questions directly
   }, [mode, selectedTopic, fetchQuestions])
+  
+  // Fetch questions for browsing - always filtered by student's program
+  async function fetchBrowseQuestions(topicId?: string) {
+    setBrowseLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('limit', '200')
+      
+      // ALWAYS filter by student's program - this is mandatory for students
+      if (studentProfile?.study_program_id) {
+        params.set('programId', studentProfile.study_program_id)
+      }
+      
+      if (topicId) {
+        params.set('topicId', topicId)
+      }
+      
+      const response = await fetch(`/api/questions?${params}`)
+      const data = await response.json()
+      setBrowseQuestions(data.questions || [])
+    } catch (error) {
+      console.error('Failed to fetch browse questions:', error)
+    } finally {
+      setBrowseLoading(false)
+    }
+  }
+  
+  // Get filtered/sorted questions for display
+  const filteredBrowseQuestions = useMemo(() => {
+    let result = [...browseQuestions]
+    
+    // Text search across question text, topic name, and tags
+    if (browseSearch.trim()) {
+      const query = browseSearch.toLowerCase()
+      result = result.filter(q => 
+        q.prompt_text.toLowerCase().includes(query) ||
+        q.prompt_latex?.toLowerCase().includes(query) ||
+        q.topics?.name.toLowerCase().includes(query)
+      )
+    }
+    
+    // Topic filter
+    if (browseTopicFilter) {
+      result = result.filter(q => q.topics?.id === browseTopicFilter)
+    }
+    
+    // Multi-difficulty filter
+    if (browseDifficulties.length > 0) {
+      result = result.filter(q => browseDifficulties.includes(q.difficulty))
+    }
+    
+    // Sorting
+    switch (browseSortBy) {
+      case 'easiest':
+        result.sort((a, b) => a.difficulty - b.difficulty)
+        break
+      case 'hardest':
+        result.sort((a, b) => b.difficulty - a.difficulty)
+        break
+      case 'topic':
+        result.sort((a, b) => (a.topics?.name || '').localeCompare(b.topics?.name || ''))
+        break
+      case 'newest':
+      default:
+        // Keep original order (newest first from API)
+        break
+    }
+    
+    return result
+  }, [browseQuestions, browseSearch, browseTopicFilter, browseDifficulties, browseSortBy])
+  
+  // Toggle question selection
+  function toggleQuestionSelection(questionId: string) {
+    setSelectedQuestionIds(prev => {
+      const next = new Set(prev)
+      if (next.has(questionId)) {
+        next.delete(questionId)
+      } else {
+        next.add(questionId)
+      }
+      return next
+    })
+  }
+  
+  // Select/deselect all questions
+  function toggleSelectAll() {
+    // Use filteredBrowseQuestions for selection
+    if (selectedQuestionIds.size === filteredBrowseQuestions.length && filteredBrowseQuestions.length > 0) {
+      setSelectedQuestionIds(new Set())
+    } else {
+      setSelectedQuestionIds(new Set(filteredBrowseQuestions.map(q => q.id)))
+    }
+  }
+  
+  // Start practice with selected questions
+  function startCustomPractice() {
+    if (selectedQuestionIds.size === 0) return
+    
+    const selected = browseQuestions.filter(q => selectedQuestionIds.has(q.id))
+    const shuffled = [...selected].sort(() => Math.random() - 0.5)
+    setQuestions(shuffled)
+    setQuestion(shuffled[0])
+    setCurrentQuestionIndex(0)
+    setSessionStats({ total: 0, correct: 0 })
+    setStreak(0)
+    setStartTime(Date.now())
+    setMode('custom')
+    
+    router.push('/student/practice?mode=custom')
+  }
 
   function startPractice(practiceMode: PracticeMode, topicId?: string) {
     setMode(practiceMode)
@@ -397,6 +517,7 @@ export default function PracticePage() {
   if (mode === 'select') {
     const weakTopics = topicStats.filter(s => s.total >= 3 && s.accuracy < 60)
     const hasWeakTopics = weakTopics.length > 0
+    const totalPracticed = topicStats.reduce((sum, s) => sum + s.total, 0)
     
     return (
       <div className="max-w-4xl mx-auto">
@@ -421,8 +542,16 @@ export default function PracticePage() {
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 mb-1">Spaced Review</h3>
                 <p className="text-sm text-gray-600">
-                  Review questions due for repetition to strengthen your memory.
+                  {totalPracticed > 0 
+                    ? "Review questions due for repetition to strengthen your memory."
+                    : "Practice some questions first to build your review schedule."
+                  }
                 </p>
+                {totalPracticed === 0 && (
+                  <p className="text-xs text-blue-600 mt-2">
+                    Start by practicing questions from a topic below
+                  </p>
+                )}
               </div>
             </div>
           </button>
@@ -450,8 +579,38 @@ export default function PracticePage() {
                 <p className="text-sm text-gray-600">
                   {hasWeakTopics 
                     ? `Focus on ${weakTopics.length} topic${weakTopics.length > 1 ? 's' : ''} where you need more practice.`
-                    : 'Complete more questions to identify areas for improvement.'
+                    : totalPracticed >= 3 
+                      ? "Great job! You're doing well in all topics you've practiced."
+                      : 'Complete more questions to identify areas for improvement.'
                   }
+                </p>
+                {!hasWeakTopics && totalPracticed > 0 && totalPracticed < 10 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Keep practicing to build more statistics
+                  </p>
+                )}
+              </div>
+            </div>
+          </button>
+          
+          {/* Browse & Pick Questions */}
+          <button
+            onClick={() => {
+              setMode('browse')
+              fetchBrowseQuestions()
+            }}
+            className="bg-white rounded-lg border border-gray-200 p-6 text-left hover:border-green-300 hover:shadow-md transition-all group md:col-span-2"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 mb-1">Browse & Pick Questions</h3>
+                <p className="text-sm text-gray-600">
+                  View all available questions and select specific ones you want to practice.
                 </p>
               </div>
             </div>
@@ -636,6 +795,252 @@ export default function PracticePage() {
       </div>
     )
   }
+  
+  // Browse mode - select specific questions
+  if (mode === 'browse') {
+    // Get topics that are available for student's program
+    const availableTopics = topics.filter(t => 
+      !studentProfile?.study_program_id || t.program_id === studentProfile.study_program_id
+    )
+    
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <button
+              onClick={backToSelection}
+              className="text-sm text-gray-500 hover:text-gray-700 mb-1 flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+              Back
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">Browse & Pick Questions</h1>
+            <p className="text-gray-600 mt-1">
+              {studentProfile?.study_program?.name 
+                ? `Showing questions from ${studentProfile.study_program.name}`
+                : 'Select the questions you want to practice.'
+              }
+            </p>
+          </div>
+          {selectedQuestionIds.size > 0 && (
+            <button
+              onClick={startCustomPractice}
+              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+            >
+              Start Practice ({selectedQuestionIds.size} selected)
+            </button>
+          )}
+        </div>
+        
+        {/* Search and Filters - Similar to QB */}
+        <div className="mb-6 bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-4">
+          {/* Search Input */}
+          <div className="relative">
+            <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              type="text"
+              value={browseSearch}
+              onChange={(e) => setBrowseSearch(e.target.value)}
+              placeholder="Search questions by text or topic..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {browseSearch && (
+              <button
+                onClick={() => setBrowseSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          
+          {/* Filter Row */}
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Topic Filter */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
+              <select
+                value={browseTopicFilter}
+                onChange={(e) => setBrowseTopicFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">All Topics</option>
+                {availableTopics.map(topic => (
+                  <option key={topic.id} value={topic.id}>{topic.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Sort By */}
+            <div className="w-36">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Sort By</label>
+              <select
+                value={browseSortBy}
+                onChange={(e) => setBrowseSortBy(e.target.value as typeof browseSortBy)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="newest">Newest</option>
+                <option value="easiest">Easiest First</option>
+                <option value="hardest">Hardest First</option>
+                <option value="topic">By Topic</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Difficulty Filter Pills */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-2">Difficulty</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 1, label: 'Easy', color: 'green' },
+                { value: 2, label: 'Medium-Easy', color: 'lime' },
+                { value: 3, label: 'Medium', color: 'yellow' },
+                { value: 4, label: 'Medium-Hard', color: 'orange' },
+                { value: 5, label: 'Hard', color: 'red' },
+              ].map(({ value, label, color }) => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    setBrowseDifficulties(prev => 
+                      prev.includes(value) 
+                        ? prev.filter(d => d !== value)
+                        : [...prev, value]
+                    )
+                  }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                    browseDifficulties.includes(value)
+                      ? color === 'green' ? 'bg-green-500 text-white ring-2 ring-green-300' :
+                        color === 'lime' ? 'bg-lime-500 text-white ring-2 ring-lime-300' :
+                        color === 'yellow' ? 'bg-yellow-500 text-white ring-2 ring-yellow-300' :
+                        color === 'orange' ? 'bg-orange-500 text-white ring-2 ring-orange-300' :
+                        'bg-red-500 text-white ring-2 ring-red-300'
+                      : color === 'green' ? 'bg-green-100 text-green-700 hover:bg-green-200' :
+                        color === 'lime' ? 'bg-lime-100 text-lime-700 hover:bg-lime-200' :
+                        color === 'yellow' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' :
+                        color === 'orange' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' :
+                        'bg-red-100 text-red-700 hover:bg-red-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              {browseDifficulties.length > 0 && (
+                <button
+                  onClick={() => setBrowseDifficulties([])}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Selection controls */}
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            onClick={toggleSelectAll}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            {selectedQuestionIds.size === filteredBrowseQuestions.length && filteredBrowseQuestions.length > 0
+              ? 'Deselect All'
+              : 'Select All'
+            }
+          </button>
+          <span className="text-sm text-gray-500">
+            {filteredBrowseQuestions.length} questions
+            {browseSearch || browseTopicFilter || browseDifficulties.length > 0 
+              ? ` (filtered from ${browseQuestions.length})`
+              : ' available'
+            }
+          </span>
+        </div>
+        
+        {/* Questions list */}
+        {browseLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : filteredBrowseQuestions.length > 0 ? (
+          <div className="space-y-3">
+            {filteredBrowseQuestions.map((q, index) => (
+              <div
+                key={q.id}
+                onClick={() => toggleQuestionSelection(q.id)}
+                className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                  selectedQuestionIds.has(q.id)
+                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center shrink-0 ${
+                    selectedQuestionIds.has(q.id)
+                      ? 'border-blue-500 bg-blue-500 text-white'
+                      : 'border-gray-300'
+                  }`}>
+                    {selectedQuestionIds.has(q.id) && (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs text-gray-400">#{index + 1}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        q.difficulty <= 2 ? 'bg-green-100 text-green-700' :
+                        q.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {q.difficulty <= 2 ? 'Easy' : q.difficulty <= 3 ? 'Medium' : 'Hard'}
+                      </span>
+                      {q.topics && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                          {q.topics.name}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-800 line-clamp-2">
+                      <LatexRenderer content={q.prompt_latex || q.prompt_text} />
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <svg className="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+            </svg>
+            <p className="text-gray-500">No questions found. Try selecting a different topic.</p>
+          </div>
+        )}
+        
+        {/* Floating action button */}
+        {selectedQuestionIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
+            <button
+              onClick={startCustomPractice}
+              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-full shadow-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+              </svg>
+              Start Practice with {selectedQuestionIds.size} Question{selectedQuestionIds.size !== 1 ? 's' : ''}
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // Practice question view
   if (loading) {
@@ -650,19 +1055,60 @@ export default function PracticePage() {
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
+          {mode === 'review' ? (
+            <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          ) : mode === 'weak' ? (
+            <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          ) : (
+            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+            </svg>
+          )}
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">No Questions Available</h2>
-        <p className="text-gray-600 mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
           {mode === 'review' 
-            ? "You're all caught up! No questions due for review right now."
+            ? "You're All Caught Up!" 
             : mode === 'weak'
-            ? "Great job! You've been practicing well in all areas."
-            : "No questions found for this topic yet."
+            ? "Great Work!"
+            : "No Questions Available"
+          }
+        </h2>
+        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+          {mode === 'review' 
+            ? "You've completed all your scheduled reviews. Questions will appear here after you practice more - they're scheduled based on how well you remember them."
+            : mode === 'weak'
+            ? "You're performing well in all topics! Keep practicing to maintain your skills. Weak areas are identified after you've attempted at least 3 questions per topic."
+            : "No questions found for this topic yet. Try selecting a different topic or checking back later."
           }
         </p>
+        
+        {mode === 'review' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+            <h3 className="text-sm font-medium text-blue-800 mb-1">How Spaced Review Works:</h3>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li>• Practice questions to add them to your review schedule</li>
+              <li>• Questions you get right appear less often</li>
+              <li>• Questions you struggle with appear more frequently</li>
+              <li>• Check back later for new reviews</li>
+            </ul>
+          </div>
+        )}
+        
+        {mode === 'weak' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+            <h3 className="text-sm font-medium text-green-800 mb-1">Weak Areas Detection:</h3>
+            <ul className="text-sm text-green-700 space-y-1">
+              <li>• Topics with less than 60% accuracy are flagged</li>
+              <li>• Requires at least 3 attempts per topic</li>
+              <li>• Practice more questions to build your statistics</li>
+            </ul>
+          </div>
+        )}
+        
         <button
           onClick={backToSelection}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
