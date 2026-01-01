@@ -79,47 +79,78 @@ export async function PATCH(
       return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
 
-    // Build update object
-    const updates: Record<string, unknown> = {}
+    // Build update object - only include core fields that exist in base schema
+    // Optional migration fields are handled separately with error catching
+    const coreUpdates: Record<string, unknown> = {}
+    const optionalUpdates: Record<string, unknown> = {}
     
-    if (data.name !== undefined) updates.name = data.name.trim()
-    if (data.email !== undefined) updates.email = data.email?.trim() || null
-    if (data.parent_email !== undefined) updates.parent_email = data.parent_email?.trim() || null
-    if (data.additional_emails !== undefined) {
-      updates.additional_emails = Array.isArray(data.additional_emails) 
-        ? data.additional_emails.filter((e: string) => e?.trim())
-        : []
-    }
-    if (data.age !== undefined) updates.age = data.age || null
-    if (data.school !== undefined) updates.school = data.school?.trim() || null
-    if (data.grade_current !== undefined) updates.grade_current = data.grade_current?.trim() || null
-    if (data.private_notes !== undefined) updates.private_notes = data.private_notes?.trim() || null
-    
-    // Program and grade level
-    if (data.study_program_id !== undefined) updates.study_program_id = data.study_program_id || null
-    if (data.grade_level_id !== undefined) updates.grade_level_id = data.grade_level_id || null
-    
-    // Assigned tutor
-    if (data.assigned_tutor_id !== undefined) updates.assigned_tutor_id = data.assigned_tutor_id || null
-    
-    // Grade rollover month (1-12)
+    // Core fields (always in schema)
+    if (data.name !== undefined) coreUpdates.name = data.name.trim()
+    if (data.email !== undefined) coreUpdates.email = data.email?.trim() || null
+    if (data.age !== undefined) coreUpdates.age = data.age || null
+    if (data.school !== undefined) coreUpdates.school = data.school?.trim() || null
+    if (data.grade_current !== undefined) coreUpdates.grade_current = data.grade_current?.trim() || null
+    if (data.private_notes !== undefined) coreUpdates.private_notes = data.private_notes?.trim() || null
     if (data.grade_rollover_month !== undefined) {
       const month = parseInt(data.grade_rollover_month)
       if (month >= 1 && month <= 12) {
-        updates.grade_rollover_month = month
+        coreUpdates.grade_rollover_month = month
       }
     }
+    
+    // Optional fields (from migrations - may not exist)
+    if (data.parent_email !== undefined) optionalUpdates.parent_email = data.parent_email?.trim() || null
+    if (data.additional_emails !== undefined) {
+      optionalUpdates.additional_emails = Array.isArray(data.additional_emails) 
+        ? data.additional_emails.filter((e: string) => e?.trim())
+        : []
+    }
+    if (data.study_program_id !== undefined) optionalUpdates.study_program_id = data.study_program_id || null
+    if (data.grade_level_id !== undefined) optionalUpdates.grade_level_id = data.grade_level_id || null
+    if (data.assigned_tutor_id !== undefined) optionalUpdates.assigned_tutor_id = data.assigned_tutor_id || null
 
-    const { data: updated, error } = await supabase
-      .from('student_profiles')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
+    // First update core fields
+    let updated = null
+    if (Object.keys(coreUpdates).length > 0) {
+      const { data: result, error } = await supabase
+        .from('student_profiles')
+        .update(coreUpdates)
+        .eq('id', id)
+        .select()
+        .single()
 
-    if (error) {
-      console.error('Error updating student:', error)
-      return NextResponse.json({ error: 'Failed to update student' }, { status: 500 })
+      if (error) {
+        console.error('Error updating student core fields:', error)
+        return NextResponse.json({ error: 'Failed to update student' }, { status: 500 })
+      }
+      updated = result
+    }
+    
+    // Try to update optional fields (silently ignore errors from missing columns)
+    if (Object.keys(optionalUpdates).length > 0) {
+      const { data: optResult, error: optError } = await supabase
+        .from('student_profiles')
+        .update(optionalUpdates)
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (!optError && optResult) {
+        updated = optResult
+      } else if (optError && !optError.message.includes('schema cache')) {
+        // Only log non-schema-related errors
+        console.error('Error updating optional student fields:', optError)
+      }
+    }
+    
+    // If no updates were made, fetch current data
+    if (!updated) {
+      const { data: current } = await supabase
+        .from('student_profiles')
+        .select('*')
+        .eq('id', id)
+        .single()
+      updated = current
     }
 
     return NextResponse.json(updated)

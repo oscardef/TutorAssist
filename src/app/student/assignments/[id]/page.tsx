@@ -73,6 +73,14 @@ export default function StudentAssignmentDetailPage() {
   const [showSolution, setShowSolution] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
 
+  // Flagging state
+  const [showFlagModal, setShowFlagModal] = useState(false)
+  const [flagType, setFlagType] = useState<string>('')
+  const [flagComment, setFlagComment] = useState('')
+  const [flagSubmitting, setFlagSubmitting] = useState(false)
+  const [flagSubmitted, setFlagSubmitted] = useState(false)
+  const [claimedCorrect, setClaimedCorrect] = useState(false)
+
   const fetchAssignment = useCallback(async () => {
     try {
       const response = await fetch(`/api/assignments?id=${assignmentId}`)
@@ -130,7 +138,68 @@ export default function StudentAssignmentDetailPage() {
     setVisibleHintCount(0)
     setFeedback(null)
     setShowSolution(false)
+    setFlagSubmitted(false)
+    setClaimedCorrect(false)
+    setFlagType('')
+    setFlagComment('')
   }, [currentIndex])
+
+  // Handle "I was right" claim
+  async function handleClaimCorrect() {
+    if (!currentQuestion || claimedCorrect) return
+    
+    setFlagSubmitting(true)
+    try {
+      const response = await fetch('/api/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: currentQuestion.id,
+          flagType: 'claim_correct',
+          comment: 'Student claims their answer was marked incorrectly',
+          studentAnswer: currentAttempt?.answer || answer,
+          attemptId: currentAttempt?.attemptId || null,
+        }),
+      })
+      
+      if (response.ok) {
+        setClaimedCorrect(true)
+      }
+    } catch (error) {
+      console.error('Failed to claim correct:', error)
+    } finally {
+      setFlagSubmitting(false)
+    }
+  }
+  
+  // Handle flagging question
+  async function handleSubmitFlag() {
+    if (!currentQuestion || !flagType) return
+    
+    setFlagSubmitting(true)
+    try {
+      const response = await fetch('/api/flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: currentQuestion.id,
+          flagType: flagType,
+          comment: flagComment || null,
+          studentAnswer: currentAttempt?.answer || answer || null,
+          attemptId: currentAttempt?.attemptId || null,
+        }),
+      })
+      
+      if (response.ok) {
+        setFlagSubmitted(true)
+        setShowFlagModal(false)
+      }
+    } catch (error) {
+      console.error('Failed to submit flag:', error)
+    } finally {
+      setFlagSubmitting(false)
+    }
+  }
 
   async function handleSubmit() {
     if (!currentQuestion) return
@@ -364,13 +433,29 @@ export default function StudentAssignmentDetailPage() {
               </span>
             )}
           </div>
-          {currentAttempt && (
-            <span className={`text-sm font-medium ${
-              currentAttempt.isCorrect ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {currentAttempt.isCorrect ? '✓ Answered correctly' : '✗ Incorrect'}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {currentAttempt && (
+              <span className={`text-sm font-medium ${
+                currentAttempt.isCorrect ? 'text-green-600' : claimedCorrect ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {currentAttempt.isCorrect ? '✓ Answered correctly' : claimedCorrect ? '⏳ Under review' : '✗ Incorrect'}
+              </span>
+            )}
+            <button
+              onClick={() => setShowFlagModal(true)}
+              disabled={flagSubmitted}
+              className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                flagSubmitted 
+                  ? 'bg-orange-50 border-orange-200 text-orange-600'
+                  : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+              </svg>
+              {flagSubmitted ? 'Flagged' : 'Flag'}
+            </button>
+          </div>
         </div>
 
         {/* Question Content */}
@@ -438,9 +523,45 @@ export default function StudentAssignmentDetailPage() {
           {/* Feedback */}
           {feedback && (
             <div className={`mt-4 p-4 rounded-lg ${
-              feedback.correct ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              feedback.correct ? 'bg-green-50 text-green-800' : claimedCorrect ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'
             }`}>
-              <p className="font-medium">{feedback.message}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {feedback.correct ? (
+                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  ) : claimedCorrect ? (
+                    <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                  <span className="font-medium">
+                    {feedback.correct ? feedback.message : claimedCorrect ? 'Under review' : feedback.message}
+                  </span>
+                </div>
+                
+                {/* "I was right" button - only show when marked incorrect */}
+                {!feedback.correct && !claimedCorrect && (
+                  <button
+                    onClick={handleClaimCorrect}
+                    disabled={flagSubmitting}
+                    className="text-sm px-3 py-1 border border-gray-300 rounded-lg hover:bg-white/50 text-gray-700 hover:text-gray-900 disabled:opacity-50"
+                  >
+                    {flagSubmitting ? 'Submitting...' : 'I was right'}
+                  </button>
+                )}
+              </div>
+              
+              {claimedCorrect && (
+                <p className="mt-2 text-sm text-yellow-700">
+                  Your claim has been submitted for review. Your tutor will check if your answer should be accepted.
+                </p>
+              )}
             </div>
           )}
 
@@ -632,6 +753,87 @@ export default function StudentAssignmentDetailPage() {
                   Review Answers
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flag Modal */}
+      {showFlagModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Report an Issue</h3>
+              <button
+                onClick={() => setShowFlagModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Help us improve by reporting any issues with this question.
+            </p>
+            
+            {/* Flag Type Selection */}
+            <div className="space-y-2 mb-4">
+              <label className="block text-sm font-medium text-gray-700">What&apos;s the issue?</label>
+              <div className="grid gap-2">
+                {[
+                  { type: 'incorrect_answer', label: 'The correct answer is wrong' },
+                  { type: 'unclear', label: 'The question is confusing' },
+                  { type: 'typo', label: 'There is a typo' },
+                  { type: 'too_hard', label: 'Too difficult for this level' },
+                  { type: 'multiple_valid', label: 'Multiple valid answers exist' },
+                  { type: 'other', label: 'Other issue' },
+                ].map(({ type, label }) => (
+                  <button
+                    key={type}
+                    onClick={() => setFlagType(type)}
+                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      flagType === type
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Additional Comment */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional details (optional)
+              </label>
+              <textarea
+                value={flagComment}
+                onChange={(e) => setFlagComment(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Describe the issue in more detail..."
+              />
+            </div>
+            
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowFlagModal(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitFlag}
+                disabled={!flagType || flagSubmitting}
+                className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {flagSubmitting ? 'Submitting...' : 'Submit Report'}
+              </button>
             </div>
           </div>
         </div>

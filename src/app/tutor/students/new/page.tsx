@@ -18,6 +18,12 @@ interface GradeLevel {
   program_id: string
 }
 
+interface Tutor {
+  id: string
+  email: string
+  name: string
+}
+
 export default function NewStudentPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -29,8 +35,10 @@ export default function NewStudentPage() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   
-  // Programs and grade levels
+  // Programs, grade levels, and tutors
   const [programs, setPrograms] = useState<StudyProgram[]>([])
+  const [tutors, setTutors] = useState<Tutor[]>([])
+  const [currentTutorId, setCurrentTutorId] = useState<string | null>(null)
   const [loadingPrograms, setLoadingPrograms] = useState(true)
   const [showNewProgram, setShowNewProgram] = useState(false)
   const [showNewGrade, setShowNewGrade] = useState(false)
@@ -51,23 +59,45 @@ export default function NewStudentPage() {
     grade_current: '',
     study_program_id: '',
     grade_level_id: '',
+    assigned_tutor_id: '',
+    grade_rollover_month: '9', // September default
     private_notes: '',
   })
   
-  // Fetch programs on mount
+  // Fetch programs and tutors on mount
   useEffect(() => {
-    async function fetchPrograms() {
+    async function fetchData() {
       try {
-        const response = await fetch('/api/programs')
-        const data = await response.json()
-        setPrograms(data.programs || [])
+        // Fetch programs
+        const programsRes = await fetch('/api/programs')
+        const programsData = await programsRes.json()
+        setPrograms(programsData.programs || [])
+
+        // Fetch tutors in workspace
+        const tutorsRes = await fetch('/api/workspace/members?role=tutor')
+        const tutorsData = await tutorsRes.json()
+        const tutorsList = tutorsData.members || []
+        setTutors(tutorsList)
+        
+        // Find the current user in the tutors list and prefill
+        // The current user's tutor entry will have a name that's not just "Tutor"
+        // We can identify them as the one with an email
+        const currentTutor = tutorsList.find((t: Tutor) => t.email && t.name !== 'Tutor')
+        if (currentTutor) {
+          setCurrentTutorId(currentTutor.id)
+          setFormData(prev => ({ ...prev, assigned_tutor_id: currentTutor.id }))
+        } else if (tutorsList.length === 1) {
+          // If there's only one tutor, that's the current one
+          setCurrentTutorId(tutorsList[0].id)
+          setFormData(prev => ({ ...prev, assigned_tutor_id: tutorsList[0].id }))
+        }
       } catch {
-        console.error('Failed to load programs')
+        console.error('Failed to load data')
       } finally {
         setLoadingPrograms(false)
       }
     }
-    fetchPrograms()
+    fetchData()
   }, [])
   
   // Get available grade levels for selected program
@@ -162,6 +192,8 @@ export default function NewStudentPage() {
           additional_emails: formData.additional_emails.filter(e => e.trim()),
           study_program_id: formData.study_program_id || null,
           grade_level_id: formData.grade_level_id || null,
+          assigned_tutor_id: formData.assigned_tutor_id || null,
+          grade_rollover_month: formData.grade_rollover_month ? parseInt(formData.grade_rollover_month) : 9,
         }),
       })
 
@@ -360,6 +392,8 @@ export default function NewStudentPage() {
                   grade_current: '',
                   study_program_id: '',
                   grade_level_id: '',
+                  assigned_tutor_id: currentTutorId || '',
+                  grade_rollover_month: '9',
                   private_notes: '',
                 })
               }}
@@ -614,7 +648,51 @@ export default function NewStudentPage() {
                 )}
               </div>
             )}
+
+            {/* Grade Rollover Month */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Grade Rollover Month
+              </label>
+              <select
+                value={formData.grade_rollover_month}
+                onChange={(e) => setFormData({ ...formData, grade_rollover_month: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">When grade automatically advances to next level</p>
+            </div>
           </div>
+        </div>
+
+        {/* Assigned Tutor Section */}
+        <div className="border-t pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Assigned Tutor</h3>
+          <select
+            value={formData.assigned_tutor_id}
+            onChange={(e) => setFormData({ ...formData, assigned_tutor_id: e.target.value })}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">No assigned tutor</option>
+            {tutors.map(tutor => (
+              <option key={tutor.id} value={tutor.id}>
+                {tutor.name}{tutor.email ? ` (${tutor.email})` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">This tutor will be shown on the student&apos;s dashboard as their assigned tutor</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

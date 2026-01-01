@@ -21,6 +21,7 @@ interface Flag {
   } | null
   student: {
     email: string
+    name: string
   } | null
 }
 
@@ -224,7 +225,7 @@ export default function FlagsPage() {
                   )}
                   
                   <p className="mt-2 text-xs text-gray-500">
-                    Reported by: {flag.student?.email || 'Unknown student'}
+                    Reported by: {flag.student?.name || flag.student?.email || 'Unknown student'}
                   </p>
                 </div>
                 

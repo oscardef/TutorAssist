@@ -57,13 +57,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ reasons })
   }
   
-  // Build query based on role
+  // Build query based on role - Note: we can't directly join to auth.users
+  // So we'll get student info separately
   let query = supabase
     .from('question_flags')
     .select(`
       *,
-      questions(id, prompt_text, correct_answer_json, alternate_answers_json),
-      student:student_user_id(email)
+      questions(id, prompt_text, correct_answer_json, alternate_answers_json)
     `)
     .eq('workspace_id', context.workspaceId)
     .order('created_at', { ascending: false })
@@ -76,10 +76,37 @@ export async function GET(request: Request) {
   const { data: flags, error } = await query
   
   if (error) {
+    console.error('Error fetching flags:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
   
-  return NextResponse.json({ flags })
+  // Get student info from student_profiles for each unique student_user_id
+  const studentUserIds = [...new Set((flags || []).map(f => f.student_user_id).filter(Boolean))]
+  const studentMap: Record<string, { email: string; name: string }> = {}
+  
+  if (studentUserIds.length > 0) {
+    const { data: students } = await supabase
+      .from('student_profiles')
+      .select('user_id, email, name')
+      .eq('workspace_id', context.workspaceId)
+      .in('user_id', studentUserIds)
+    
+    if (students) {
+      for (const s of students) {
+        if (s.user_id) {
+          studentMap[s.user_id] = { email: s.email || '', name: s.name }
+        }
+      }
+    }
+  }
+  
+  // Attach student info to flags
+  const flagsWithStudents = (flags || []).map(flag => ({
+    ...flag,
+    student: studentMap[flag.student_user_id] || { email: 'Unknown', name: 'Unknown' }
+  }))
+  
+  return NextResponse.json({ flags: flagsWithStudents })
 }
 
 // Create a new flag (students can flag questions)
