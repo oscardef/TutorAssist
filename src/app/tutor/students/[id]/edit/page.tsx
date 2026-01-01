@@ -105,6 +105,7 @@ export default function EditStudentPage({
           additional_emails: studentData.additional_emails?.length > 0 ? studentData.additional_emails : [''],
           age: studentData.age?.toString() || '',
           school: studentData.school || '',
+          grade_current: studentData.grade_current || '',
           private_notes: studentData.private_notes || '',
           user_id: studentData.user_id,
           study_program_id: studentData.study_program_id || '',

@@ -54,7 +54,66 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     
-    return NextResponse.json({ assignment })
+    // Check if this is a parent assignment and fetch child assignment items
+    const isParent = assignment.settings_json?.isParent === true
+    let childAssignments: typeof assignment[] = []
+    let allItems = assignment.assignment_items || []
+    
+    if (isParent) {
+      // Fetch child assignments with their items
+      const { data: children, error: childError } = await supabase
+        .from('assignments')
+        .select(`
+          id,
+          title,
+          settings_json,
+          assignment_items(
+            id,
+            question_id,
+            order_index,
+            points,
+            question:questions(
+              id,
+              prompt_text,
+              prompt_latex,
+              difficulty,
+              answer_type,
+              correct_answer_json,
+              hints_json,
+              solution_steps_json,
+              topics(id, name)
+            )
+          )
+        `)
+        .eq('parent_assignment_id', id)
+        .eq('workspace_id', context.workspaceId)
+        .order('created_at', { ascending: true })
+      
+      if (!childError && children) {
+        childAssignments = children
+        // Aggregate all items from child assignments with part info
+        let globalIndex = 0
+        for (const child of children) {
+          const partNumber = child.settings_json?.partNumber || 1
+          const childItems = (child.assignment_items || []).map((item: Record<string, unknown>) => ({
+            ...item,
+            partNumber,
+            partTitle: child.title,
+            order_index: globalIndex++,
+          }))
+          allItems = [...allItems, ...childItems]
+        }
+      }
+    }
+    
+    return NextResponse.json({ 
+      assignment: {
+        ...assignment,
+        assignment_items: allItems,
+      },
+      childAssignments,
+      isParent,
+    })
   }
   
   let query = supabase

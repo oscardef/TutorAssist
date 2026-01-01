@@ -316,7 +316,20 @@ async function generatePdfImmediate(options: {
     color: lightBorder,
   })
   
-  yPosition -= 35
+  yPosition -= 25
+  
+  // Note about math notation (if questions contain LaTeX)
+  const hasLatex = questions.some(q => q.prompt_latex && q.prompt_latex.includes('\\'))
+  if (hasLatex) {
+    currentPage.drawText('Note: Math expressions shown in simplified text notation', {
+      x: MARGIN_LEFT,
+      y: yPosition,
+      size: 8,
+      font: regularFont,
+      color: mutedColor,
+    })
+    yPosition -= 18
+  }
   
   // Section divider
   currentPage.drawLine({

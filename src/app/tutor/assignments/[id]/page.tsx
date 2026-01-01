@@ -22,6 +22,14 @@ interface AssignmentItem {
   order_index: number
   points: number
   question: Question
+  partNumber?: number
+  partTitle?: string
+}
+
+interface ChildAssignment {
+  id: string
+  title: string
+  settings_json: Record<string, unknown>
 }
 
 interface Attempt {
@@ -53,6 +61,8 @@ export default function TutorAssignmentDetailPage() {
 
   const [loading, setLoading] = useState(true)
   const [assignment, setAssignment] = useState<Assignment | null>(null)
+  const [isParent, setIsParent] = useState(false)
+  const [childAssignments, setChildAssignments] = useState<ChildAssignment[]>([])
   const [items, setItems] = useState<AssignmentItem[]>([])
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [updating, setUpdating] = useState(false)
@@ -79,6 +89,8 @@ export default function TutorAssignmentDetailPage() {
       
       if (data.assignment) {
         setAssignment(data.assignment)
+        setIsParent(data.isParent || false)
+        setChildAssignments(data.childAssignments || [])
         const sortedItems = (data.assignment.assignment_items || [])
           .sort((a: AssignmentItem, b: AssignmentItem) => a.order_index - b.order_index)
         setItems(sortedItems)
@@ -224,9 +236,21 @@ export default function TutorAssignmentDetailPage() {
         </Link>
         <div className="flex items-start justify-between mt-2">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{assignment.title}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900">{assignment.title}</h1>
+              {isParent && (
+                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                  Parent Assignment
+                </span>
+              )}
+            </div>
             {assignment.description && (
               <p className="text-gray-600 mt-1">{assignment.description}</p>
+            )}
+            {isParent && childAssignments.length > 0 && (
+              <p className="text-sm text-purple-600 mt-1">
+                Contains {childAssignments.length} parts with {items.length} total questions
+              </p>
             )}
             <div className="flex items-center gap-3 mt-2">
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[assignment.status as keyof typeof statusColors]}`}>
@@ -360,50 +384,64 @@ export default function TutorAssignmentDetailPage() {
           const solutionSteps = item.question.solution_steps_json || []
           const correctAnswer = item.question.correct_answer_json
           
+          // Check if we need to show a part header (for parent assignments)
+          const prevItem = idx > 0 ? questionAttempts[idx - 1].item : null
+          const showPartHeader = isParent && item.partNumber && 
+            (!prevItem || prevItem.partNumber !== item.partNumber)
+          
           return (
-            <div key={item.id} className="p-4">
-              <div className="flex items-start gap-4">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                  attempt 
-                    ? attempt.is_correct 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-red-100 text-red-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {idx + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    {item.question.topics?.name && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
-                        {item.question.topics.name}
+            <div key={item.id}>
+              {/* Part Header for Parent Assignments */}
+              {showPartHeader && (
+                <div className="bg-purple-50 px-4 py-2 border-b border-purple-100">
+                  <span className="text-sm font-medium text-purple-700">
+                    Part {item.partNumber}: {item.partTitle || `Section ${item.partNumber}`}
+                  </span>
+                </div>
+              )}
+              <div className="p-4">
+                <div className="flex items-start gap-4">
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                    attempt 
+                      ? attempt.is_correct 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-red-100 text-red-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      {item.question.topics?.name && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                          {item.question.topics.name}
+                        </span>
+                      )}
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        item.question.difficulty <= 2 ? 'bg-green-100 text-green-700' :
+                        item.question.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {item.question.difficulty <= 2 ? 'Easy' : 
+                         item.question.difficulty <= 3 ? 'Medium' : 'Hard'}
                       </span>
-                    )}
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      item.question.difficulty <= 2 ? 'bg-green-100 text-green-700' :
-                      item.question.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {item.question.difficulty <= 2 ? 'Easy' : 
-                       item.question.difficulty <= 3 ? 'Medium' : 'Hard'}
-                    </span>
-                    <button
-                      onClick={() => toggleExpanded(item.question.id)}
-                      className="ml-auto text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      {isExpanded ? 'Hide Details' : 'Show Details'}
-                    </button>
-                  </div>
-                  
-                  {/* Question Text with LaTeX */}
-                  <div className="text-gray-800 mb-2">
-                    <LatexRenderer content={item.question.prompt_latex || item.question.prompt_text} />
-                  </div>
-                  
-                  {/* Student Attempt Info */}
-                  {attempt && (
-                    <div className="mt-2 text-sm flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className={attempt.is_correct ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                      <button
+                        onClick={() => toggleExpanded(item.question.id)}
+                        className="ml-auto text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        {isExpanded ? 'Hide Details' : 'Show Details'}
+                      </button>
+                    </div>
+                    
+                    {/* Question Text with LaTeX */}
+                    <div className="text-gray-800 mb-2">
+                      <LatexRenderer content={item.question.prompt_latex || item.question.prompt_text} />
+                    </div>
+                    
+                    {/* Student Attempt Info */}
+                    {attempt && (
+                      <div className="mt-2 text-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className={attempt.is_correct ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
                         {attempt.is_correct ? '✓ Correct' : '✗ Incorrect'}
                       </span>
                       <span className="text-gray-400">•</span>
@@ -502,6 +540,7 @@ export default function TutorAssignmentDetailPage() {
                       )}
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             </div>
