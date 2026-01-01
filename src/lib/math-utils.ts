@@ -26,6 +26,7 @@ export function normalizeMathAnswer(answer: string): string {
   // Step 3: Normalize Unicode math symbols to ASCII equivalents
   const unicodeReplacements: [RegExp, string][] = [
     [/×/g, '*'],
+    [/·/g, '*'],  // middle dot
     [/÷/g, '/'],
     [/−/g, '-'],  // Unicode minus
     [/–/g, '-'],  // En dash
@@ -37,22 +38,45 @@ export function normalizeMathAnswer(answer: string): string {
     [/≤/g, '<='],
     [/≥/g, '>='],
     [/≠/g, '!='],
+    [/≈/g, '~='],
     [/±/g, '+-'],
     [/°/g, 'deg'],
     [/²/g, '^2'],
     [/³/g, '^3'],
     [/⁴/g, '^4'],
+    [/⁵/g, '^5'],
+    [/⁶/g, '^6'],
+    [/⁷/g, '^7'],
+    [/⁸/g, '^8'],
+    [/⁹/g, '^9'],
+    [/⁰/g, '^0'],
     [/½/g, '(1/2)'],
     [/¼/g, '(1/4)'],
     [/¾/g, '(3/4)'],
     [/⅓/g, '(1/3)'],
     [/⅔/g, '(2/3)'],
+    [/⅕/g, '(1/5)'],
+    [/⅖/g, '(2/5)'],
+    [/⅗/g, '(3/5)'],
+    [/⅘/g, '(4/5)'],
+    [/⅙/g, '(1/6)'],
+    [/⅚/g, '(5/6)'],
+    [/⅛/g, '(1/8)'],
+    [/⅜/g, '(3/8)'],
+    [/⅝/g, '(5/8)'],
+    [/⅞/g, '(7/8)'],
     [/α/g, 'alpha'],
     [/β/g, 'beta'],
     [/γ/g, 'gamma'],
     [/θ/g, 'theta'],
     [/Δ/g, 'delta'],
+    [/δ/g, 'delta'],
+    [/σ/g, 'sigma'],
+    [/Σ/g, 'sum'],
     [/∑/g, 'sum'],
+    [/λ/g, 'lambda'],
+    [/μ/g, 'mu'],
+    [/ω/g, 'omega'],
   ]
   
   for (const [pattern, replacement] of unicodeReplacements) {
@@ -66,12 +90,13 @@ export function normalizeMathAnswer(answer: string): string {
     [/\\div/g, '/'],
     [/\\pm/g, '+-'],
     [/\\mp/g, '-+'],
+    [/\\sqrt\[(\d+)\]\{([^}]*)\}/g, 'root($1,$2)'], // nth root
     [/\\sqrt\{([^}]*)\}/g, 'sqrt($1)'],
-    [/\\sqrt\[3\]\{([^}]*)\}/g, 'cbrt($1)'],
     [/\\sqrt/g, 'sqrt'],
     [/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)'],
     [/\\dfrac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)'],
     [/\\tfrac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)'],
+    [/\\cfrac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)'],
     [/\\pi/g, 'pi'],
     [/\\infty/g, 'infinity'],
     [/\\alpha/g, 'alpha'],
@@ -79,26 +104,43 @@ export function normalizeMathAnswer(answer: string): string {
     [/\\gamma/g, 'gamma'],
     [/\\theta/g, 'theta'],
     [/\\delta/g, 'delta'],
+    [/\\sigma/g, 'sigma'],
+    [/\\lambda/g, 'lambda'],
+    [/\\mu/g, 'mu'],
+    [/\\omega/g, 'omega'],
     [/\\sin/g, 'sin'],
     [/\\cos/g, 'cos'],
     [/\\tan/g, 'tan'],
     [/\\sec/g, 'sec'],
     [/\\csc/g, 'csc'],
     [/\\cot/g, 'cot'],
+    [/\\arcsin/g, 'arcsin'],
+    [/\\arccos/g, 'arccos'],
+    [/\\arctan/g, 'arctan'],
     [/\\log/g, 'log'],
     [/\\ln/g, 'ln'],
     [/\\exp/g, 'exp'],
+    [/\\le/g, '<='],
     [/\\leq/g, '<='],
+    [/\\ge/g, '>='],
     [/\\geq/g, '>='],
+    [/\\ne/g, '!='],
     [/\\neq/g, '!='],
+    [/\\approx/g, '~='],
     [/\\left/g, ''],
     [/\\right/g, ''],
     [/\\text\{([^}]*)\}/g, '$1'],
     [/\\mathrm\{([^}]*)\}/g, '$1'],
     [/\\mathit\{([^}]*)\}/g, '$1'],
+    [/\\mathbf\{([^}]*)\}/g, '$1'],
     [/\\circ/g, 'deg'],
     [/\^\{([^}]*)\}/g, '^($1)'],  // x^{2} -> x^(2)
     [/_\{([^}]*)\}/g, '_($1)'],  // x_{i} -> x_(i)
+    [/\\,/g, ''],  // thin space
+    [/\\:/g, ''],  // medium space
+    [/\\;/g, ''],  // thick space
+    [/\\!/g, ''],  // negative thin space
+    [/\\ /g, ''],  // regular space
   ]
   
   for (const [pattern, replacement] of latexReplacements) {

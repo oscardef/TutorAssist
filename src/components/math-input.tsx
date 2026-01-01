@@ -6,13 +6,16 @@ import LatexRenderer from './latex-renderer'
 
 // Dynamic import of MathLive to avoid SSR issues
 const MathLiveComponent = dynamic(
-  () => import('mathlive').then(() => {
+  () => import('mathlive').then((MathLive) => {
+    // Configure MathLive globally for student use
+    MathLive.MathfieldElement.fontsDirectory = 'https://unpkg.com/mathlive/dist/fonts/'
+    MathLive.MathfieldElement.soundsDirectory = null // Disable sounds
+    
     // Return a component that renders the math-field
     return function MathFieldWrapper({ 
       value, 
       onChange, 
       disabled, 
-      placeholder,
       onSubmit,
       className 
     }: { 
@@ -29,32 +32,85 @@ const MathLiveComponent = dynamic(
         const mf = mathFieldRef.current as unknown as {
           value: string
           disabled: boolean
-          mathModeSpace: string
-          smartMode: boolean
-          smartSuperscript: boolean
-          inlineShortcuts: Record<string, string>
           addEventListener: (event: string, handler: (e: Event) => void) => void
           removeEventListener: (event: string, handler: (e: Event) => void) => void
+          setOptions: (options: Record<string, unknown>) => void
+          executeCommand: (command: string | string[]) => void
         }
         if (mf) {
           mf.value = value
           mf.disabled = disabled || false
-          mf.mathModeSpace = '\\:'
-          mf.smartMode = true
-          mf.smartSuperscript = true
-          mf.inlineShortcuts = {
-            'pi': '\\pi',
-            'theta': '\\theta',
-            'alpha': '\\alpha',
-            'beta': '\\beta',
-            'gamma': '\\gamma',
-            'delta': '\\delta',
-            'sqrt': '\\sqrt{#0}',
-            'inf': '\\infty',
-            '<=': '\\le',
-            '>=': '\\ge',
-            '!=': '\\ne',
-          }
+          
+          // Configure MathLive with simplified settings for students
+          mf.setOptions({
+            // Smart input features
+            smartMode: true,
+            smartSuperscript: true,
+            smartFence: true,
+            removeExtraneousParentheses: true,
+            mathModeSpace: '\\:',
+            
+            // Disable sounds
+            keypressSound: null,
+            plonkSound: null,
+            
+            // Virtual keyboard - simplified, no color/style options
+            virtualKeyboardMode: 'manual',
+            virtualKeyboardTheme: 'apple',
+            // Only show basic keyboards - NO formatting options
+            virtualKeyboards: 'numeric symbols',
+            
+            // Disable all the formatting/style toolbars
+            virtualKeyboardToolbar: 'none',
+            
+            // Menu bar settings - disable styling options
+            menuItems: [],
+            
+            // Inline shortcuts that trigger on space
+            inlineShortcuts: {
+              // Greek letters commonly used
+              'pi': { mode: 'math', value: '\\pi' },
+              'theta': { mode: 'math', value: '\\theta' },
+              'alpha': { mode: 'math', value: '\\alpha' },
+              'beta': { mode: 'math', value: '\\beta' },
+              'gamma': { mode: 'math', value: '\\gamma' },
+              'delta': { mode: 'math', value: '\\delta' },
+              'sigma': { mode: 'math', value: '\\sigma' },
+              'omega': { mode: 'math', value: '\\omega' },
+              'lambda': { mode: 'math', value: '\\lambda' },
+              
+              // Square roots
+              'sqrt': { mode: 'math', value: '\\sqrt{#@}' },
+              'cbrt': { mode: 'math', value: '\\sqrt[3]{#@}' },
+              
+              // Fractions
+              'frac': { mode: 'math', value: '\\frac{#@}{#?}' },
+              
+              // Common symbols
+              'inf': { mode: 'math', value: '\\infty' },
+              'infinity': { mode: 'math', value: '\\infty' },
+              'pm': { mode: 'math', value: '\\pm' },
+              'deg': { mode: 'math', value: '^{\\circ}' },
+              
+              // Comparison operators
+              '<=': { mode: 'math', value: '\\le' },
+              '>=': { mode: 'math', value: '\\ge' },
+              '!=': { mode: 'math', value: '\\ne' },
+              'approx': { mode: 'math', value: '\\approx' },
+              
+              // Calculus
+              'int': { mode: 'math', value: '\\int' },
+              'sum': { mode: 'math', value: '\\sum' },
+              'lim': { mode: 'math', value: '\\lim' },
+              
+              // Trig functions
+              'sin': { mode: 'math', value: '\\sin' },
+              'cos': { mode: 'math', value: '\\cos' },
+              'tan': { mode: 'math', value: '\\tan' },
+              'log': { mode: 'math', value: '\\log' },
+              'ln': { mode: 'math', value: '\\ln' },
+            },
+          })
 
           const handleInput = (e: Event) => {
             const target = e.target as unknown as { value: string }
@@ -80,10 +136,10 @@ const MathLiveComponent = dynamic(
       }, [value, disabled, onChange, onSubmit])
 
       return (
-        // @ts-expect-error - math-field is a custom element from MathLive
         <math-field 
-          ref={mathFieldRef}
-          class={className}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ref={mathFieldRef as any}
+          className={className}
           style={{
             width: '100%',
             fontSize: '1.25rem',
@@ -124,7 +180,6 @@ export function MathInput({
   placeholder = 'Type your answer...',
   className = '',
   showPreview = false,
-  answerType = 'expression',
   onSubmit,
   status,
 }: MathInputProps) {
@@ -144,19 +199,29 @@ export function MathInput({
 
   // Fallback text input with symbol buttons
   const FallbackInput = () => {
+    // Essential symbols for middle/high school math
     const QUICK_SYMBOLS = [
-      { symbol: '×', label: 'times' },
-      { symbol: '÷', label: 'divide' },
-      { symbol: '√', label: 'sqrt' },
-      { symbol: 'π', label: 'pi' },
-      { symbol: '^', label: 'power' },
-      { symbol: '/', label: 'fraction' },
-      { symbol: '(', label: 'open' },
-      { symbol: ')', label: 'close' },
-      { symbol: '≤', label: 'leq' },
-      { symbol: '≥', label: 'geq' },
-      { symbol: '≠', label: 'neq' },
-      { symbol: '∞', label: 'infinity' },
+      // Basic operations
+      { symbol: '×', label: 'times', category: 'basic' },
+      { symbol: '÷', label: 'divide', category: 'basic' },
+      { symbol: '±', label: 'plus-minus', category: 'basic' },
+      // Fractions and powers
+      { symbol: '/', label: 'fraction', category: 'basic' },
+      { symbol: '^', label: 'power/exponent', category: 'basic' },
+      { symbol: '√', label: 'square root', category: 'basic' },
+      { symbol: '∛', label: 'cube root', category: 'basic' },
+      // Parentheses
+      { symbol: '(', label: 'open parenthesis', category: 'bracket' },
+      { symbol: ')', label: 'close parenthesis', category: 'bracket' },
+      // Comparisons
+      { symbol: '≤', label: 'less than or equal', category: 'compare' },
+      { symbol: '≥', label: 'greater than or equal', category: 'compare' },
+      { symbol: '≠', label: 'not equal', category: 'compare' },
+      { symbol: '≈', label: 'approximately', category: 'compare' },
+      // Constants
+      { symbol: 'π', label: 'pi', category: 'constant' },
+      { symbol: '∞', label: 'infinity', category: 'constant' },
+      { symbol: '°', label: 'degree', category: 'constant' },
     ]
 
     const insertSymbol = useCallback((symbol: string) => {
@@ -250,7 +315,7 @@ export function MathInput({
           {/* Virtual keyboard hint */}
           {!disabled && (
             <p className="text-xs text-gray-500 mt-2">
-              💡 Use the keyboard buttons or type naturally. Press Enter to submit.
+              💡 <strong>Tips:</strong> Type <code className="bg-gray-100 px-1 rounded">sqrt</code> then space for √, use <code className="bg-gray-100 px-1 rounded">^</code> for exponents (x^2), <code className="bg-gray-100 px-1 rounded">/</code> for fractions, <code className="bg-gray-100 px-1 rounded">pi</code> for π
             </p>
           )}
         </div>
@@ -295,6 +360,26 @@ export function MathInput({
           --keyboard-background: white !important;
           box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15) !important;
           border-top: 1px solid #e5e7eb !important;
+        }
+        /* Hide all formatting/styling options */
+        .ML__keyboard .MLK__toolbar,
+        .ML__keyboard [data-command="applyStyle"],
+        .ML__keyboard [data-command="backgroundColor"],
+        .ML__keyboard [data-command="color"],
+        .ML__keyboard .MLK__toolbar button[data-command*="color"],
+        .ML__keyboard .MLK__toolbar button[data-command*="style"],
+        .ML__keyboard .MLK__toolbar button[data-command*="font"],
+        .ML__popover,
+        math-field::part(menu-toggle),
+        math-field::part(virtual-keyboard-toggle) {
+          display: none !important;
+        }
+        /* Hide context menu styling options */
+        .ML__menu [data-command*="color"],
+        .ML__menu [data-command*="font"],
+        .ML__menu [data-command*="style"],
+        .ML__menu [data-command*="backgroundColor"] {
+          display: none !important;
         }
       `}</style>
     </div>

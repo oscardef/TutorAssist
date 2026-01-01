@@ -191,14 +191,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     
-    // If this is a "claim_correct" flag, also update the attempt
+    // If this is a "claim_correct" flag, immediately mark the attempt as correct
+    // The tutor will review but student gets credit immediately
     if (flagType === 'claim_correct' && attemptId) {
       await supabase
         .from('attempts')
         .update({
+          is_correct: true, // Mark as correct immediately
           override_correct: true,
           override_at: new Date().toISOString(),
-          original_is_correct: false, // They're claiming they were marked wrong incorrectly
+          original_is_correct: false, // Store that it was originally wrong
         })
         .eq('id', attemptId)
         .eq('student_user_id', user.id)

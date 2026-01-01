@@ -116,23 +116,30 @@ export default async function StudentDashboard() {
     displayAssignments.push(parent)
   })
   
-  // Get count of completed assignment questions
+  // Get count of completed assignment questions AND correct counts
   const allAssignmentIds = allAssignments?.map(a => a.id) || []
-  const { data: completedCounts } = allAssignmentIds.length > 0 
+  const { data: attemptData } = allAssignmentIds.length > 0 
     ? await supabase
         .from('attempts')
-        .select('assignment_id')
+        .select('assignment_id, is_correct')
         .eq('student_user_id', user?.id)
         .in('assignment_id', allAssignmentIds)
     : { data: [] }
   
   const completedByAssignment = new Map<string, number>()
-  completedCounts?.forEach(a => {
+  const correctByAssignment = new Map<string, number>()
+  attemptData?.forEach(a => {
     if (a.assignment_id) {
       completedByAssignment.set(
         a.assignment_id, 
         (completedByAssignment.get(a.assignment_id) || 0) + 1
       )
+      if (a.is_correct) {
+        correctByAssignment.set(
+          a.assignment_id,
+          (correctByAssignment.get(a.assignment_id) || 0) + 1
+        )
+      }
     }
   })
   
@@ -325,16 +332,19 @@ export default async function StudentDashboard() {
                   
                   let totalQuestions = 0
                   let completedQuestions = 0
+                  let correctQuestions = 0
                   
                   if (hasChildren) {
                     assignment.children!.forEach(child => {
                       const childTotal = (child.assignment_items as { count: number }[])?.[0]?.count || 0
                       totalQuestions += childTotal
                       completedQuestions += completedByAssignment.get(child.id) || 0
+                      correctQuestions += correctByAssignment.get(child.id) || 0
                     })
                   } else {
                     totalQuestions = (assignment.assignment_items as { count: number }[])?.[0]?.count || 0
                     completedQuestions = completedByAssignment.get(assignment.id) || 0
+                    correctQuestions = correctByAssignment.get(assignment.id) || 0
                   }
                   
                   const progress = totalQuestions > 0 ? Math.round((completedQuestions / totalQuestions) * 100) : 0
@@ -377,6 +387,11 @@ export default async function StudentDashboard() {
                           </div>
                           <div className="flex items-center gap-3 mt-1.5">
                             <span className="text-sm text-gray-500">{completedQuestions}/{totalQuestions} completed</span>
+                            {completedQuestions > 0 && (
+                              <span className={`text-sm font-medium ${correctQuestions === completedQuestions ? 'text-green-600' : 'text-blue-600'}`}>
+                                ✓ {correctQuestions}/{completedQuestions} correct
+                              </span>
+                            )}
                             {dueDate && (
                               <span className={`text-sm font-medium ${
                                 isOverdue ? 'text-red-600' : isDueToday ? 'text-amber-600' : isDueTomorrow ? 'text-blue-600' : 'text-gray-500'

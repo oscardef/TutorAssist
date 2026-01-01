@@ -21,6 +21,8 @@ interface Assignment {
 interface AssignmentWithProgress extends Assignment {
   totalQuestions: number
   completedQuestions: number
+  correctQuestions: number
+  topics: string[]
   children: AssignmentWithProgress[]
 }
 
@@ -29,12 +31,20 @@ export default async function StudentAssignmentsPage() {
   const context = await getUserContext()
   const supabase = await createServerClient()
   
-  // Get all assignments for student with items
+  // Get all assignments for student with items and topics
   const { data: assignments } = await supabase
     .from('assignments')
     .select(`
       *,
-      assignment_items(id, question_id)
+      assignment_items(
+        id, 
+        question_id,
+        question:questions(
+          id,
+          topic_id,
+          topics(id, name)
+        )
+      )
     `)
     .eq('assigned_student_user_id', user?.id)
     .eq('workspace_id', context?.workspaceId)
@@ -43,26 +53,46 @@ export default async function StudentAssignmentsPage() {
   // For each assignment, get unique questions that have been attempted
   const assignmentsWithProgress = await Promise.all(
     (assignments || []).map(async (assignment) => {
-      const items = assignment.assignment_items as { id: string; question_id: string }[] || []
+      const items = assignment.assignment_items as { id: string; question_id: string; question?: { id: string; topics?: { name: string } | null } }[] || []
       const questionIds = items.map(item => item.question_id)
       
-      // Get distinct question_ids that have attempts for this assignment
+      // Extract unique topic names from questions
+      const topicNames = new Set<string>()
+      items.forEach(item => {
+        if (item.question?.topics?.name) {
+          topicNames.add(item.question.topics.name)
+        }
+      })
+      
+      // Get distinct question_ids that have attempts for this assignment (with correctness)
       const { data: attemptedQuestions } = questionIds.length > 0 
         ? await supabase
             .from('attempts')
-            .select('question_id')
+            .select('question_id, is_correct')
             .eq('assignment_id', assignment.id)
             .eq('student_user_id', user?.id)
             .in('question_id', questionIds)
         : { data: [] }
       
-      // Count unique questions attempted
-      const uniqueAttempted = new Set(attemptedQuestions?.map(a => a.question_id) || []).size
+      // Count unique questions attempted and correct
+      const attemptsByQuestion = new Map<string, boolean>()
+      attemptedQuestions?.forEach(a => {
+        // Keep track of best result per question (if any attempt was correct)
+        const existing = attemptsByQuestion.get(a.question_id)
+        if (existing === undefined || (!existing && a.is_correct)) {
+          attemptsByQuestion.set(a.question_id, a.is_correct || false)
+        }
+      })
+      
+      const uniqueAttempted = attemptsByQuestion.size
+      const correctCount = Array.from(attemptsByQuestion.values()).filter(v => v).length
       
       return {
         ...assignment,
         totalQuestions: items.length,
         completedQuestions: Math.min(uniqueAttempted, items.length),
+        correctQuestions: correctCount,
+        topics: Array.from(topicNames),
         children: [] as AssignmentWithProgress[],
       } as AssignmentWithProgress
     })
@@ -105,6 +135,11 @@ export default async function StudentAssignmentsPage() {
       // Calculate parent totals from children
       parent.totalQuestions = parent.children.reduce((sum, c) => sum + c.totalQuestions, 0)
       parent.completedQuestions = parent.children.reduce((sum, c) => sum + c.completedQuestions, 0)
+      parent.correctQuestions = parent.children.reduce((sum, c) => sum + c.correctQuestions, 0)
+      // Aggregate unique topics from all children
+      const allTopics = new Set<string>()
+      parent.children.forEach(c => c.topics.forEach(t => allTopics.add(t)))
+      parent.topics = Array.from(allTopics)
     }
     
     return [...parentMap.values(), ...standalone]
@@ -164,7 +199,7 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
   const hasChildren = assignment.children && assignment.children.length > 0
   const dueDate = assignment.due_at ? new Date(assignment.due_at) : null
   const isOverdue = dueDate && dueDate < new Date()
-  const { totalQuestions, completedQuestions } = assignment
+  const { totalQuestions, completedQuestions, correctQuestions, topics } = assignment
   const progress = totalQuestions > 0 
     ? Math.round((completedQuestions / totalQuestions) * 100) 
     : 0
@@ -190,6 +225,21 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
               {assignment.description && (
                 <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
               )}
+              {/* Topics badges */}
+              {topics.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {topics.slice(0, 4).map((topic) => (
+                    <span key={topic} className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                      {topic}
+                    </span>
+                  ))}
+                  {topics.length > 4 && (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                      +{topics.length - 4} more
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             {dueDate && (
               <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
@@ -201,7 +251,14 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>{completedQuestions} of {totalQuestions} completed</span>
+                <span>
+                  {completedQuestions} of {totalQuestions} completed
+                  {completedQuestions > 0 && (
+                    <span className={`ml-2 font-medium ${correctQuestions === completedQuestions ? 'text-green-600' : 'text-blue-600'}`}>
+                      • ✓ {correctQuestions} correct
+                    </span>
+                  )}
+                </span>
                 <span>{progress}%</span>
               </div>
               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -225,9 +282,6 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
         {/* Sub-assignments list */}
         <div className="border-t border-gray-100 divide-y divide-gray-100">
           {assignment.children.map((child, idx) => {
-            const childProgress = child.totalQuestions > 0 
-              ? Math.round((child.completedQuestions / child.totalQuestions) * 100) 
-              : 0
             const isComplete = child.completedQuestions >= child.totalQuestions
             
             return (
@@ -246,7 +300,12 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-gray-900 truncate">{child.title}</div>
                   <div className="text-sm text-gray-500">
-                    {child.completedQuestions} of {child.totalQuestions} questions • {childProgress}%
+                    {child.completedQuestions} of {child.totalQuestions} questions
+                    {child.completedQuestions > 0 && (
+                      <span className={`ml-1 ${child.correctQuestions === child.completedQuestions ? 'text-green-600' : ''}`}>
+                        • ✓ {child.correctQuestions} correct
+                      </span>
+                    )}
                   </div>
                 </div>
                 <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -273,6 +332,21 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
           {assignment.description && (
             <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
           )}
+          {/* Topics badges */}
+          {topics.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {topics.slice(0, 3).map((topic) => (
+                <span key={topic} className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                  {topic}
+                </span>
+              ))}
+              {topics.length > 3 && (
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                  +{topics.length - 3} more
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {dueDate && (
           <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
@@ -284,7 +358,14 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
       <div className="flex items-center gap-4">
         <div className="flex-1">
           <div className="flex justify-between text-sm text-gray-600 mb-1">
-            <span>{completedQuestions} of {totalQuestions} completed</span>
+            <span>
+              {completedQuestions} of {totalQuestions} completed
+              {completedQuestions > 0 && (
+                <span className={`ml-2 font-medium ${correctQuestions === completedQuestions ? 'text-green-600' : 'text-blue-600'}`}>
+                  • ✓ {correctQuestions} correct
+                </span>
+              )}
+            </span>
             <span>{progress}%</span>
           </div>
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">

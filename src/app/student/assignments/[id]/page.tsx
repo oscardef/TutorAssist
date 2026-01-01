@@ -167,6 +167,16 @@ export default function StudentAssignmentDetailPage() {
       
       if (response.ok) {
         setClaimedCorrect(true)
+        // Update the local attempt state to show as correct immediately
+        if (currentAttempt) {
+          setAttempts(prev => ({
+            ...prev,
+            [currentQuestion.id]: {
+              ...prev[currentQuestion.id],
+              isCorrect: true, // Mark as correct in UI
+            },
+          }))
+        }
       }
     } catch (error) {
       console.error('Failed to claim correct:', error)
@@ -454,9 +464,9 @@ export default function StudentAssignmentDetailPage() {
           <div className="flex items-center gap-3">
             {currentAttempt && (
               <span className={`text-sm font-semibold ${
-                currentAttempt.isCorrect ? 'text-green-600' : claimedCorrect ? 'text-yellow-600' : 'text-red-600'
+                currentAttempt.isCorrect ? 'text-green-600' : 'text-red-600'
               }`}>
-                {currentAttempt.isCorrect ? '✓ Correct' : claimedCorrect ? '⏳ Under review' : '✗ Incorrect'}
+                {currentAttempt.isCorrect ? '✓ Correct' : '✗ Incorrect'}
               </span>
             )}
             <button
@@ -545,20 +555,14 @@ export default function StudentAssignmentDetailPage() {
           {/* Feedback */}
           {feedback && (
             <div className={`mt-6 p-5 rounded-xl ${
-              feedback.correct ? 'bg-green-50 border-2 border-green-200' : claimedCorrect ? 'bg-yellow-50 border-2 border-yellow-200' : 'bg-red-50 border-2 border-red-200'
+              feedback.correct || claimedCorrect ? 'bg-green-50 border-2 border-green-200' : 'bg-red-50 border-2 border-red-200'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {feedback.correct ? (
+                  {feedback.correct || claimedCorrect ? (
                     <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
                       <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                      </svg>
-                    </div>
-                  ) : claimedCorrect ? (
-                    <div className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                   ) : (
@@ -568,8 +572,8 @@ export default function StudentAssignmentDetailPage() {
                       </svg>
                     </div>
                   )}
-                  <span className={`text-lg font-bold ${feedback.correct ? 'text-green-800' : claimedCorrect ? 'text-yellow-800' : 'text-red-800'}`}>
-                    {feedback.correct ? feedback.message : claimedCorrect ? 'Under review' : feedback.message}
+                  <span className={`text-lg font-bold ${feedback.correct || claimedCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                    {claimedCorrect ? 'Marked correct!' : feedback.message}
                   </span>
                 </div>
                 
@@ -585,8 +589,8 @@ export default function StudentAssignmentDetailPage() {
               </div>
               
               {claimedCorrect && (
-                <p className="mt-3 text-sm text-yellow-700">
-                  Your claim has been submitted. Your tutor will review it.
+                <p className="mt-3 text-sm text-green-700">
+                  ✓ This question has been marked correct. Your tutor will review the answer.
                 </p>
               )}
             </div>

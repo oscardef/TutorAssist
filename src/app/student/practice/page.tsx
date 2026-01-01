@@ -31,12 +31,18 @@ interface Question {
   primary_grade_level?: { code: string; name: string } | null
 }
 
+interface GradeLevel {
+  id: string
+  code: string
+  name: string
+}
+
 interface StudyProgram {
   id: string
   code: string
   name: string
   color: string | null
-  grade_levels?: { id: string; code: string; name: string }[]
+  grade_levels?: GradeLevel[]
 }
 
 interface Topic {
@@ -60,7 +66,7 @@ interface TopicStats {
 interface StudentProfile {
   study_program_id: string | null
   grade_level_id: string | null
-  study_program?: { id: string; code: string; name: string } | null
+  study_program?: { id: string; code: string; name: string; color?: string } | null
   grade_level?: { id: string; code: string; name: string } | null
 }
 
@@ -74,6 +80,54 @@ function getGradeLevelLabel(level: number | null): string {
   return `Level ${level}`
 }
 
+// Practice mode icons and colors
+const PRACTICE_MODES = {
+  topic: {
+    title: 'Practice by Topic',
+    description: 'Choose a specific topic to focus on',
+    icon: (
+      <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+      </svg>
+    ),
+    color: 'indigo',
+    bgGradient: 'from-indigo-500 to-indigo-600',
+  },
+  browse: {
+    title: 'Choose Questions',
+    description: 'Browse and pick specific questions to practice',
+    icon: (
+      <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+      </svg>
+    ),
+    color: 'emerald',
+    bgGradient: 'from-emerald-500 to-emerald-600',
+  },
+  review: {
+    title: 'Spaced Review',
+    description: 'Review questions based on your memory schedule',
+    icon: (
+      <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    ),
+    color: 'blue',
+    bgGradient: 'from-blue-500 to-blue-600',
+  },
+  weak: {
+    title: 'Strengthen Weak Areas',
+    description: 'Focus on topics where you need more practice',
+    icon: (
+      <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+      </svg>
+    ),
+    color: 'amber',
+    bgGradient: 'from-amber-500 to-amber-600',
+  },
+}
+
 export default function PracticePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -84,9 +138,9 @@ export default function PracticePage() {
   
   const [mode, setMode] = useState<PracticeMode>(modeParam || 'select')
   const [loading, setLoading] = useState(true)
-  const [programs, setPrograms] = useState<StudyProgram[]>([])
-  const [selectedProgram, setSelectedProgram] = useState<string>('')
+  // Students don't choose program - we use their assigned one
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>('')
+  const [availableGradeLevels, setAvailableGradeLevels] = useState<GradeLevel[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
   const [topicStats, setTopicStats] = useState<TopicStats[]>([])
   const [selectedTopic, setSelectedTopic] = useState<string>(topicParam || '')
@@ -135,19 +189,25 @@ export default function PracticePage() {
         const profileData = await profileRes.json()
         if (profileData.profile) {
           setStudentProfile(profileData.profile)
-          // Auto-select student's program if they have one
-          if (profileData.profile.study_program_id) {
-            setSelectedProgram(profileData.profile.study_program_id)
-          }
+          // Auto-select student's grade level as default
           if (profileData.profile.grade_level_id) {
             setSelectedGradeLevel(profileData.profile.grade_level_id)
           }
         }
         
-        // Fetch programs
+        // Fetch programs to get grade levels for the student's program
         const programsRes = await fetch('/api/programs')
         const programsData = await programsRes.json()
-        setPrograms(programsData.programs || [])
+        
+        // Set available grade levels based on student's program
+        if (profileData.profile?.study_program_id) {
+          const studentProgram = programsData.programs?.find(
+            (p: StudyProgram) => p.id === profileData.profile.study_program_id
+          )
+          if (studentProgram?.grade_levels) {
+            setAvailableGradeLevels(studentProgram.grade_levels)
+          }
+        }
         
         // Fetch topics
         const topicsRes = await fetch('/api/topics')
@@ -539,260 +599,277 @@ export default function PracticePage() {
     const hasWeakTopics = weakTopics.length > 0
     const totalPracticed = topicStats.reduce((sum, s) => sum + s.total, 0)
     
+    // Filter topics based on student's program and selected grade level
+    const filteredTopics = topics.filter(topic => {
+      // Must match student's program (or no program set)
+      if (studentProfile?.study_program_id && topic.program_id !== studentProfile.study_program_id) {
+        return false
+      }
+      // Filter by selected grade level if one is chosen
+      if (selectedGradeLevel && topic.grade_level_id !== selectedGradeLevel) {
+        return false
+      }
+      return true
+    })
+    
+    const topicsWithQuestions = filteredTopics.filter(t => (t.questions?.[0]?.count || 0) > 0)
+    
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Practice</h1>
-          <p className="text-gray-600 mt-1">Choose how you want to practice today.</p>
+      <div className="max-w-5xl mx-auto px-4">
+        {/* Hero Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Practice</h1>
+          <p className="text-gray-600 max-w-xl mx-auto">
+            {studentProfile?.study_program?.name 
+              ? `Practicing ${studentProfile.study_program.name}`
+              : 'Choose a practice mode to get started'
+            }
+          </p>
         </div>
 
-        {/* Practice Mode Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {/* Review Due */}
+        {/* Practice Mode Cards - Primary Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Practice by Topic */}
+          <button
+            onClick={() => document.getElementById('topic-section')?.scrollIntoView({ behavior: 'smooth' })}
+            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-left text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                {PRACTICE_MODES.topic.icon}
+              </div>
+              <h3 className="font-semibold text-lg mb-1">{PRACTICE_MODES.topic.title}</h3>
+              <p className="text-sm text-indigo-100 opacity-90">{PRACTICE_MODES.topic.description}</p>
+            </div>
+            <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform" />
+          </button>
+
+          {/* Browse & Pick */}
+          <button
+            onClick={() => {
+              setMode('browse')
+              fetchBrowseQuestions()
+            }}
+            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 text-left text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                {PRACTICE_MODES.browse.icon}
+              </div>
+              <h3 className="font-semibold text-lg mb-1">{PRACTICE_MODES.browse.title}</h3>
+              <p className="text-sm text-emerald-100 opacity-90">{PRACTICE_MODES.browse.description}</p>
+            </div>
+            <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform" />
+          </button>
+
+          {/* Spaced Review */}
           <button
             onClick={() => startPractice('review')}
-            className="bg-white rounded-lg border border-gray-200 p-6 text-left hover:border-blue-300 hover:shadow-md transition-all group"
+            disabled={totalPracticed === 0}
+            className={`group relative overflow-hidden rounded-2xl p-6 text-left shadow-lg transition-all ${
+              totalPracticed > 0 
+                ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
           >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
+            <div className="relative z-10">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform ${
+                totalPracticed > 0 ? 'bg-white/20 group-hover:scale-110' : 'bg-gray-200'
+              }`}>
+                {PRACTICE_MODES.review.icon}
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 mb-1">Spaced Review</h3>
-                <p className="text-sm text-gray-600">
-                  {totalPracticed > 0 
-                    ? "Review questions due for repetition to strengthen your memory."
-                    : "Practice some questions first to build your review schedule."
-                  }
-                </p>
-                {totalPracticed === 0 && (
-                  <p className="text-xs text-blue-600 mt-2">
-                    Start by practicing questions from a topic below
-                  </p>
-                )}
-              </div>
+              <h3 className="font-semibold text-lg mb-1">{PRACTICE_MODES.review.title}</h3>
+              <p className={`text-sm opacity-90 ${totalPracticed > 0 ? 'text-blue-100' : 'text-gray-400'}`}>
+                {totalPracticed > 0 ? PRACTICE_MODES.review.description : 'Practice some questions first'}
+              </p>
             </div>
+            {totalPracticed > 0 && (
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform" />
+            )}
           </button>
 
           {/* Weak Areas */}
           <button
             onClick={() => hasWeakTopics && startPractice('weak')}
             disabled={!hasWeakTopics}
-            className={`bg-white rounded-lg border border-gray-200 p-6 text-left transition-all group ${
+            className={`group relative overflow-hidden rounded-2xl p-6 text-left shadow-lg transition-all ${
               hasWeakTopics 
-                ? 'hover:border-orange-300 hover:shadow-md' 
-                : 'opacity-60 cursor-not-allowed'
+                ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
-            <div className="flex items-start gap-4">
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${
-                hasWeakTopics ? 'bg-orange-100 group-hover:bg-orange-200' : 'bg-gray-100'
+            <div className="relative z-10">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform ${
+                hasWeakTopics ? 'bg-white/20 group-hover:scale-110' : 'bg-gray-200'
               }`}>
-                <svg className={`w-6 h-6 ${hasWeakTopics ? 'text-orange-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-                </svg>
+                {PRACTICE_MODES.weak.icon}
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 mb-1">Strengthen Weak Areas</h3>
-                <p className="text-sm text-gray-600">
-                  {hasWeakTopics 
-                    ? `Focus on ${weakTopics.length} topic${weakTopics.length > 1 ? 's' : ''} where you need more practice.`
-                    : totalPracticed >= 3 
-                      ? "Great job! You're doing well in all topics you've practiced."
-                      : 'Complete more questions to identify areas for improvement.'
-                  }
-                </p>
-                {!hasWeakTopics && totalPracticed > 0 && totalPracticed < 10 && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Keep practicing to build more statistics
-                  </p>
-                )}
-              </div>
+              <h3 className="font-semibold text-lg mb-1">{PRACTICE_MODES.weak.title}</h3>
+              <p className={`text-sm opacity-90 ${hasWeakTopics ? 'text-amber-100' : 'text-gray-400'}`}>
+                {hasWeakTopics 
+                  ? `${weakTopics.length} topic${weakTopics.length > 1 ? 's' : ''} need attention`
+                  : totalPracticed >= 3 ? 'Great job! No weak areas' : 'Keep practicing to identify areas'
+                }
+              </p>
             </div>
-          </button>
-          
-          {/* Browse & Pick Questions */}
-          <button
-            onClick={() => {
-              setMode('browse')
-              fetchBrowseQuestions()
-            }}
-            className="bg-white rounded-lg border border-gray-200 p-6 text-left hover:border-green-300 hover:shadow-md transition-all group md:col-span-2"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 mb-1">Browse & Pick Questions</h3>
-                <p className="text-sm text-gray-600">
-                  View all available questions and select specific ones you want to practice.
-                </p>
-              </div>
-            </div>
+            {hasWeakTopics && (
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform" />
+            )}
           </button>
         </div>
 
-        {/* Topic Selection */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Practice by Topic</h2>
-          
-          {/* Program Filter */}
-          {programs.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setSelectedProgram('')
-                  setSelectedGradeLevel('')
-                }}
-                className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                  !selectedProgram
-                    ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-500'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All Programs
-              </button>
-              {programs.map(program => (
-                <button
-                  key={program.id}
-                  onClick={() => {
-                    setSelectedProgram(program.id)
-                    setSelectedGradeLevel('')
-                  }}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center gap-1.5 ${
-                    selectedProgram === program.id
-                      ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-500'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <span 
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: program.color || '#6366f1' }}
-                  />
-                  {program.name}
-                </button>
-              ))}
-            </div>
-          )}
-          
-          {/* Grade Level Filter */}
-          {selectedProgram && (() => {
-            const program = programs.find(p => p.id === selectedProgram)
-            const gradeLevels = program?.grade_levels || []
-            if (gradeLevels.length === 0) return null
-            return (
-              <div className="mb-4 flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedGradeLevel('')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                    !selectedGradeLevel
-                      ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-500'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  All Grades
-                </button>
-                {gradeLevels.map(grade => (
+        {/* Topic Selection Section */}
+        <div id="topic-section" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="font-semibold text-lg text-gray-900">Practice by Topic</h2>
+                <p className="text-sm text-gray-500">
+                  {topicsWithQuestions.length} topic{topicsWithQuestions.length !== 1 ? 's' : ''} available
+                </p>
+              </div>
+              
+              {/* Grade Level Filter - Using student's assigned program grade levels */}
+              {availableGradeLevels.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">Grade:</span>
                   <button
-                    key={grade.id}
-                    onClick={() => setSelectedGradeLevel(grade.id)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                      selectedGradeLevel === grade.id
-                        ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-500'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    onClick={() => setSelectedGradeLevel('')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-full transition-all ${
+                      !selectedGradeLevel
+                        ? 'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500 ring-offset-1'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {grade.code}
+                    All
                   </button>
-                ))}
-              </div>
-            )
-          })()}
+                  {availableGradeLevels.map(grade => (
+                    <button
+                      key={grade.id}
+                      onClick={() => setSelectedGradeLevel(grade.id)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-full transition-all ${
+                        selectedGradeLevel === grade.id
+                          ? 'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500 ring-offset-1'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {grade.code}
+                      {studentProfile?.grade_level_id === grade.id && (
+                        <span className="ml-1 text-xs opacity-60">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           
-          {(() => {
-            // Filter topics based on selected program/grade
-            const filteredTopics = topics.filter(topic => {
-              if (selectedProgram && topic.program_id !== selectedProgram) return false
-              if (selectedGradeLevel && topic.grade_level_id !== selectedGradeLevel) return false
-              return true
-            })
-            
-            return filteredTopics.length > 0 ? (
+          <div className="p-6">
+            {filteredTopics.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredTopics.map((topic) => {
                   const questionCount = topic.questions?.[0]?.count || 0
                   const stats = topicStats.find(s => s.topicId === topic.id)
+                  const hasQuestions = questionCount > 0
                   
                   return (
                     <button
                       key={topic.id}
-                      onClick={() => questionCount > 0 && startPractice('topic', topic.id)}
-                      disabled={questionCount === 0}
-                      className={`p-4 rounded-lg border text-left transition-all ${
-                        questionCount > 0
-                          ? 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                          : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                      onClick={() => hasQuestions && startPractice('topic', topic.id)}
+                      disabled={!hasQuestions}
+                      className={`group relative p-4 rounded-xl border text-left transition-all ${
+                        hasQuestions
+                          ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-md active:scale-[0.98]'
+                          : 'border-gray-100 bg-gray-50/50 opacity-60 cursor-not-allowed'
                       }`}
                     >
-                      <div className="flex items-start justify-between mb-1">
-                        <span className="font-medium text-gray-900">{topic.name}</span>
-                        {topic.program && (
-                          <span 
-                            className="px-1.5 py-0.5 text-xs rounded text-white ml-2 shrink-0"
-                            style={{ backgroundColor: topic.program.color || '#6366f1' }}
-                          >
-                            {topic.program.code}
-                          </span>
-                        )}
-                      </div>
-                      {topic.grade_level && (
-                        <div className="text-xs text-indigo-600 mb-1">{topic.grade_level.code}</div>
-                      )}
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-500">{questionCount} questions</span>
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="font-medium text-gray-900 group-hover:text-indigo-700 transition-colors">
+                          {topic.name}
+                        </span>
                         {stats && stats.total > 0 && (
-                          <span className={`font-medium ${
-                            stats.accuracy >= 80 ? 'text-green-600' :
-                            stats.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            stats.accuracy >= 80 ? 'bg-green-100 text-green-700' :
+                            stats.accuracy >= 60 ? 'bg-yellow-100 text-yellow-700' : 
+                            'bg-red-100 text-red-700'
                           }`}>
                             {stats.accuracy}%
                           </span>
                         )}
                       </div>
+                      
+                      {topic.grade_level && (
+                        <span className="inline-block text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 mb-2">
+                          {topic.grade_level.code}
+                        </span>
+                      )}
+                      
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>{questionCount} question{questionCount !== 1 ? 's' : ''}</span>
+                        {stats && stats.total > 0 && (
+                          <span className="text-xs">
+                            {stats.correct}/{stats.total} correct
+                          </span>
+                        )}
+                      </div>
+                      
+                      {hasQuestions && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </div>
+                      )}
                     </button>
                   )
                 })}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">
-                {selectedProgram || selectedGradeLevel 
-                  ? 'No topics found for the selected filters.'
-                  : 'No topics available. Your tutor will add practice materials soon.'
-                }
-              </p>
-            )
-          })()}
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                  </svg>
+                </div>
+                <p className="text-gray-500">
+                  {selectedGradeLevel 
+                    ? 'No topics found for this grade level. Try selecting "All".'
+                    : 'No topics available yet. Your tutor will add practice materials soon.'
+                  }
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Topic Stats Summary */}
+        {/* Progress Section */}
         {topicStats.length > 0 && (
-          <div className="mt-6 bg-gray-50 rounded-lg border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Your Progress</h2>
+          <div className="mt-6 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-900">Your Progress</h2>
+              <Link 
+                href="/student/progress" 
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+              >
+                View all
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </Link>
+            </div>
             <div className="space-y-3">
               {topicStats.slice(0, 5).map((stats) => (
-                <div key={stats.topicId}>
-                  <div className="flex justify-between text-sm mb-1">
+                <div key={stats.topicId} className="bg-white rounded-lg p-3 border border-gray-100">
+                  <div className="flex justify-between text-sm mb-2">
                     <span className="font-medium text-gray-700">{stats.topicName}</span>
-                    <span className="text-gray-500">
-                      {stats.correct}/{stats.total} ({stats.accuracy}%)
+                    <span className={`font-semibold ${
+                      stats.accuracy >= 80 ? 'text-green-600' :
+                      stats.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {stats.accuracy}%
                     </span>
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full transition-all ${
                         stats.accuracy >= 80 ? 'bg-green-500' :
@@ -801,15 +878,12 @@ export default function PracticePage() {
                       style={{ width: `${stats.accuracy}%` }}
                     />
                   </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    {stats.correct} of {stats.total} correct
+                  </div>
                 </div>
               ))}
             </div>
-            <Link 
-              href="/student/progress" 
-              className="inline-block mt-4 text-sm text-blue-600 hover:text-blue-700"
-            >
-              View full progress →
-            </Link>
           </div>
         )}
       </div>
@@ -824,41 +898,47 @@ export default function PracticePage() {
     )
     
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <button
-              onClick={backToSelection}
-              className="text-sm text-gray-500 hover:text-gray-700 mb-1 flex items-center gap-1"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-              </svg>
-              Back
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900">Browse & Pick Questions</h1>
-            <p className="text-gray-600 mt-1">
-              {studentProfile?.study_program?.name 
-                ? `Showing questions from ${studentProfile.study_program.name}`
-                : 'Select the questions you want to practice.'
-              }
-            </p>
+      <div className="max-w-5xl mx-auto px-4">
+        {/* Header */}
+        <div className="mb-6">
+          <button
+            onClick={backToSelection}
+            className="text-sm text-gray-500 hover:text-gray-700 mb-2 flex items-center gap-1 group"
+          >
+            <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+            Back to practice modes
+          </button>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Choose Questions</h1>
+              <p className="text-gray-600 mt-1">
+                {studentProfile?.study_program?.name 
+                  ? `Showing questions from ${studentProfile.study_program.name}`
+                  : 'Select the questions you want to practice'
+                }
+              </p>
+            </div>
+            {selectedQuestionIds.size > 0 && (
+              <button
+                onClick={startCustomPractice}
+                className="hidden sm:flex px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25 items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                </svg>
+                Start ({selectedQuestionIds.size})
+              </button>
+            )}
           </div>
-          {selectedQuestionIds.size > 0 && (
-            <button
-              onClick={startCustomPractice}
-              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
-            >
-              Start Practice ({selectedQuestionIds.size} selected)
-            </button>
-          )}
         </div>
         
-        {/* Search and Filters - Similar to QB */}
-        <div className="mb-6 bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-4">
+        {/* Search and Filters */}
+        <div className="mb-6 bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
           {/* Search Input */}
           <div className="relative">
-            <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
             <input
@@ -866,12 +946,12 @@ export default function PracticePage() {
               value={browseSearch}
               onChange={(e) => setBrowseSearch(e.target.value)}
               placeholder="Search questions by text or topic..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-12 pr-10 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50 focus:bg-white transition-colors"
             />
             {browseSearch && (
               <button
                 onClick={() => setBrowseSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -881,14 +961,14 @@ export default function PracticePage() {
           </div>
           
           {/* Filter Row */}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-end gap-4">
             {/* Topic Filter */}
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Topic</label>
               <select
                 value={browseTopicFilter}
                 onChange={(e) => setBrowseTopicFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm bg-gray-50 focus:bg-white transition-colors"
               >
                 <option value="">All Topics</option>
                 {availableTopics.map(topic => (
@@ -898,14 +978,14 @@ export default function PracticePage() {
             </div>
             
             {/* Sort By */}
-            <div className="w-36">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Sort By</label>
+            <div className="w-44">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Sort By</label>
               <select
                 value={browseSortBy}
                 onChange={(e) => setBrowseSortBy(e.target.value as typeof browseSortBy)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm bg-gray-50 focus:bg-white transition-colors"
               >
-                <option value="newest">Newest</option>
+                <option value="newest">Newest First</option>
                 <option value="easiest">Easiest First</option>
                 <option value="hardest">Hardest First</option>
                 <option value="topic">By Topic</option>
@@ -915,15 +995,15 @@ export default function PracticePage() {
           
           {/* Difficulty Filter Pills */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-2">Difficulty</label>
+            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Difficulty</label>
             <div className="flex flex-wrap gap-2">
               {[
-                { value: 1, label: 'Easy', color: 'green' },
-                { value: 2, label: 'Medium-Easy', color: 'lime' },
-                { value: 3, label: 'Medium', color: 'yellow' },
-                { value: 4, label: 'Medium-Hard', color: 'orange' },
-                { value: 5, label: 'Hard', color: 'red' },
-              ].map(({ value, label, color }) => (
+                { value: 1, label: 'Easy', activeClass: 'bg-green-500 text-white ring-green-300', inactiveClass: 'bg-green-50 text-green-700 hover:bg-green-100' },
+                { value: 2, label: 'Medium-Easy', activeClass: 'bg-lime-500 text-white ring-lime-300', inactiveClass: 'bg-lime-50 text-lime-700 hover:bg-lime-100' },
+                { value: 3, label: 'Medium', activeClass: 'bg-yellow-500 text-white ring-yellow-300', inactiveClass: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' },
+                { value: 4, label: 'Medium-Hard', activeClass: 'bg-orange-500 text-white ring-orange-300', inactiveClass: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
+                { value: 5, label: 'Hard', activeClass: 'bg-red-500 text-white ring-red-300', inactiveClass: 'bg-red-50 text-red-700 hover:bg-red-100' },
+              ].map(({ value, label, activeClass, inactiveClass }) => (
                 <button
                   key={value}
                   onClick={() => {
@@ -933,18 +1013,10 @@ export default function PracticePage() {
                         : [...prev, value]
                     )
                   }}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
                     browseDifficulties.includes(value)
-                      ? color === 'green' ? 'bg-green-500 text-white ring-2 ring-green-300' :
-                        color === 'lime' ? 'bg-lime-500 text-white ring-2 ring-lime-300' :
-                        color === 'yellow' ? 'bg-yellow-500 text-white ring-2 ring-yellow-300' :
-                        color === 'orange' ? 'bg-orange-500 text-white ring-2 ring-orange-300' :
-                        'bg-red-500 text-white ring-2 ring-red-300'
-                      : color === 'green' ? 'bg-green-100 text-green-700 hover:bg-green-200' :
-                        color === 'lime' ? 'bg-lime-100 text-lime-700 hover:bg-lime-200' :
-                        color === 'yellow' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' :
-                        color === 'orange' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' :
-                        'bg-red-100 text-red-700 hover:bg-red-200'
+                      ? `${activeClass} ring-2`
+                      : inactiveClass
                   }`}
                 >
                   {label}
@@ -953,9 +1025,9 @@ export default function PracticePage() {
               {browseDifficulties.length > 0 && (
                 <button
                   onClick={() => setBrowseDifficulties([])}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700"
+                  className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 underline underline-offset-2"
                 >
-                  Clear
+                  Clear filters
                 </button>
               )}
             </div>
@@ -966,7 +1038,7 @@ export default function PracticePage() {
         <div className="mb-4 flex items-center justify-between">
           <button
             onClick={toggleSelectAll}
-            className="text-sm text-blue-600 hover:text-blue-700"
+            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
           >
             {selectedQuestionIds.size === filteredBrowseQuestions.length && filteredBrowseQuestions.length > 0
               ? 'Deselect All'
@@ -974,47 +1046,48 @@ export default function PracticePage() {
             }
           </button>
           <span className="text-sm text-gray-500">
-            {filteredBrowseQuestions.length} questions
-            {browseSearch || browseTopicFilter || browseDifficulties.length > 0 
+            {filteredBrowseQuestions.length} question{filteredBrowseQuestions.length !== 1 ? 's' : ''}
+            {(browseSearch || browseTopicFilter || browseDifficulties.length > 0) && browseQuestions.length !== filteredBrowseQuestions.length
               ? ` (filtered from ${browseQuestions.length})`
-              : ' available'
+              : ''
             }
           </span>
         </div>
         
         {/* Questions list */}
         {browseLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-4"></div>
+            <p className="text-gray-500">Loading questions...</p>
           </div>
         ) : filteredBrowseQuestions.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-3 pb-24">
             {filteredBrowseQuestions.map((q, index) => (
               <div
                 key={q.id}
                 onClick={() => toggleQuestionSelection(q.id)}
-                className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                   selectedQuestionIds.has(q.id)
-                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    ? 'border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100'
+                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center shrink-0 ${
+                  <div className={`w-6 h-6 mt-0.5 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
                     selectedQuestionIds.has(q.id)
-                      ? 'border-blue-500 bg-blue-500 text-white'
-                      : 'border-gray-300'
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-gray-300 bg-white'
                   }`}>
                     {selectedQuestionIds.has(q.id) && (
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                       </svg>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs text-gray-400">#{index + 1}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="text-xs text-gray-400 font-mono">#{index + 1}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         q.difficulty <= 2 ? 'bg-green-100 text-green-700' :
                         q.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
                         'bg-red-100 text-red-700'
@@ -1022,25 +1095,28 @@ export default function PracticePage() {
                         {q.difficulty <= 2 ? 'Easy' : q.difficulty <= 3 ? 'Medium' : 'Hard'}
                       </span>
                       {q.topics && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
                           {q.topics.name}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-800 line-clamp-2">
+                    <div className="text-sm text-gray-800">
                       <LatexRenderer content={q.prompt_latex || q.prompt_text} />
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <svg className="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-            </svg>
-            <p className="text-gray-500">No questions found. Try selecting a different topic.</p>
+          <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+              </svg>
+            </div>
+            <p className="text-gray-600 font-medium mb-1">No questions found</p>
+            <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
           </div>
         )}
         
@@ -1049,12 +1125,15 @@ export default function PracticePage() {
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
             <button
               onClick={startCustomPractice}
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-full shadow-lg hover:bg-blue-700 flex items-center gap-2"
+              className="px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-2xl shadow-xl shadow-emerald-500/30 hover:from-emerald-600 hover:to-emerald-700 flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
               </svg>
-              Start Practice with {selectedQuestionIds.size} Question{selectedQuestionIds.size !== 1 ? 's' : ''}
+              Start Practice
+              <span className="bg-white/20 px-2 py-0.5 rounded-lg text-sm">
+                {selectedQuestionIds.size} selected
+              </span>
             </button>
           </div>
         )}
@@ -1073,23 +1152,27 @@ export default function PracticePage() {
 
   if (!question) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="max-w-2xl mx-auto text-center py-12 px-4">
+        <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 ${
+          mode === 'review' ? 'bg-gradient-to-br from-blue-100 to-blue-200' :
+          mode === 'weak' ? 'bg-gradient-to-br from-green-100 to-green-200' :
+          'bg-gradient-to-br from-gray-100 to-gray-200'
+        }`}>
           {mode === 'review' ? (
-            <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-          ) : mode === 'weak' ? (
-            <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="w-10 h-10 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
+          ) : mode === 'weak' ? (
+            <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+            </svg>
           ) : (
-            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
             </svg>
           )}
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-2xl font-bold text-gray-900 mb-3">
           {mode === 'review' 
             ? "You're All Caught Up!" 
             : mode === 'weak'
@@ -1097,41 +1180,68 @@ export default function PracticePage() {
             : "No Questions Available"
           }
         </h2>
-        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+        <p className="text-gray-600 mb-8 max-w-md mx-auto">
           {mode === 'review' 
-            ? "You've completed all your scheduled reviews. Questions will appear here after you practice more - they're scheduled based on how well you remember them."
+            ? "You've completed all your scheduled reviews. Practice more questions and they'll appear here based on your memory schedule."
             : mode === 'weak'
-            ? "You're performing well in all topics! Keep practicing to maintain your skills. Weak areas are identified after you've attempted at least 3 questions per topic."
-            : "No questions found for this topic yet. Try selecting a different topic or checking back later."
+            ? "You're performing excellently in all topics! No weak areas detected. Keep up the great work!"
+            : "No questions found for this topic yet. Try selecting a different topic or check back later."
           }
         </p>
         
         {mode === 'review' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
-            <h3 className="text-sm font-medium text-blue-800 mb-1">How Spaced Review Works:</h3>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• Practice questions to add them to your review schedule</li>
-              <li>• Questions you get right appear less often</li>
-              <li>• Questions you struggle with appear more frequently</li>
-              <li>• Check back later for new reviews</li>
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-8 text-left max-w-md mx-auto">
+            <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+              </svg>
+              How Spaced Review Works
+            </h3>
+            <ul className="text-sm text-blue-800 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                Practice questions to add them to your review schedule
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                Questions you get right appear less often
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                Questions you struggle with appear more frequently
+              </li>
             </ul>
           </div>
         )}
         
         {mode === 'weak' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
-            <h3 className="text-sm font-medium text-green-800 mb-1">Weak Areas Detection:</h3>
-            <ul className="text-sm text-green-700 space-y-1">
-              <li>• Topics with less than 60% accuracy are flagged</li>
-              <li>• Requires at least 3 attempts per topic</li>
-              <li>• Practice more questions to build your statistics</li>
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-5 mb-8 text-left max-w-md mx-auto">
+            <h3 className="text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+              </svg>
+              How Weak Areas Work
+            </h3>
+            <ul className="text-sm text-green-800 space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">•</span>
+                Topics with less than 60% accuracy are flagged
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">•</span>
+                Requires at least 3 attempts per topic to calculate
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">•</span>
+                Keep practicing to maintain your statistics
+              </li>
             </ul>
           </div>
         )}
         
         <button
           onClick={backToSelection}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           Choose Another Practice Mode
         </button>
@@ -1142,28 +1252,33 @@ export default function PracticePage() {
   const topicName = topics.find(t => t.id === selectedTopic)?.name || question.topics?.name || 'Practice'
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto px-4">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <button
             onClick={backToSelection}
-            className="text-sm text-gray-500 hover:text-gray-700 mb-1 flex items-center gap-1"
+            className="text-sm text-gray-500 hover:text-gray-700 mb-2 flex items-center gap-1 group"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
             </svg>
-            Back to selection
+            End session
           </button>
           <h1 className="text-xl font-bold text-gray-900">{topicName}</h1>
         </div>
         <div className="text-right">
-          <div className="text-sm text-gray-500">
-            Question {currentQuestionIndex + 1} of {questions.length}
+          <div className="text-sm text-gray-500 mb-1">
+            <span className="font-medium text-gray-700">{currentQuestionIndex + 1}</span>
+            <span className="mx-1">/</span>
+            <span>{questions.length}</span>
           </div>
           {streak > 1 && (
-            <div className="text-sm font-medium text-green-600">
-              {streak} in a row
+            <div className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.75 2.75a.75.75 0 00-1.5 0V4.5H9.276a1.75 1.75 0 00-.985.303L6.596 5.957A.25.25 0 016.455 6H2.353a.75.75 0 100 1.5H3.93L.563 15.18a.762.762 0 00.21.88c.08.064.161.125.309.221.186.121.452.278.792.433.68.311 1.662.62 2.876.62a6.919 6.919 0 002.876-.62c.34-.155.606-.312.792-.433.15-.097.23-.158.31-.223a.75.75 0 00.209-.878L5.569 7.5h.886c.351 0 .694-.106.984-.303l1.696-1.154A.25.25 0 019.275 6h1.975v14.5H6.763a.75.75 0 000 1.5h10.474a.75.75 0 000-1.5H12.75V6h1.974c.05 0 .1.015.14.043l1.697 1.154c.29.197.633.303.984.303h.886l-3.368 7.68a.75.75 0 00.23.896c.012.009 0 0 .002 0a3.154 3.154 0 00.31.206c.185.112.45.256.79.4a7.343 7.343 0 002.855.568 7.343 7.343 0 002.856-.569c.338-.143.604-.287.79-.399a3.5 3.5 0 00.31-.206.75.75 0 00.23-.896L20.07 7.5h1.578a.75.75 0 000-1.5h-4.102a.25.25 0 01-.14-.043l-1.697-1.154a1.75 1.75 0 00-.984-.303H12.75V2.75z" />
+              </svg>
+              {streak} streak
             </div>
           )}
         </div>
@@ -1171,24 +1286,33 @@ export default function PracticePage() {
 
       {/* Progress bar */}
       <div className="mb-6">
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-blue-600 rounded-full transition-all duration-300"
+            className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
             style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
           />
         </div>
         <div className="flex justify-between mt-2 text-xs text-gray-500">
-          <span>{sessionStats.correct} correct</span>
-          <span>{sessionStats.total > 0 ? Math.round((sessionStats.correct / sessionStats.total) * 100) : 0}% accuracy</span>
+          <span className="flex items-center gap-1">
+            <span className="font-medium text-green-600">{sessionStats.correct}</span> correct
+          </span>
+          <span className={`font-medium ${
+            sessionStats.total > 0 
+              ? (sessionStats.correct / sessionStats.total) >= 0.7 ? 'text-green-600' : 
+                (sessionStats.correct / sessionStats.total) >= 0.5 ? 'text-yellow-600' : 'text-red-600'
+              : 'text-gray-400'
+          }`}>
+            {sessionStats.total > 0 ? Math.round((sessionStats.correct / sessionStats.total) * 100) : 0}% accuracy
+          </span>
         </div>
       </div>
 
       {/* Question Card */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Question Header */}
-        <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
           <div className="flex items-center gap-2">
-            <span className={`text-xs px-2 py-0.5 rounded ${
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
               question.difficulty <= 2 ? 'bg-green-100 text-green-700' :
               question.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
               'bg-red-100 text-red-700'
@@ -1196,7 +1320,7 @@ export default function PracticePage() {
               {question.difficulty <= 2 ? 'Easy' : question.difficulty <= 3 ? 'Medium' : 'Hard'}
             </span>
             {question.grade_level && (
-              <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700">
                 {getGradeLevelLabel(question.grade_level)}
               </span>
             )}
@@ -1206,7 +1330,7 @@ export default function PracticePage() {
           <button
             onClick={() => setShowFlagModal(true)}
             disabled={flagSubmitted}
-            className={`text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors ${
+            className={`text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
               flagSubmitted 
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'text-gray-500 hover:text-orange-600 hover:bg-orange-50'
@@ -1216,14 +1340,14 @@ export default function PracticePage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
             </svg>
-            {flagSubmitted ? 'Flagged' : 'Flag'}
+            {flagSubmitted ? 'Flagged' : 'Report'}
           </button>
         </div>
 
         {/* Question Content */}
         <div className="p-6">
-          <div className="prose max-w-none mb-6">
-            <div className="text-lg text-gray-800">
+          <div className="prose prose-lg max-w-none mb-8">
+            <div className="text-gray-800 leading-relaxed">
               <LatexRenderer content={question.prompt_latex || question.prompt_text} />
             </div>
           </div>
@@ -1413,10 +1537,10 @@ export default function PracticePage() {
         </div>
 
         {/* Actions */}
-        <div className="border-t border-gray-200 p-4 flex justify-between items-center">
+        <div className="border-t border-gray-100 p-5 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
           <button
             onClick={backToSelection}
-            className="px-4 py-2 text-gray-600 hover:text-gray-900"
+            className="px-4 py-2.5 text-gray-600 hover:text-gray-900 font-medium transition-colors"
           >
             End Session
           </button>
@@ -1425,16 +1549,23 @@ export default function PracticePage() {
             <button
               onClick={handleSubmit}
               disabled={question.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim()}
-              className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100"
             >
               Check Answer
             </button>
           ) : (
             <button
               onClick={nextQuestion}
-              className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+              className="px-8 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
             >
-              {currentQuestionIndex < questions.length - 1 ? 'Next Question →' : 'Finish'}
+              {currentQuestionIndex < questions.length - 1 ? (
+                <>
+                  Next Question
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                  </svg>
+                </>
+              ) : 'Finish'}
             </button>
           )}
         </div>
@@ -1442,13 +1573,13 @@ export default function PracticePage() {
       
       {/* Flag Modal */}
       {showFlagModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-gray-900">Report an Issue</h3>
               <button
                 onClick={() => setShowFlagModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -1456,31 +1587,32 @@ export default function PracticePage() {
               </button>
             </div>
             
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 mb-5">
               Help us improve by reporting any issues with this question.
             </p>
             
             {/* Flag Type Selection */}
-            <div className="space-y-2 mb-4">
-              <label className="block text-sm font-medium text-gray-700">What&apos;s the issue?</label>
+            <div className="space-y-2 mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">What&apos;s the issue?</label>
               <div className="grid gap-2">
                 {[
-                  { type: 'incorrect_answer', label: 'The correct answer is wrong' },
-                  { type: 'unclear', label: 'The question is confusing' },
-                  { type: 'typo', label: 'There is a typo' },
-                  { type: 'too_hard', label: 'Too difficult for this level' },
-                  { type: 'multiple_valid', label: 'Multiple valid answers exist' },
-                  { type: 'other', label: 'Other issue' },
-                ].map(({ type, label }) => (
+                  { type: 'incorrect_answer', label: 'The correct answer is wrong', icon: '❌' },
+                  { type: 'unclear', label: 'The question is confusing', icon: '❓' },
+                  { type: 'typo', label: 'There is a typo', icon: '✏️' },
+                  { type: 'too_hard', label: 'Too difficult for this level', icon: '📈' },
+                  { type: 'multiple_valid', label: 'Multiple valid answers exist', icon: '🔀' },
+                  { type: 'other', label: 'Other issue', icon: '💬' },
+                ].map(({ type, label, icon }) => (
                   <button
                     key={type}
                     onClick={() => setFlagType(type)}
-                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    className={`text-left px-4 py-3 rounded-xl border-2 text-sm transition-all flex items-center gap-3 ${
                       flagType === type
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        ? 'border-orange-500 bg-orange-50 text-orange-800'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
+                    <span className="text-lg">{icon}</span>
                     {label}
                   </button>
                 ))}
@@ -1488,15 +1620,15 @@ export default function PracticePage() {
             </div>
             
             {/* Additional Comment */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Additional details (optional)
               </label>
               <textarea
                 value={flagComment}
                 onChange={(e) => setFlagComment(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                 placeholder="Describe the issue in more detail..."
               />
             </div>
@@ -1505,14 +1637,14 @@ export default function PracticePage() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowFlagModal(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+                className="px-5 py-2.5 text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitFlag}
                 disabled={!flagType || flagSubmitting}
-                className="px-4 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 text-sm bg-orange-500 text-white rounded-xl hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all"
               >
                 {flagSubmitting ? 'Submitting...' : 'Submit Report'}
               </button>
