@@ -121,24 +121,20 @@ export function AnswerInput({
       <label className="block text-sm font-medium text-gray-700 mb-2">
         Your Answer
       </label>
-      <div className="flex gap-2">
+      <div className="flex rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className="flex-1 px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+          className="flex-1 px-4 py-3 text-lg bg-transparent focus:outline-none disabled:bg-gray-50 min-w-0"
           placeholder="Type your answer"
         />
-        {!disabled && (
-          <MathSymbolsPanel
-            onInsert={(symbol) => onChange(value + symbol)}
-          />
-        )}
+        <MathSymbolsPanel
+          onInsert={(symbol) => onChange(value + symbol)}
+          disabled={disabled}
+        />
       </div>
-      <p className="mt-1 text-xs text-gray-500">
-        Use the math symbols button or type normally. Common notations: × ÷ √ π
-      </p>
       {showCorrect && userAnswer && (
         <div className="mt-2 text-sm text-gray-600">
           Your answer: <span className="font-medium"><LatexRenderer content={formatMathForDisplay(userAnswer)} /></span>
