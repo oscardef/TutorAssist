@@ -1,5 +1,13 @@
 import { LatexRenderer } from './latex-renderer'
 
+// Helper to normalize choices - handles both string arrays and object arrays
+function normalizeChoice(choice: string | { text: string; latex?: string }): { text: string; latex?: string } {
+  if (typeof choice === 'string') {
+    return { text: choice }
+  }
+  return choice
+}
+
 interface CorrectAnswer {
   value?: string | number | boolean
   latex?: string
@@ -7,7 +15,7 @@ interface CorrectAnswer {
   tolerance?: number
   unit?: string
   rubric?: string[]
-  choices?: Array<{ text: string; latex?: string }>
+  choices?: Array<string | { text: string; latex?: string }>
   correct?: number
   blanks?: Array<{ position?: number; value: string; latex?: string; alternates?: string[] }>
   pairs?: Array<{ left: string; right: string; leftLatex?: string; rightLatex?: string }>
@@ -29,7 +37,8 @@ export function AnswerDisplay({ answerType, correctAnswer, className = '' }: Ans
   switch (answerType) {
     case 'multiple_choice':
       if (correctAnswer.choices && typeof correctAnswer.correct === 'number') {
-        const correctChoice = correctAnswer.choices[correctAnswer.correct]
+        const rawChoice = correctAnswer.choices[correctAnswer.correct]
+        const correctChoice = normalizeChoice(rawChoice)
         return (
           <div className={className}>
             <LatexRenderer content={correctChoice?.latex || correctChoice?.text || ''} />

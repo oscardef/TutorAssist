@@ -373,7 +373,7 @@ describe('Realistic Question Formats', () => {
       alternatives?: string[]
       unit?: string
       tolerance?: number
-      choices?: { text: string; latex?: string }[]
+      choices?: Array<string | { text: string; latex?: string }>
       correct?: number
     }
     difficulty: number

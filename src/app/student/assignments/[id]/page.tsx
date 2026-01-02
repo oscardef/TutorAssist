@@ -18,7 +18,7 @@ interface Question {
   correct_answer_json: {
     value: string | number
     tolerance?: number
-    choices?: { text: string; latex?: string }[]
+    choices?: Array<string | { text: string; latex?: string }>
     correct?: number
   }
   hints_json: string[]
@@ -226,11 +226,23 @@ export default function StudentAssignmentDetailPage() {
     if (currentQuestion.answer_type === 'multiple_choice') {
       userAnswer = String(selectedChoice)
       isCorrect = selectedChoice === correctAnswer.correct
+    } else if (currentQuestion.answer_type === 'true_false') {
+      // STRICT validation: only accept exactly "true" or "false"
+      const normalizedAnswer = answer.toLowerCase().trim()
+      // Handle various storage formats: string "true"/"false", boolean, or number 1/0
+      const correctBool = String(correctAnswer.value).toLowerCase() === 'true' || correctAnswer.value === 1
+      if (normalizedAnswer === 'true') {
+        isCorrect = correctBool === true
+      } else if (normalizedAnswer === 'false') {
+        isCorrect = correctBool === false
+      } else {
+        // Anything other than "true" or "false" is incorrect
+        isCorrect = false
+      }
     } else if (currentQuestion.answer_type === 'numeric') {
       isCorrect = compareNumericAnswers(
         answer, 
-        parseFloat(String(correctAnswer.value)), 
-        correctAnswer.tolerance || 0.01
+        parseFloat(String(correctAnswer.value))
       )
     } else {
       const alternates = (correctAnswer as { alternates?: string[] }).alternates
@@ -497,31 +509,35 @@ export default function StudentAssignmentDetailPage() {
           {/* Answer Input */}
           {currentQuestion?.answer_type === 'multiple_choice' && currentQuestion.correct_answer_json.choices ? (
             <div className="space-y-3">
-              {currentQuestion.correct_answer_json.choices.map((choice, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => !currentAttempt && setSelectedChoice(idx)}
-                  disabled={!!currentAttempt}
-                  className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
-                    selectedChoice === idx
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  } ${currentAttempt ? 'cursor-default' : 'cursor-pointer'} ${
-                    currentAttempt && idx === currentQuestion.correct_answer_json.correct
-                      ? 'border-green-500 bg-green-50'
-                      : currentAttempt && idx === parseInt(currentAttempt.answer) && !currentAttempt.isCorrect
-                      ? 'border-red-500 bg-red-50'
-                      : ''
-                  }`}
-                >
-                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-bold mr-4">
-                    {String.fromCharCode(65 + idx)}
-                  </span>
-                  <span className="text-gray-800">
-                    <LatexRenderer content={choice.text} />
-                  </span>
-                </button>
-              ))}
+              {currentQuestion.correct_answer_json.choices.map((rawChoice, idx) => {
+                // Handle both string and object choice formats
+                const choice = typeof rawChoice === 'string' ? { text: rawChoice } : rawChoice
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => !currentAttempt && setSelectedChoice(idx)}
+                    disabled={!!currentAttempt}
+                    className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
+                      selectedChoice === idx
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    } ${currentAttempt ? 'cursor-default' : 'cursor-pointer'} ${
+                      currentAttempt && idx === currentQuestion.correct_answer_json.correct
+                        ? 'border-green-500 bg-green-50'
+                        : currentAttempt && idx === parseInt(currentAttempt.answer) && !currentAttempt.isCorrect
+                        ? 'border-red-500 bg-red-50'
+                        : ''
+                    }`}
+                  >
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-bold mr-4">
+                      {String.fromCharCode(65 + idx)}
+                    </span>
+                    <span className="text-gray-800">
+                      <LatexRenderer content={choice.latex || choice.text} />
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           ) : (
             <div>

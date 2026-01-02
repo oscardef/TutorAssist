@@ -113,8 +113,8 @@ export interface GradeLevel {
   id: string
   workspace_id: string
   program_id: string | null
-  code: string // 'M8', 'M9', 'DP1', 'DP2', 'AP1', etc.
-  name: string // 'MYP Year 8', 'DP Year 1'
+  code: string // 'M8', 'M9', 'AISL', 'AIHL', 'AASL', 'AAHL', 'AP1', etc.
+  name: string // 'MYP Year 8', 'AI Standard Level', 'AA Higher Level'
   description: string | null
   year_number: number | null
   order_index: number
@@ -206,7 +206,7 @@ export interface CorrectAnswer {
   alternatives?: string[]
   unit?: string
   tolerance?: number
-  choices?: { text: string; latex?: string }[]
+  choices?: Array<string | { text: string; latex?: string }>
   correct?: number
 }
 

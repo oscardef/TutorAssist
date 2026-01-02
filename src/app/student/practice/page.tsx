@@ -20,7 +20,7 @@ interface Question {
     value: string | number
     latex?: string
     tolerance?: number
-    choices?: { text: string; latex?: string }[]
+    choices?: Array<string | { text: string; latex?: string }>
     correct?: number
     alternates?: string[]
   }
@@ -437,12 +437,24 @@ export default function PracticePage() {
     if (question.answer_type === 'multiple_choice') {
       userAnswer = String(selectedChoice)
       correct = selectedChoice === correctAnswer.correct
+    } else if (question.answer_type === 'true_false') {
+      // STRICT validation: only accept exactly "true" or "false"
+      const normalizedAnswer = answer.toLowerCase().trim()
+      // Handle various storage formats: string "true"/"false", boolean, or number 1/0
+      const correctBool = String(correctAnswer.value).toLowerCase() === 'true' || correctAnswer.value === 1
+      if (normalizedAnswer === 'true') {
+        correct = correctBool === true
+      } else if (normalizedAnswer === 'false') {
+        correct = correctBool === false
+      } else {
+        // Anything other than "true" or "false" is incorrect
+        correct = false
+      }
     } else if (question.answer_type === 'numeric') {
-      // Use robust numeric comparison
+      // Use strict numeric comparison
       correct = compareNumericAnswers(
         answer,
-        parseFloat(String(correctAnswer.value)),
-        correctAnswer.tolerance || 0.01
+        parseFloat(String(correctAnswer.value))
       )
     } else {
       // Use robust math answer comparison (handles LaTeX, Unicode, alternates)
@@ -1355,27 +1367,31 @@ export default function PracticePage() {
           {/* Answer Input */}
           {question.answer_type === 'multiple_choice' && question.correct_answer_json.choices ? (
             <div className="space-y-3">
-              {question.correct_answer_json.choices.map((choice, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => !submitted && setSelectedChoice(idx)}
-                  disabled={submitted}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    selectedChoice === idx
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  } ${submitted ? 'cursor-default' : 'cursor-pointer'} ${
-                    submitted && idx === question.correct_answer_json.correct
-                      ? 'border-green-500 bg-green-50'
-                      : submitted && idx === selectedChoice && !isCorrect
-                      ? 'border-red-500 bg-red-50'
-                      : ''
-                  }`}
-                >
-                  <span className="font-medium mr-3">{String.fromCharCode(65 + idx)}.</span>
-                  <LatexRenderer content={choice.latex || choice.text} />
-                </button>
-              ))}
+              {question.correct_answer_json.choices.map((rawChoice, idx) => {
+                // Handle both string and object choice formats
+                const choice = typeof rawChoice === 'string' ? { text: rawChoice } : rawChoice
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => !submitted && setSelectedChoice(idx)}
+                    disabled={submitted}
+                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                      selectedChoice === idx
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    } ${submitted ? 'cursor-default' : 'cursor-pointer'} ${
+                      submitted && idx === question.correct_answer_json.correct
+                        ? 'border-green-500 bg-green-50'
+                        : submitted && idx === selectedChoice && !isCorrect
+                        ? 'border-red-500 bg-red-50'
+                        : ''
+                    }`}
+                  >
+                    <span className="font-medium mr-3">{String.fromCharCode(65 + idx)}.</span>
+                    <LatexRenderer content={choice.latex || choice.text} />
+                  </button>
+                )
+              })}
             </div>
           ) : (
             <div>

@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import NumberInput from '@/components/number-input'
+import { TopicSearchSelect } from '@/components/topic-search-select'
+import { StudentSearchSelect } from '@/components/student-search-select'
 
 interface Topic {
   id: string
@@ -115,11 +117,30 @@ export default function GeneratePage() {
     : []
 
   // Filtered topics based on selected program/grade
-  const filteredTopics = topics.filter(topic => {
+  const filteredTopics = useMemo(() => topics.filter(topic => {
     if (selectedProgram && topic.program?.id !== selectedProgram) return false
     if (selectedGradeLevel && topic.grade_level?.id !== selectedGradeLevel) return false
     return true
-  })
+  }), [topics, selectedProgram, selectedGradeLevel])
+  
+  // Topics formatted for search component
+  const topicsForSearch = useMemo(() => filteredTopics.map(t => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    program: t.program,
+    grade_level: t.grade_level,
+    questionCount: t.questions?.[0]?.count ?? 0,
+  })), [filteredTopics])
+
+  // Students formatted for search component
+  const studentsForSearch = useMemo(() => students.map(s => ({
+    id: s.id,
+    name: s.name,
+    email: s.email,
+    program: null,
+    grade_level: s.grade_level_id ? { id: s.grade_level_id, code: '', name: '' } : null,
+  })), [students])
   
   // Load initial data
   useEffect(() => {
@@ -639,7 +660,7 @@ export default function GeneratePage() {
         {/* QUESTION GENERATION OPTIONS */}
         {generationType === 'questions' && (
           <>
-            {/* Topic Selection */}
+            {/* Topic Selection with Search */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Select Topics</h2>
@@ -649,7 +670,7 @@ export default function GeneratePage() {
                     onClick={selectAllTopics}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Select All
+                    Select All ({filteredTopics.length})
                   </button>
                   <span className="text-gray-300">|</span>
                   <button
@@ -670,31 +691,15 @@ export default function GeneratePage() {
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                  {filteredTopics.map(topic => (
-                    <label
-                      key={topic.id}
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedTopics.includes(topic.id)
-                          ? 'bg-blue-50 border-blue-300'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedTopics.includes(topic.id)}
-                        onChange={() => toggleTopic(topic.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="ml-3 flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 truncate">{topic.name}</div>
-                        {topic.questions?.[0]?.count !== undefined && (
-                          <div className="text-xs text-gray-500">{topic.questions[0].count} existing</div>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                <TopicSearchSelect
+                  topics={topicsForSearch}
+                  selectedTopics={selectedTopics}
+                  onChange={setSelectedTopics}
+                  multiple={true}
+                  placeholder="Search topics by name, program, or grade level..."
+                  showQuestionCount={true}
+                  className="w-full"
+                />
               )}
               
               {selectedTopics.length > 0 && (
@@ -1045,7 +1050,7 @@ Or add specific requirements like:
         {/* ASSIGNMENT GENERATION OPTIONS */}
         {generationType === 'assignment' && (
           <>
-            {/* Topic Selection for Assignment */}
+            {/* Topic Selection for Assignment with Search */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Select Topics</h2>
@@ -1055,7 +1060,7 @@ Or add specific requirements like:
                     onClick={selectAllTopics}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Select All
+                    Select All ({filteredTopics.length})
                   </button>
                   <span className="text-gray-300">|</span>
                   <button
@@ -1073,31 +1078,15 @@ Or add specific requirements like:
                   No topics found. Create topics first or generate a syllabus.
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                  {filteredTopics.map(topic => (
-                    <label
-                      key={topic.id}
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedTopics.includes(topic.id)
-                          ? 'bg-blue-50 border-blue-300'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedTopics.includes(topic.id)}
-                        onChange={() => toggleTopic(topic.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="ml-3 flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-900 truncate block">{topic.name}</span>
-                        {topic.questions?.[0]?.count !== undefined && (
-                          <span className="text-xs text-gray-500">{topic.questions[0].count} questions in bank</span>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                <TopicSearchSelect
+                  topics={topicsForSearch}
+                  selectedTopics={selectedTopics}
+                  onChange={setSelectedTopics}
+                  multiple={true}
+                  placeholder="Search topics for this assignment..."
+                  showQuestionCount={true}
+                  className="w-full"
+                />
               )}
               
               {selectedTopics.length > 0 && (
@@ -1114,7 +1103,7 @@ Or add specific requirements like:
               )}
             </div>
             
-            {/* Student Selection */}
+            {/* Student Selection with Search */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Assign to Students</h2>
@@ -1124,7 +1113,7 @@ Or add specific requirements like:
                     onClick={() => setSelectedStudents(students.map(s => s.id))}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Select All
+                    Select All ({students.length})
                   </button>
                   <span className="text-gray-300">|</span>
                   <button
@@ -1145,26 +1134,14 @@ Or add specific requirements like:
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                  {students.map(student => (
-                    <label
-                      key={student.id}
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedStudents.includes(student.id)
-                          ? 'bg-blue-50 border-blue-300'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedStudents.includes(student.id)}
-                        onChange={() => toggleStudent(student.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="ml-3 text-sm font-medium text-gray-900 truncate">{student.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <StudentSearchSelect
+                  students={studentsForSearch}
+                  selectedStudents={selectedStudents}
+                  onChange={setSelectedStudents}
+                  multiple={true}
+                  placeholder="Search students by name or email..."
+                  className="w-full"
+                />
               )}
               
               {selectedStudents.length > 0 && (

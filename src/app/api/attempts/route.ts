@@ -56,15 +56,17 @@ export async function POST(request: Request) {
     
     // SERVER-SIDE ANSWER VALIDATION
     // This ensures answers are checked consistently and securely
-    let isCorrect = clientIsCorrect // Fall back to client value if server validation fails
+    // SECURITY: Never trust client-submitted isCorrect - always validate server-side
+    let isCorrect = false // Default to false - must be proven correct by server validation
     let validationDetails: { 
       matchType?: string
-      confidence?: string
       blanksCorrect?: number
       blanksTotal?: number
       matchesCorrect?: number
       matchesTotal?: number
-    } = {}
+      serverValidated?: boolean
+      validationError?: string
+    } = { serverValidated: true }
     
     try {
       const correctAnswerData = question.correct_answer as {
@@ -91,26 +93,25 @@ export async function POST(request: Request) {
           const selectedIndex = parseInt(sanitizedAnswer)
           isCorrect = !isNaN(selectedIndex) && selectedIndex === correctAnswerData.correct
         } else if (question.answer_type === 'true_false') {
-          // True/false: compare boolean-like values
-          // Must be an explicit true/false answer, not just any random text
+          // True/false: STRICT validation - only accept explicit "true" or "false"
+          // Students can use the "I was right" button if they feel their answer was acceptable
           const normalizedAnswer = sanitizedAnswer?.toLowerCase().trim()
           
-          // Valid "true" answers
-          const isTrueAnswer = normalizedAnswer === 'true' || normalizedAnswer === 'yes' || normalizedAnswer === '1' || normalizedAnswer === 't'
-          // Valid "false" answers  
-          const isFalseAnswer = normalizedAnswer === 'false' || normalizedAnswer === 'no' || normalizedAnswer === '0' || normalizedAnswer === 'f'
+          // Only accept complete words - no abbreviations like "t" or "f"
+          const isTrueAnswer = normalizedAnswer === 'true'
+          const isFalseAnswer = normalizedAnswer === 'false'
           
-          // If the answer isn't a valid boolean-like value, mark as incorrect
+          // If the answer isn't exactly "true" or "false", mark as incorrect
           if (!isTrueAnswer && !isFalseAnswer) {
             isCorrect = false
           } else {
             const correctValue = correctAnswerData.value
-            // Check if correct answer represents "true"
+            // Check if correct answer represents "true" (handles string, boolean, or number)
             const correctBool = correctValue === 'true' || String(correctValue) === 'true' || correctValue === 1
             isCorrect = isTrueAnswer === correctBool
           }
         } else if (question.answer_type === 'numeric') {
-          // Numeric: use numeric comparison with tolerance
+          // Numeric: use strict numeric comparison
           const correctValue = typeof correctAnswerData.value === 'number' 
             ? correctAnswerData.value 
             : parseFloat(String(correctAnswerData.value))
@@ -118,24 +119,22 @@ export async function POST(request: Request) {
           if (!isNaN(correctValue)) {
             isCorrect = compareNumericAnswers(
               sanitizedAnswer,
-              correctValue,
-              correctAnswerData.tolerance
+              correctValue
             )
           }
         } else if (question.answer_type === 'long_answer') {
-          // Long answer: requires manual grading, use client value
-          isCorrect = clientIsCorrect
+          // Long answer: requires manual grading - always mark as needs_review
+          // Tutors will grade these manually through the grading interface
+          isCorrect = false // Cannot auto-grade; tutor must review
+          validationDetails.matchType = 'manual_grading_required'
         } else if (question.answer_type === 'fill_blank') {
           // Fill in the blank: validate each blank
           if (correctAnswerData.blanks && Array.isArray(correctAnswerData.blanks)) {
             const result = validateFillBlank(sanitizedAnswer, correctAnswerData.blanks)
             isCorrect = result.isCorrect
-            validationDetails = {
-              matchType: 'fill_blank',
-              confidence: 'high',
-              blanksCorrect: result.blanksCorrect,
-              blanksTotal: result.blanksTotal
-            }
+            validationDetails.matchType = 'fill_blank'
+            validationDetails.blanksCorrect = result.blanksCorrect
+            validationDetails.blanksTotal = result.blanksTotal
           } else {
             // Fallback to single value comparison
             const correctStr = String(correctAnswerData.value ?? '')
@@ -156,15 +155,13 @@ export async function POST(request: Request) {
             
             const result = validateMatching(userMatches, correctAnswerData.correctMatches, correctAnswerData.pairs)
             isCorrect = result.isCorrect
-            validationDetails = {
-              matchType: 'matching',
-              confidence: 'high',
-              matchesCorrect: result.matchesCorrect,
-              matchesTotal: result.matchesTotal
-            }
+            validationDetails.matchType = 'matching'
+            validationDetails.matchesCorrect = result.matchesCorrect
+            validationDetails.matchesTotal = result.matchesTotal
           } else {
-            // Fallback: use client value
-            isCorrect = clientIsCorrect
+            // Fallback: no correctMatches data, cannot validate
+            isCorrect = false
+            validationDetails.matchType = 'matching_data_missing'
           }
         } else {
           // short_answer, expression, and others: use full math comparison
@@ -178,17 +175,23 @@ export async function POST(request: Request) {
               correctAnswerData
             )
             isCorrect = validation.isCorrect
-            validationDetails = {
-              matchType: validation.matchType,
-              confidence: validation.confidence
-            }
+            validationDetails.matchType = validation.matchType
+          } else {
+            // No correct answer data available
+            isCorrect = false
+            validationDetails.matchType = 'no_answer_data'
           }
         }
       }
     } catch (validationError) {
-      // If server validation fails, log but use client value
-      console.warn('Server-side validation failed, using client value:', validationError)
-      isCorrect = clientIsCorrect
+      // SECURITY: If server validation fails, mark as incorrect and log for review
+      // Never fall back to client-submitted isCorrect value
+      console.error('Server-side validation failed:', validationError)
+      isCorrect = false
+      validationDetails.serverValidated = false
+      validationDetails.validationError = validationError instanceof Error 
+        ? validationError.message 
+        : 'Unknown validation error'
     }
     
     // Record attempt with context for analytics
@@ -197,7 +200,8 @@ export async function POST(request: Request) {
       sessionType: assignmentId ? 'assignment' : 'practice',
       timestamp: new Date().toISOString(),
       validation: validationDetails, // Include server-side validation details
-      serverValidated: true,
+      serverValidated: validationDetails.serverValidated ?? true,
+      clientClaimedCorrect: clientIsCorrect, // Log what client claimed for audit purposes
     }
     
     const { data: attempt, error } = await supabase

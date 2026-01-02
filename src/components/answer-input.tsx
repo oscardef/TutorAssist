@@ -3,6 +3,14 @@
 import LatexRenderer from './latex-renderer'
 import MathSymbolsPanel from './math-symbols-panel'
 
+// Helper to normalize choices - handles both string arrays and object arrays
+function normalizeChoice(choice: string | { text: string; latex?: string }): { text: string; latex?: string } {
+  if (typeof choice === 'string') {
+    return { text: choice }
+  }
+  return choice
+}
+
 interface AnswerInputProps {
   answerType: 'multiple_choice' | 'short_answer' | 'long_answer' | 'true_false' | 'fill_blank' | 'matching'
   correctAnswerJson: Record<string, unknown>
@@ -34,7 +42,8 @@ export function AnswerInput({
 
   // Multiple Choice
   if (answerType === 'multiple_choice' && correctAnswerJson.choices) {
-    const choices = correctAnswerJson.choices as Array<{ text: string; latex?: string }>
+    const rawChoices = correctAnswerJson.choices as Array<string | { text: string; latex?: string }>
+    const choices = rawChoices.map(normalizeChoice)
     return (
       <div className="space-y-3">
         {choices.map((choice, idx: number) => (

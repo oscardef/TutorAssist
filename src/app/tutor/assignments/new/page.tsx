@@ -4,15 +4,18 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
+import { SearchableSelect, SearchableSelectOption } from '@/components/searchable-select'
 
 interface Student {
   id: string
   name: string
+  email?: string | null
 }
 
 interface Topic {
   id: string
   name: string
+  description?: string | null
 }
 
 interface Question {
@@ -47,9 +50,32 @@ export default function NewAssignmentPage() {
   
   // Filter state
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTopic, setSelectedTopic] = useState<string>('')
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([])
   const [selectedDifficulty, setSelectedDifficulty] = useState<number | ''>('')
   const [selectedOrigin, setSelectedOrigin] = useState<string>('')
+  
+  // Convert topics to searchable options
+  const topicOptions: SearchableSelectOption[] = useMemo(() =>
+    topics.map(t => ({
+      id: t.id,
+      label: t.name,
+      description: t.description || undefined,
+    })),
+    [topics]
+  )
+
+  // Convert students to searchable options
+  const studentOptions: SearchableSelectOption[] = useMemo(() =>
+    [
+      { id: '', label: 'All students', description: 'Assign to all students' },
+      ...students.map(s => ({
+        id: s.id,
+        label: s.name,
+        description: s.email || undefined,
+      }))
+    ],
+    [students]
+  )
   
   // Pre-select questions from URL params
   useEffect(() => {
@@ -100,9 +126,9 @@ export default function NewAssignmentPage() {
       )
     }
     
-    // Topic filter
-    if (selectedTopic) {
-      result = result.filter(q => q.topic_id === selectedTopic)
+    // Topic filter (supports multiple topics)
+    if (selectedTopicIds.length > 0) {
+      result = result.filter(q => q.topic_id && selectedTopicIds.includes(q.topic_id))
     }
     
     // Difficulty filter
@@ -116,13 +142,13 @@ export default function NewAssignmentPage() {
     }
     
     return result
-  }, [questions, searchQuery, selectedTopic, selectedDifficulty, selectedOrigin])
+  }, [questions, searchQuery, selectedTopicIds, selectedDifficulty, selectedOrigin])
   
-  const hasActiveFilters = searchQuery || selectedTopic || selectedDifficulty !== '' || selectedOrigin
+  const hasActiveFilters = searchQuery || selectedTopicIds.length > 0 || selectedDifficulty !== '' || selectedOrigin
   
   const clearFilters = () => {
     setSearchQuery('')
-    setSelectedTopic('')
+    setSelectedTopicIds([])
     setSelectedDifficulty('')
     setSelectedOrigin('')
   }
@@ -278,18 +304,14 @@ export default function NewAssignmentPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Assign To
               </label>
-              <select
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All students</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                options={studentOptions}
+                selected={studentId ? [studentId] : ['']}
+                onChange={(ids) => setStudentId(ids[0] || '')}
+                multiple={false}
+                placeholder="Search students..."
+                emptyMessage="No students found"
+              />
             </div>
             
             <div>
@@ -342,18 +364,19 @@ export default function NewAssignmentPage() {
                   </div>
                 </div>
                 
-                <div className="flex flex-wrap gap-2">
-                  {/* Topic Filter */}
-                  <select
-                    value={selectedTopic}
-                    onChange={(e) => setSelectedTopic(e.target.value)}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">All Topics</option>
-                    {topics.map(topic => (
-                      <option key={topic.id} value={topic.id}>{topic.name}</option>
-                    ))}
-                  </select>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {/* Topic Filter with Search */}
+                  <div className="min-w-[200px]">
+                    <SearchableSelect
+                      options={topicOptions}
+                      selected={selectedTopicIds}
+                      onChange={setSelectedTopicIds}
+                      multiple={true}
+                      placeholder="Filter by topics..."
+                      emptyMessage="No topics found"
+                      maxDisplayed={3}
+                    />
+                  </div>
                   
                   {/* Difficulty Filter */}
                   <select
