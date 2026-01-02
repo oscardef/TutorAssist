@@ -131,15 +131,16 @@ export function normalizeMathAnswer(answer: string): string {
     [/\\log/g, 'log10'],
     [/\\ln/g, 'log'],
     [/\\exp/g, 'exp'],
-    [/\\le/g, '<='],
-    [/\\leq/g, '<='],
-    [/\\ge/g, '>='],
-    [/\\geq/g, '>='],
-    [/\\ne/g, '!='],
-    [/\\neq/g, '!='],
-    [/\\approx/g, '~='],
+    // IMPORTANT: \left and \right must come BEFORE \le and \ge to avoid partial matches
     [/\\left/g, ''],
     [/\\right/g, ''],
+    [/\\le(?!ft)/g, '<='],  // \le but not \left
+    [/\\leq/g, '<='],
+    [/\\ge(?!t)/g, '>='],   // \ge but not part of other commands
+    [/\\geq/g, '>='],
+    [/\\ne(?!q)/g, '!='],   // \ne but not \neq (though \neq also maps to !=)
+    [/\\neq/g, '!='],
+    [/\\approx/g, '~='],
     [/\\text\{([^}]*)\}/g, '$1'],
     [/\\mathrm\{([^}]*)\}/g, '$1'],
     [/\\mathit\{([^}]*)\}/g, '$1'],
@@ -630,6 +631,7 @@ export function compareMathAnswers(userAnswer: string, correctAnswer: string, al
   }
   
   // Try evaluating expressions to numeric values
+  // This is useful when BOTH are expressions that should be equivalent
   const userEvaluated = tryEvaluateExpression(normalizedUser)
   const correctEvaluated = tryEvaluateExpression(normalizedCorrect)
   
@@ -676,6 +678,77 @@ export function compareMathAnswers(userAnswer: string, correctAnswer: string, al
         return true
       }
     }
+  }
+  
+  return false
+}
+
+/**
+ * Check if a string is an unevaluated mathematical expression
+ * (contains operators that should be computed, not just stated)
+ * Used to reject answers like "2^5" when the question asks for the value (32)
+ */
+function isUnevaluatedExpression(str: string): boolean {
+  const normalized = str.trim().toLowerCase()
+  
+  // Skip if it's just a number (possibly with decimal)
+  if (/^-?\d+\.?\d*$/.test(normalized)) {
+    return false
+  }
+  
+  // Skip fractions like "1/2" - these are valid numeric representations
+  if (/^-?\d+\s*\/\s*\d+$/.test(normalized)) {
+    return false
+  }
+  
+  // Skip mixed numbers like "1 1/2"
+  if (/^-?\d+\s+\d+\s*\/\s*\d+$/.test(normalized)) {
+    return false
+  }
+  
+  // Skip scientific notation like "3.14e2"
+  if (/^-?\d+\.?\d*[eE][+-]?\d+$/.test(normalized)) {
+    return false
+  }
+  
+  // Check for operations that should be computed:
+  // Powers: 2^5, 2**5
+  if (/\^|\*\*/.test(normalized)) {
+    return true
+  }
+  
+  // Square roots: sqrt(4), √4
+  if (/sqrt|√|cbrt|∛/.test(normalized)) {
+    return true
+  }
+  
+  // Addition/subtraction in numeric context: 2+3, 10-5
+  // But not negative numbers like -5
+  if (/\d\s*[\+]\s*\d/.test(normalized)) {
+    return true
+  }
+  if (/\d\s*[\-]\s*\d/.test(normalized)) {
+    return true
+  }
+  
+  // Multiplication in numeric context: 2*3, 2×3 (but not 2x as variable)
+  if (/\d\s*[\*×·]\s*\d/.test(normalized)) {
+    return true
+  }
+  
+  // Division that's not a simple fraction: 10÷2
+  if (/÷/.test(normalized)) {
+    return true
+  }
+  
+  // Parentheses with operations inside: (2+3), (4*5)
+  if (/\([^)]*[\+\-\*\/\^][^)]*\)/.test(normalized)) {
+    return true
+  }
+  
+  // Function calls that compute values: sin(0), log(10), abs(-5)
+  if (/\b(sin|cos|tan|log|ln|exp|abs|floor|ceil|round)\s*\(/.test(normalized)) {
+    return true
   }
   
   return false
@@ -748,12 +821,23 @@ export function formatMathForDisplay(answer: string): string {
 /**
  * Parse a numeric answer with smart tolerance checking.
  * Tolerance is automatically determined based on the magnitude of the correct answer.
+ * 
+ * IMPORTANT: For numeric answers, we reject unevaluated expressions.
+ * If the question asks "what is 2^5?", the answer must be "32", not "2^5".
+ * Students must compute the result, not just restate the expression.
  */
 export function compareNumericAnswers(
   userAnswer: string, 
   correctAnswer: number, 
-  tolerance?: number
+  tolerance?: number,
+  options?: { allowExpressions?: boolean }
 ): boolean {
+  // STRICT MODE: Reject unevaluated expressions for numeric questions
+  // This ensures students actually compute the answer rather than restating the problem
+  if (!options?.allowExpressions && isUnevaluatedExpression(userAnswer)) {
+    return false
+  }
+  
   // Try fraction on original input first (before normalization might change things)
   const fractionFromOriginal = parseFraction(userAnswer.trim())
   if (fractionFromOriginal !== null) {
@@ -858,6 +942,14 @@ export function validateAnswer(
   
   // For numeric answer types, use numeric comparison
   if (answerType === 'numeric' || answerType === 'expression') {
+    // STRICT MODE for numeric: reject unevaluated expressions
+    // If the question asks "what is 2^5?" the answer must be "32", not "2^5"
+    if (answerType === 'numeric' && isUnevaluatedExpression(userAnswer)) {
+      result.matchType = 'none'
+      result.confidence = 'high'
+      return result
+    }
+    
     const userNum = parseFloat(normalizedUser) || parseFraction(normalizedUser) || parseScientificNotation(normalizedUser)
     const correctNum = typeof correctAnswerData?.value === 'number' 
       ? correctAnswerData.value 
@@ -878,6 +970,17 @@ export function validateAnswer(
   }
   
   // Full comparison for short_answer and other types
+  // STRICT MODE for short_answer: If the correct answer is a simple number,
+  // reject unevaluated expressions (student must compute the result)
+  if (answerType === 'short_answer') {
+    const correctIsSimpleNumber = /^-?\d+\.?\d*$/.test(normalizedCorrect)
+    if (correctIsSimpleNumber && isUnevaluatedExpression(userAnswer)) {
+      result.matchType = 'none'
+      result.confidence = 'high'
+      return result
+    }
+  }
+  
   const isMatch = compareMathAnswers(userAnswer, correctAnswer, correctAnswerData?.alternates)
   
   if (isMatch) {

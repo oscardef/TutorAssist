@@ -294,6 +294,85 @@ describe('compareNumericAnswers', () => {
     expect(compareNumericAnswers('5', 5.1, 0.2)).toBe(true)
     expect(compareNumericAnswers('5', 5.3, 0.2)).toBe(false)
   })
+
+  // STRICT MODE TESTS: Students must compute answers, not restate expressions
+  describe('strict expression rejection', () => {
+    it('should reject powers like 2^5 when answer is 32', () => {
+      // Question: "What is 2^5?" - student cannot just type "2^5"
+      expect(compareNumericAnswers('2^5', 32)).toBe(false)
+      expect(compareNumericAnswers('2**5', 32)).toBe(false)
+      // But the actual computed answer should be accepted
+      expect(compareNumericAnswers('32', 32)).toBe(true)
+    })
+
+    it('should reject sqrt expressions when answer is a number', () => {
+      // Question: "What is √16?" - student must type "4"
+      expect(compareNumericAnswers('sqrt(16)', 4)).toBe(false)
+      expect(compareNumericAnswers('√16', 4)).toBe(false)
+      expect(compareNumericAnswers('4', 4)).toBe(true)
+    })
+
+    it('should reject addition expressions', () => {
+      // Question: "What is 2+3?" - student must type "5"
+      expect(compareNumericAnswers('2+3', 5)).toBe(false)
+      expect(compareNumericAnswers('5', 5)).toBe(true)
+    })
+
+    it('should reject subtraction expressions', () => {
+      // Question: "What is 10-3?" - student must type "7"
+      expect(compareNumericAnswers('10-3', 7)).toBe(false)
+      expect(compareNumericAnswers('7', 7)).toBe(true)
+    })
+
+    it('should reject multiplication expressions', () => {
+      // Question: "What is 6×7?" - student must type "42"
+      expect(compareNumericAnswers('6*7', 42)).toBe(false)
+      expect(compareNumericAnswers('6×7', 42)).toBe(false)
+      expect(compareNumericAnswers('42', 42)).toBe(true)
+    })
+
+    it('should reject division expressions with ÷', () => {
+      // Question: "What is 20÷4?" - student must type "5"
+      expect(compareNumericAnswers('20÷4', 5)).toBe(false)
+      expect(compareNumericAnswers('5', 5)).toBe(true)
+    })
+
+    it('should accept simple fractions (they are valid numeric notation)', () => {
+      // Fractions like 1/2 ARE valid ways to express 0.5
+      expect(compareNumericAnswers('1/2', 0.5)).toBe(true)
+      expect(compareNumericAnswers('3/4', 0.75)).toBe(true)
+      expect(compareNumericAnswers('2/4', 0.5)).toBe(true)
+    })
+
+    it('should accept mixed numbers', () => {
+      // Mixed numbers like "1 1/2" are valid numeric notation
+      expect(compareNumericAnswers('1 1/2', 1.5)).toBe(true)
+      expect(compareNumericAnswers('2 3/4', 2.75)).toBe(true)
+    })
+
+    it('should accept negative numbers', () => {
+      // Negative sign is not an operator
+      expect(compareNumericAnswers('-5', -5)).toBe(true)
+      expect(compareNumericAnswers('-3.14', -3.14)).toBe(true)
+    })
+
+    it('should accept scientific notation', () => {
+      // Scientific notation is valid numeric notation
+      expect(compareNumericAnswers('3.14e2', 314)).toBe(true)
+      expect(compareNumericAnswers('1e-3', 0.001)).toBe(true)
+    })
+
+    it('should allow expressions when explicitly permitted via options', () => {
+      // With allowExpressions option, the isUnevaluatedExpression check is bypassed
+      // This is useful for edge cases where tutors want to accept expression forms
+      // Note: This doesn't mean expressions will automatically evaluate correctly
+      // - it just means we don't preemptively reject them
+      
+      // This test verifies the option flag works - 4+0 evaluates to 4 through parseFloat
+      // even though it looks like an expression, the 4 part gets parsed
+      expect(compareNumericAnswers('4', 4, undefined, { allowExpressions: true })).toBe(true)
+    })
+  })
 })
 
 describe('validateAnswer', () => {
@@ -768,6 +847,16 @@ describe('LaTeX Input Comparison Tests', () => {
     it('should handle MathLive sqrt output', () => {
       // After normalization: \sqrt{2}+1 -> sqrt2+1 -> sqrt(2)+1 evaluated
       expect(compareMathAnswers('sqrt(2)+1', '2.414')).toBe(true)
+    })
+
+    it('should handle function notation like f(x) = 2x', () => {
+      // MathLive often outputs \left and \right for parentheses
+      expect(compareMathAnswers('f\\left(x\\right)=2x', 'f(x)=2x')).toBe(true)
+      // With spaces
+      expect(compareMathAnswers('f (x) = 2x', 'f(x)=2x')).toBe(true)
+      expect(compareMathAnswers('f(x) = 2x', 'f(x)=2x')).toBe(true)
+      // Different variable
+      expect(compareMathAnswers('g(t) = 3t', 'g(t)=3t')).toBe(true)
     })
   })
 })

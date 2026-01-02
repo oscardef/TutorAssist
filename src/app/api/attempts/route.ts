@@ -92,11 +92,23 @@ export async function POST(request: Request) {
           isCorrect = !isNaN(selectedIndex) && selectedIndex === correctAnswerData.correct
         } else if (question.answer_type === 'true_false') {
           // True/false: compare boolean-like values
-          const userBool = sanitizedAnswer?.toLowerCase() === 'true' || sanitizedAnswer === '1'
-          const correctValue = correctAnswerData.value
-          // Type assertion needed because value can be string | number but we're checking for true/false
-          const correctBool = correctValue === 'true' || String(correctValue) === 'true' || correctValue === 1
-          isCorrect = userBool === correctBool
+          // Must be an explicit true/false answer, not just any random text
+          const normalizedAnswer = sanitizedAnswer?.toLowerCase().trim()
+          
+          // Valid "true" answers
+          const isTrueAnswer = normalizedAnswer === 'true' || normalizedAnswer === 'yes' || normalizedAnswer === '1' || normalizedAnswer === 't'
+          // Valid "false" answers  
+          const isFalseAnswer = normalizedAnswer === 'false' || normalizedAnswer === 'no' || normalizedAnswer === '0' || normalizedAnswer === 'f'
+          
+          // If the answer isn't a valid boolean-like value, mark as incorrect
+          if (!isTrueAnswer && !isFalseAnswer) {
+            isCorrect = false
+          } else {
+            const correctValue = correctAnswerData.value
+            // Check if correct answer represents "true"
+            const correctBool = correctValue === 'true' || String(correctValue) === 'true' || correctValue === 1
+            isCorrect = isTrueAnswer === correctBool
+          }
         } else if (question.answer_type === 'numeric') {
           // Numeric: use numeric comparison with tolerance
           const correctValue = typeof correctAnswerData.value === 'number' 
