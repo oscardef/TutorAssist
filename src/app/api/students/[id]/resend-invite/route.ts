@@ -2,16 +2,25 @@ import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { requireTutor } from '@/lib/auth'
 import { NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 
-// Initialize Resend lazily to avoid build-time errors
-async function getResendClient() {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    console.warn('RESEND_API_KEY not configured')
+// Initialize email transporter lazily
+function getEmailTransporter() {
+  const email = process.env.SMTP_EMAIL
+  const password = process.env.SMTP_PASSWORD
+  
+  if (!email || !password) {
+    console.warn('SMTP credentials not configured')
     return null
   }
-  const { Resend } = await import('resend')
-  return new Resend(apiKey)
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: email,
+      pass: password,
+    },
+  })
 }
 
 function generateInviteEmail(params: {
@@ -166,8 +175,8 @@ export async function POST(
     }
 
     // Send email
-    const resend = await getResendClient()
-    if (!resend) {
+    const transporter = getEmailTransporter()
+    if (!transporter) {
       return NextResponse.json({ error: 'Email service not configured' }, { status: 503 })
     }
 
@@ -186,19 +195,19 @@ export async function POST(
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tutor-assist.vercel.app'
     const inviteUrl = `${baseUrl}/invite/${token}`
 
-    const { error: emailError } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'TutorAssist <onboarding@resend.dev>',
-      to: student.email,
-      subject: `${tutorName} has invited you to join ${workspaceName}`,
-      html: generateInviteEmail({
-        studentName: student.name,
-        tutorName,
-        workspaceName,
-        inviteUrl,
-      }),
-    })
-
-    if (emailError) {
+    try {
+      await transporter.sendMail({
+        from: `"TutorAssist" <${process.env.SMTP_EMAIL}>`,
+        to: student.email,
+        subject: `${tutorName} has invited you to join ${workspaceName}`,
+        html: generateInviteEmail({
+          studentName: student.name,
+          tutorName,
+          workspaceName,
+          inviteUrl,
+        }),
+      })
+    } catch (emailError) {
       console.error('Failed to send email:', emailError)
       return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
     }
