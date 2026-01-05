@@ -41,15 +41,17 @@ export default async function StudentDashboard() {
     .eq('workspace_id', context?.workspaceId)
     .single()
 
-  // Get assigned tutor info
+  // Get assigned tutor info - profiles table doesn't exist, use workspace_members
   let assignedTutor = null
   if (profile?.assigned_tutor_id) {
-    const { data: tutorProfile } = await supabase
-      .from('profiles')
-      .select('user_id, name, email')
+    const { data: tutorMember } = await supabase
+      .from('workspace_members')
+      .select('user_id, role')
       .eq('user_id', profile.assigned_tutor_id)
       .single()
-    assignedTutor = tutorProfile
+    if (tutorMember) {
+      assignedTutor = { user_id: tutorMember.user_id, name: 'Tutor', email: '' }
+    }
   }
   
   // Get user metadata for name

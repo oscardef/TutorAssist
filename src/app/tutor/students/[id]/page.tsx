@@ -18,13 +18,13 @@ export default async function StudentDetailPage({
     .from('student_profiles')
     .select(`
       *,
-      study_programs (
+      study_programs!student_profiles_study_program_id_fkey (
         id,
         code,
         name,
         color
       ),
-      grade_levels (
+      grade_levels!student_profiles_grade_level_id_fkey (
         id,
         code,
         name,
@@ -40,14 +40,26 @@ export default async function StudentDetailPage({
   }
 
   // Get assigned tutor info if set
+  // Note: We need to get tutor info from workspace_members + auth metadata
+  // since there's no separate profiles table for tutors
   let assignedTutor = null
   if (student.assigned_tutor_id) {
-    const { data: tutorProfile } = await supabase
-      .from('profiles')
-      .select('user_id, name, email')
+    // Get the tutor's workspace member record
+    const { data: tutorMember } = await supabase
+      .from('workspace_members')
+      .select('user_id, role')
       .eq('user_id', student.assigned_tutor_id)
+      .eq('workspace_id', context.workspaceId)
       .single()
-    assignedTutor = tutorProfile
+    
+    if (tutorMember) {
+      // For now, use a placeholder - tutor names would need to come from auth metadata
+      assignedTutor = {
+        user_id: tutorMember.user_id,
+        name: 'Tutor',
+        email: ''
+      }
+    }
   }
 
   // Get student's assignments with progress
@@ -56,36 +68,38 @@ export default async function StudentDetailPage({
     .select(`
       id,
       title,
-      due_date,
+      due_at,
       created_at,
-      assignment_questions (
+      assignment_items (
         id,
         question_id
       )
     `)
     .eq('workspace_id', context.workspaceId)
-    .eq('student_id', id)
+    .eq('student_profile_id', id)
     .order('created_at', { ascending: false })
 
   // Get assignment attempts to calculate progress
   const assignmentIds = assignments?.map(a => a.id) || []
-  const { data: assignmentAttempts } = await supabase
-    .from('assignment_attempts')
-    .select('assignment_id, assignment_question_id, is_correct, answer_raw, created_at')
-    .in('assignment_id', assignmentIds.length > 0 ? assignmentIds : ['00000000-0000-0000-0000-000000000000'])
-    .eq('student_user_id', student.user_id || '')
-    .order('created_at', { ascending: false })
+  const { data: assignmentAttempts } = assignmentIds.length > 0 && student.user_id
+    ? await supabase
+        .from('attempts')
+        .select('assignment_id, assignment_item_id, is_correct, answer_raw, created_at')
+        .in('assignment_id', assignmentIds)
+        .eq('student_user_id', student.user_id)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
   // Build assignment progress data
   const assignmentProgress = assignments?.map(assignment => {
-    const totalQuestions = assignment.assignment_questions?.length || 0
+    const totalQuestions = assignment.assignment_items?.length || 0
     const attempts = assignmentAttempts?.filter(a => a.assignment_id === assignment.id) || []
-    const completedQuestionIds = new Set(attempts.map(a => a.assignment_question_id))
-    const correctQuestionIds = new Set(
-      attempts.filter(a => a.is_correct).map(a => a.assignment_question_id)
+    const completedItemIds = new Set(attempts.map(a => a.assignment_item_id))
+    const correctItemIds = new Set(
+      attempts.filter(a => a.is_correct).map(a => a.assignment_item_id)
     )
-    const completedCount = completedQuestionIds.size
-    const correctCount = correctQuestionIds.size
+    const completedCount = completedItemIds.size
+    const correctCount = correctItemIds.size
 
     return {
       ...assignment,
@@ -99,13 +113,15 @@ export default async function StudentDetailPage({
   }) || []
 
   // Get recent attempts (not from assignments)
-  const { data: attempts } = await supabase
-    .from('attempts')
-    .select('*, questions(prompt_text, topic_id, topics(name), correct_answer)')
-    .eq('workspace_id', context.workspaceId)
-    .eq('student_user_id', student.user_id || '')
-    .order('created_at', { ascending: false })
-    .limit(20)
+  const { data: attempts } = student.user_id
+    ? await supabase
+        .from('attempts')
+        .select('*, questions(prompt_text, topic_id, topics(name), correct_answer_json)')
+        .eq('workspace_id', context.workspaceId)
+        .eq('student_user_id', student.user_id)
+        .order('created_at', { ascending: false })
+        .limit(20)
+    : { data: [] }
 
   // Get spaced repetition stats
   const { data: srStats } = await supabase
@@ -206,6 +222,43 @@ export default async function StudentDetailPage({
         </div>
       )}
 
+      {/* Contact Information */}
+      {(student.email || student.parent_email || (student.additional_emails && student.additional_emails.length > 0)) && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Contact Information</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {student.email && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Student Email</p>
+                <a href={`mailto:${student.email}`} className="text-sm text-blue-600 hover:text-blue-500">
+                  {student.email}
+                </a>
+              </div>
+            )}
+            {student.parent_email && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Parent/Guardian Email</p>
+                <a href={`mailto:${student.parent_email}`} className="text-sm text-blue-600 hover:text-blue-500">
+                  {student.parent_email}
+                </a>
+              </div>
+            )}
+            {student.additional_emails && student.additional_emails.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Additional Emails</p>
+                <div className="flex flex-col gap-1">
+                  {student.additional_emails.map((email: string, idx: number) => (
+                    <a key={idx} href={`mailto:${email}`} className="text-sm text-blue-600 hover:text-blue-500">
+                      {email}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Status Banner */}
       {!student.user_id && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
@@ -269,7 +322,7 @@ export default async function StudentDetailPage({
               const progressPercent = assignment.totalQuestions > 0 
                 ? Math.round((assignment.completedCount / assignment.totalQuestions) * 100) 
                 : 0
-              const isDue = assignment.due_date && new Date(assignment.due_date) < new Date()
+              const isDue = assignment.due_at && new Date(assignment.due_at) < new Date()
               
               return (
                 <div key={assignment.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
@@ -283,9 +336,9 @@ export default async function StudentDetailPage({
                       </Link>
                       <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
                         <span>{assignment.totalQuestions} questions</span>
-                        {assignment.due_date && (
+                        {assignment.due_at && (
                           <span className={isDue && !assignment.isComplete ? 'text-red-600 font-medium' : ''}>
-                            Due {format(new Date(assignment.due_date), 'MMM d, yyyy')}
+                            Due {format(new Date(assignment.due_at), 'MMM d, yyyy')}
                           </span>
                         )}
                         {assignment.lastAttempt && (

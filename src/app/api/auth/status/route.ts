@@ -6,8 +6,11 @@ export async function GET() {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    return NextResponse.json({ authenticated: !!user })
+    return NextResponse.json({ 
+      authenticated: !!user,
+      email: user?.email || null 
+    })
   } catch {
-    return NextResponse.json({ authenticated: false })
+    return NextResponse.json({ authenticated: false, email: null })
   }
 }

@@ -56,7 +56,6 @@ export default function NewStudentPage() {
     additional_emails: [''],
     age: '',
     school: '',
-    grade_current: '',
     study_program_id: '',
     grade_level_id: '',
     assigned_tutor_id: '',
@@ -389,7 +388,6 @@ export default function NewStudentPage() {
                   additional_emails: [''],
                   age: '',
                   school: '',
-                  grade_current: '',
                   study_program_id: '',
                   grade_level_id: '',
                   assigned_tutor_id: currentTutorId || '',
@@ -695,35 +693,19 @@ export default function NewStudentPage() {
           <p className="mt-1 text-xs text-gray-500">This tutor will be shown on the student&apos;s dashboard as their assigned tutor</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="age" className="block text-sm font-medium text-gray-700">
-              Age
-            </label>
-            <input
-              id="age"
-              type="number"
-              min="5"
-              max="99"
-              value={formData.age}
-              onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="grade" className="block text-sm font-medium text-gray-700">
-              Grade/Year (text)
-            </label>
-            <input
-              id="grade"
-              type="text"
-              value={formData.grade_current}
-              onChange={(e) => setFormData({ ...formData, grade_current: e.target.value })}
-              placeholder="e.g., 8, Year 10"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+        <div>
+          <label htmlFor="age" className="block text-sm font-medium text-gray-700">
+            Age
+          </label>
+          <input
+            id="age"
+            type="number"
+            min="5"
+            max="99"
+            value={formData.age}
+            onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
         </div>
 
         <div>

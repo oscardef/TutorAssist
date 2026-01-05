@@ -11,22 +11,45 @@ function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [expectedEmail, setExpectedEmail] = useState<string | null>(null)
+  const [studentName, setStudentName] = useState<string | null>(null)
+  const [signupComplete, setSignupComplete] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
 
   const inviteToken = searchParams.get('invite')
 
-  // Check if already logged in and has invite token
+  // Check if already logged in and fetch invite info
   useEffect(() => {
-    async function checkAuth() {
+    async function checkAuthAndInvite() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user && inviteToken) {
         // User is logged in and has an invite, redirect to the invite page
         router.push(`/invite/${inviteToken}`)
+        return
+      }
+      
+      // If there's an invite token, fetch the expected email
+      if (inviteToken) {
+        try {
+          const res = await fetch(`/api/invite/${inviteToken}`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.expectedEmail) {
+              setExpectedEmail(data.expectedEmail)
+              setEmail(data.expectedEmail) // Pre-fill the email
+            }
+            if (data.studentName) {
+              setStudentName(data.studentName)
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch invite info:', err)
+        }
       }
     }
-    checkAuth()
+    checkAuthAndInvite()
   }, [inviteToken, router, supabase.auth])
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -40,6 +63,12 @@ function SignupForm() {
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters')
+      return
+    }
+    
+    // Validate email matches expected email for invite
+    if (expectedEmail && email.toLowerCase() !== expectedEmail.toLowerCase()) {
+      setError(`This invite is for ${expectedEmail}. Please use that email address.`)
       return
     }
 
@@ -61,18 +90,69 @@ function SignupForm() {
         return
       }
 
-      // If there's an invite token, redirect to the invite page (they'll join after confirming email)
-      if (inviteToken) {
-        router.push(`/invite/${inviteToken}`)
-      } else {
-        router.push('/onboarding')
-      }
-      router.refresh()
+      // Show confirmation message instead of redirecting
+      setSignupComplete(true)
     } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show email confirmation screen after successful signup
+  if (signupComplete) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/25 mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            We&apos;ve sent a confirmation link to your email
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-gray-900 font-medium">{email}</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Please check your inbox and click the confirmation link to activate your account.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400">
+                Didn&apos;t receive the email? Check your spam folder or{' '}
+                <button 
+                  type="button"
+                  onClick={() => setSignupComplete(false)}
+                  className="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  try again
+                </button>
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <Link
+              href="/login"
+              className="block w-full text-center px-4 py-3 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+            >
+              Go to login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -86,14 +166,28 @@ function SignupForm() {
             <path d="M12 18L24 26L36 18" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {studentName ? `Welcome, ${studentName}!` : 'Create your account'}
+        </h1>
         <p className="mt-2 text-sm text-gray-500">
-          Start your math tutoring journey with TutorAssist
+          {inviteToken 
+            ? 'Create your account to join your tutor\'s workspace'
+            : 'Start your math tutoring journey with TutorAssist'
+          }
         </p>
       </div>
 
       {/* Signup Card */}
       <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+        {/* Invite info banner */}
+        {expectedEmail && (
+          <div className="mb-5 rounded-xl bg-blue-50 border border-blue-100 p-4">
+            <p className="text-sm text-blue-700">
+              Please sign up with <span className="font-medium">{expectedEmail}</span> to claim your student account.
+            </p>
+          </div>
+        )}
+        
         <form onSubmit={handleSignup} className="space-y-5">
           {error && (
             <div className="rounded-xl bg-red-50 border border-red-100 p-4 flex items-start gap-3">
@@ -116,9 +210,17 @@ function SignupForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+              readOnly={!!expectedEmail}
+              className={`block w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all ${
+                expectedEmail ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-50 focus:bg-white'
+              }`}
               placeholder="you@example.com"
             />
+            {expectedEmail && (
+              <p className="mt-1.5 text-xs text-gray-500">
+                This email is linked to your student profile
+              </p>
+            )}
           </div>
 
           <div>

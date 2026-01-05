@@ -14,14 +14,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Check user is a tutor
-  const { data: profile } = await supabase
-    .from('profiles')
+  // Check user is a tutor in their workspace
+  const { data: membership } = await supabase
+    .from('workspace_members')
     .select('role, workspace_id')
     .eq('user_id', user.id)
     .single()
 
-  if (profile?.role !== 'tutor') {
+  if (membership?.role !== 'tutor' && membership?.role !== 'platform_owner') {
     return NextResponse.json({ error: 'Only tutors can create grade levels' }, { status: 403 })
   }
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       .from('study_programs')
       .select('id, workspace_id')
       .eq('id', programId)
-      .eq('workspace_id', profile.workspace_id)
+      .eq('workspace_id', membership.workspace_id)
       .single()
 
     if (!program) {
@@ -104,13 +104,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: membership } = await supabase
+    .from('workspace_members')
     .select('workspace_id')
     .eq('user_id', user.id)
     .single()
 
-  if (!profile?.workspace_id) {
+  if (!membership?.workspace_id) {
     return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
   }
 
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
         workspace_id
       )
     `)
-    .eq('study_programs.workspace_id', profile.workspace_id)
+    .eq('study_programs.workspace_id', membership.workspace_id)
 
   if (programId) {
     query = query.eq('study_program_id', programId)

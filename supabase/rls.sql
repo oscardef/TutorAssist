@@ -33,6 +33,7 @@ DROP POLICY IF EXISTS "questions_delete_tutor" ON questions;
 DROP POLICY IF EXISTS "assignments_select" ON assignments;
 DROP POLICY IF EXISTS "assignments_insert_tutor" ON assignments;
 DROP POLICY IF EXISTS "assignments_update_tutor" ON assignments;
+DROP POLICY IF EXISTS "assignments_update_student" ON assignments;
 DROP POLICY IF EXISTS "assignments_delete_tutor" ON assignments;
 DROP POLICY IF EXISTS "assignment_items_select" ON assignment_items;
 DROP POLICY IF EXISTS "assignment_items_insert_tutor" ON assignment_items;
@@ -311,6 +312,15 @@ CREATE POLICY "assignments_insert_tutor" ON assignments
 CREATE POLICY "assignments_update_tutor" ON assignments
     FOR UPDATE USING (
         user_workspace_role(auth.uid(), workspace_id) = 'tutor'
+    );
+
+-- Students can update their own assigned assignments (e.g., mark as completed)
+CREATE POLICY "assignments_update_student" ON assignments
+    FOR UPDATE USING (
+        assigned_student_user_id = auth.uid()
+    )
+    WITH CHECK (
+        assigned_student_user_id = auth.uid()
     );
 
 CREATE POLICY "assignments_delete_tutor" ON assignments

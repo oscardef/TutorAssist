@@ -58,6 +58,13 @@ function stripLatex(text: string): string {
     .replace(/\\\[|\\\]/g, '')
     .replace(/\\\(|\\\)/g, '')
     .replace(/\$\$?/g, '')
+    // Handle text commands BEFORE removing commands - extract content
+    .replace(/\\text\{([^}]*)\}/g, '$1')
+    .replace(/\\textbf\{([^}]*)\}/g, '$1')
+    .replace(/\\textit\{([^}]*)\}/g, '$1')
+    .replace(/\\mathrm\{([^}]*)\}/g, '$1')
+    .replace(/\\mathbf\{([^}]*)\}/g, '$1')
+    .replace(/\\mbox\{([^}]*)\}/g, '$1')
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
     .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
     .replace(/\\times/g, '×')

@@ -161,7 +161,7 @@ export async function POST(request: Request) {
       .eq('student_user_id', user.id)
       .eq('flag_type', flagType)
       .eq('status', 'pending')
-      .single()
+      .maybeSingle()
     
     if (existingFlag) {
       return NextResponse.json(

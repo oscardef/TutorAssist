@@ -34,18 +34,30 @@ export async function GET(
       }
     }
 
-    // Fetch student profile name separately
+    // Fetch student profile info separately
     let studentName: string | undefined
+    let studentEmail: string | undefined
+    let isAlreadyClaimed = false
     if (invite.student_profile_id) {
       const { data: profile } = await supabase
         .from('student_profiles')
-        .select('name')
+        .select('name, email, user_id')
         .eq('id', invite.student_profile_id)
         .single()
       if (profile?.name) {
         studentName = profile.name
       }
+      if (profile?.email) {
+        studentEmail = profile.email
+      }
+      // Check if already claimed by another user
+      if (profile?.user_id) {
+        isAlreadyClaimed = true
+      }
     }
+
+    // Determine the expected email for this invite
+    const expectedEmail = studentEmail || invite.email
 
     // Get tutor name from auth.users using admin client
     let tutorName = 'Your Tutor'
@@ -65,9 +77,11 @@ export async function GET(
       workspaceName,
       tutorName,
       studentName,
+      expectedEmail, // The email that should be used to claim this invite
       expiresAt: invite.expires_at,
       isExpired,
       isUsed,
+      isAlreadyClaimed, // If another user has already claimed this student profile
     })
   } catch (error) {
     console.error('Error fetching invite:', error)

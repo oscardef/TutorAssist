@@ -46,18 +46,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 })
   }
 
-  // Get user details from auth.users via admin API or raw query
-  // Since we can't directly query auth.users, we'll use the service role
-  // For now, get emails from the authenticated user's perspective
-  const userIds = members?.map(m => m.user_id) || []
-  
-  // Build member list - we'll need to get names from student_profiles or email prefix
+  // Build member list - profiles table doesn't exist, so we get data from other sources
   const formattedMembers = await Promise.all(
     (members || []).map(async (member) => {
-      // Try to get name from student_profiles if they're a student
-      let name = 'Unknown'
-      let email = ''
-      
+      // For students - check student_profiles
       if (member.role === 'student') {
         const { data: studentProfile } = await supabase
           .from('student_profiles')
@@ -67,27 +59,31 @@ export async function GET(request: NextRequest) {
           .single()
         
         if (studentProfile) {
-          name = studentProfile.name
-          email = studentProfile.email || ''
-        }
-      } else {
-        // For tutors, try to get from user metadata via auth
-        // We'll use the current user if it matches, otherwise use a placeholder
-        if (member.user_id === user.id) {
-          const metadata = user.user_metadata || {}
-          name = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Tutor'
-          email = user.email || ''
-        } else {
-          // For other tutors, we can try to lookup in workspace settings or use ID
-          name = 'Tutor'
-          email = ''
+          return {
+            id: member.user_id,
+            email: studentProfile.email || '',
+            name: studentProfile.name,
+            role: member.role,
+          }
         }
       }
       
+      // For current user, use their auth metadata
+      if (member.user_id === user.id) {
+        const metadata = user.user_metadata || {}
+        return {
+          id: member.user_id,
+          email: user.email || '',
+          name: metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Tutor',
+          role: member.role,
+        }
+      }
+      
+      // Fallback for other tutors
       return {
         id: member.user_id,
-        email,
-        name,
+        email: '',
+        name: member.role === 'tutor' ? 'Tutor' : 'Unknown',
         role: member.role,
       }
     })

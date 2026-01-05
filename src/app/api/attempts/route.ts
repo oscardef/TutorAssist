@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     // Verify question exists in workspace AND fetch answer data for validation
     const { data: question, error: questionError } = await supabase
       .from('questions')
-      .select('id, workspace_id, answer_type, correct_answer')
+      .select('id, workspace_id, answer_type, correct_answer_json')
       .eq('id', questionId)
       .eq('workspace_id', context.workspaceId)
       .single()
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     } = { serverValidated: true }
     
     try {
-      const correctAnswerData = question.correct_answer as {
+      const correctAnswerData = question.correct_answer_json as {
         value?: string | number
         correct?: number
         choices?: { text: string }[]

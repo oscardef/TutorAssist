@@ -16,8 +16,8 @@ export async function GET(
       .from('student_profiles')
       .select(`
         *,
-        study_program:study_programs(id, code, name, color),
-        grade_level:grade_levels(id, code, name, year_number)
+        study_program:study_programs!student_profiles_study_program_id_fkey(id, code, name, color),
+        grade_level:grade_levels!student_profiles_grade_level_id_fkey(id, code, name, year_number)
       `)
       .eq('id', id)
       .eq('workspace_id', context.workspaceId)
@@ -28,20 +28,21 @@ export async function GET(
     }
 
     // Get assigned tutor info if exists
+    // Note: profiles table doesn't exist, use workspace_members instead
     let assignedTutor = null
     if (student.assigned_tutor_id) {
-      const { data: tutorProfile } = await supabase
-        .from('profiles')
-        .select('user_id, name, email')
+      const { data: tutorMember } = await supabase
+        .from('workspace_members')
+        .select('user_id, role')
         .eq('user_id', student.assigned_tutor_id)
         .eq('workspace_id', context.workspaceId)
         .single()
       
-      if (tutorProfile) {
+      if (tutorMember) {
         assignedTutor = {
-          id: tutorProfile.user_id,
-          email: tutorProfile.email || '',
-          name: tutorProfile.name || tutorProfile.email?.split('@')[0] || 'Unknown'
+          id: tutorMember.user_id,
+          email: '',
+          name: 'Tutor' // Names would need to come from auth metadata
         }
       }
     }
@@ -126,20 +127,52 @@ export async function PATCH(
       updated = result
     }
     
-    // Try to update optional fields (silently ignore errors from missing columns)
+    // Try to update optional fields one group at a time to handle missing columns
     if (Object.keys(optionalUpdates).length > 0) {
-      const { data: optResult, error: optError } = await supabase
-        .from('student_profiles')
-        .update(optionalUpdates)
-        .eq('id', id)
-        .select()
-        .single()
+      // Try migration-002 fields (parent_email, additional_emails)
+      const emailFields: Record<string, unknown> = {}
+      if (optionalUpdates.parent_email !== undefined) emailFields.parent_email = optionalUpdates.parent_email
+      if (optionalUpdates.additional_emails !== undefined) emailFields.additional_emails = optionalUpdates.additional_emails
       
-      if (!optError && optResult) {
-        updated = optResult
-      } else if (optError && !optError.message.includes('schema cache')) {
-        // Only log non-schema-related errors
-        console.error('Error updating optional student fields:', optError)
+      if (Object.keys(emailFields).length > 0) {
+        const { data: emailResult, error: emailError } = await supabase
+          .from('student_profiles')
+          .update(emailFields)
+          .eq('id', id)
+          .select()
+          .single()
+        
+        if (!emailError && emailResult) {
+          updated = emailResult
+        } else if (emailError) {
+          // Silently ignore - columns may not exist (migration 002 not applied)
+          console.log('Note: parent_email/additional_emails columns may not exist yet')
+        }
+      }
+      
+      // Try migration-009 and 014 fields (program, grade, tutor)
+      const programFields: Record<string, unknown> = {}
+      if (optionalUpdates.study_program_id !== undefined) programFields.study_program_id = optionalUpdates.study_program_id
+      if (optionalUpdates.grade_level_id !== undefined) programFields.grade_level_id = optionalUpdates.grade_level_id
+      if (optionalUpdates.assigned_tutor_id !== undefined) programFields.assigned_tutor_id = optionalUpdates.assigned_tutor_id
+      
+      if (Object.keys(programFields).length > 0) {
+        const { data: progResult, error: progError } = await supabase
+          .from('student_profiles')
+          .update(programFields)
+          .eq('id', id)
+          .select()
+          .single()
+        
+        if (!progError && progResult) {
+          updated = progResult
+        } else if (progError) {
+          console.error('Error updating program/grade/tutor fields:', progError)
+          // These fields should exist - return error if they don't
+          return NextResponse.json({ 
+            error: 'Failed to update student. Program/grade fields may need migration 009 applied.' 
+          }, { status: 500 })
+        }
       }
     }
     

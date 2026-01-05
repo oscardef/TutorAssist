@@ -46,6 +46,11 @@ You MUST follow these LaTeX formatting rules exactly:
 - Inequalities: \\leq, \\geq, \\neq
 - Greek: \\pi, \\theta, \\alpha, \\beta
 - Trig: \\sin, \\cos, \\tan, \\log, \\ln
+
+### AVOID using \\text{} unnecessarily:
+- WRONG: "\\(A = 2\\text{h} + 2\\text{w}\\)" 
+- CORRECT: "\\(A = 2h + 2w\\)" (use plain variables)
+- Only use \\text{} for actual words inside math: "\\(\\text{if } x > 0\\)"
 `
 
 // =============================================================================
@@ -336,6 +341,14 @@ export function stripLatexToPlainText(latex: string): string {
   return latex
     .replace(/\\\[|\\\]/g, '')  // Remove display delimiters
     .replace(/\\\(|\\\)/g, '')  // Remove inline delimiters
+    // Handle text commands BEFORE removing commands - extract content from \text{}, \textbf{}, etc.
+    .replace(/\\text\{([^}]*)\}/g, '$1')
+    .replace(/\\textbf\{([^}]*)\}/g, '$1')
+    .replace(/\\textit\{([^}]*)\}/g, '$1')
+    .replace(/\\mathrm\{([^}]*)\}/g, '$1')
+    .replace(/\\mathit\{([^}]*)\}/g, '$1')
+    .replace(/\\mathbf\{([^}]*)\}/g, '$1')
+    .replace(/\\mbox\{([^}]*)\}/g, '$1')
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1/$2')  // Fractions
     .replace(/\\sqrt\[([^\]]*)\]\{([^}]*)\}/g, '$1√($2)')  // Nth root
     .replace(/\\sqrt\{([^}]*)\}/g, '√($1)')  // Square root

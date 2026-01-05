@@ -212,14 +212,58 @@ export async function validateInviteToken(token: string): Promise<InviteToken | 
 // Redeem an invite token to join a workspace
 export async function redeemInviteToken(
   token: string,
-  userId: string
-): Promise<{ success: boolean; error?: string }> {
+  userId: string,
+  userEmail: string
+): Promise<{ success: boolean; error?: string; alreadyMember?: boolean }> {
   const supabase = await createAdminClient()
   
   // Validate token
   const inviteToken = await validateInviteToken(token)
   if (!inviteToken) {
     return { success: false, error: 'Invalid or expired invite token' }
+  }
+  
+  // SECURITY: If this is a student-specific invite, verify email matches
+  if (inviteToken.student_profile_id) {
+    // Get the student profile to check the email
+    const { data: studentProfile } = await supabase
+      .from('student_profiles')
+      .select('email, user_id')
+      .eq('id', inviteToken.student_profile_id)
+      .single()
+    
+    if (!studentProfile) {
+      return { success: false, error: 'Student profile not found' }
+    }
+    
+    // If the student profile already has a user_id, check if it's this user
+    if (studentProfile.user_id) {
+      if (studentProfile.user_id !== userId) {
+        return { success: false, error: 'This invite has already been claimed by another account' }
+      }
+      // User is already linked to this profile, let them proceed
+    } else {
+      // Profile not yet claimed - verify email matches
+      const profileEmail = studentProfile.email?.toLowerCase().trim()
+      const inviteEmail = inviteToken.email?.toLowerCase().trim()
+      const currentUserEmail = userEmail.toLowerCase().trim()
+      
+      // The user's email must match either the invite token email or the student profile email
+      const emailMatches = (profileEmail && profileEmail === currentUserEmail) || 
+                          (inviteEmail && inviteEmail === currentUserEmail)
+      
+      if (!emailMatches && (profileEmail || inviteEmail)) {
+        console.error('[redeemInviteToken] Email mismatch:', {
+          profileEmail,
+          inviteEmail,
+          currentUserEmail,
+        })
+        return { 
+          success: false, 
+          error: `This invite is for ${profileEmail || inviteEmail}. Please sign up with that email address.` 
+        }
+      }
+    }
   }
   
   // Check if user is already a member
@@ -231,7 +275,32 @@ export async function redeemInviteToken(
     .single()
   
   if (existingMember) {
-    return { success: false, error: 'You are already a member of this workspace' }
+    // User is already a member - but we should still link the student profile if needed
+    if (inviteToken.student_profile_id) {
+      // Check if this student profile is already linked to a different user
+      const { data: existingProfile } = await supabase
+        .from('student_profiles')
+        .select('user_id')
+        .eq('id', inviteToken.student_profile_id)
+        .single()
+      
+      if (existingProfile && !existingProfile.user_id) {
+        // Link the student profile to this user
+        await supabase
+          .from('student_profiles')
+          .update({ user_id: userId })
+          .eq('id', inviteToken.student_profile_id)
+        
+        // Mark token as used
+        await supabase
+          .from('invite_tokens')
+          .update({ used_at: new Date().toISOString() })
+          .eq('id', inviteToken.id)
+      }
+    }
+    
+    // Return success with alreadyMember flag - user can proceed to dashboard
+    return { success: true, alreadyMember: true }
   }
   
   // Create membership

@@ -10,6 +10,7 @@ interface Assignment {
   due_at: string | null
   completed_at: string | null
   parent_assignment_id: string | null
+  allow_repeat: boolean | null
   settings_json: {
     isParent?: boolean
     partNumber?: number
@@ -24,6 +25,7 @@ interface AssignmentWithProgress extends Assignment {
   correctQuestions: number
   topics: string[]
   children: AssignmentWithProgress[]
+  mostRecentScore?: number // For repeatable assignments: most recent attempt score
 }
 
 export default async function StudentAssignmentsPage() {
@@ -65,27 +67,28 @@ export default async function StudentAssignmentsPage() {
       })
       
       // Get distinct question_ids that have attempts for this assignment (with correctness)
+      // Order by created_at desc so we can get the most recent attempt per question
       const { data: attemptedQuestions } = questionIds.length > 0 
         ? await supabase
             .from('attempts')
-            .select('question_id, is_correct')
+            .select('question_id, is_correct, created_at')
             .eq('assignment_id', assignment.id)
             .eq('student_user_id', user?.id)
             .in('question_id', questionIds)
+            .order('created_at', { ascending: false })
         : { data: [] }
       
-      // Count unique questions attempted and correct
-      const attemptsByQuestion = new Map<string, boolean>()
+      // Track most recent attempt per question (first one we see since ordered desc)
+      const latestAttemptByQuestion = new Map<string, boolean>()
       attemptedQuestions?.forEach(a => {
-        // Keep track of best result per question (if any attempt was correct)
-        const existing = attemptsByQuestion.get(a.question_id)
-        if (existing === undefined || (!existing && a.is_correct)) {
-          attemptsByQuestion.set(a.question_id, a.is_correct || false)
+        // Only keep the first (most recent) attempt for each question
+        if (!latestAttemptByQuestion.has(a.question_id)) {
+          latestAttemptByQuestion.set(a.question_id, a.is_correct || false)
         }
       })
       
-      const uniqueAttempted = attemptsByQuestion.size
-      const correctCount = Array.from(attemptsByQuestion.values()).filter(v => v).length
+      const uniqueAttempted = latestAttemptByQuestion.size
+      const correctCount = Array.from(latestAttemptByQuestion.values()).filter(v => v).length
       
       return {
         ...assignment,
@@ -94,9 +97,51 @@ export default async function StudentAssignmentsPage() {
         correctQuestions: correctCount,
         topics: Array.from(topicNames),
         children: [] as AssignmentWithProgress[],
+        mostRecentScore: uniqueAttempted > 0 ? Math.round((correctCount / uniqueAttempted) * 100) : undefined,
       } as AssignmentWithProgress
     })
   )
+  
+  // Auto-complete assignments where all questions have been answered
+  // This runs server-side to ensure status is always up-to-date
+  for (const assignment of assignmentsWithProgress) {
+    // Skip parent assignments - they complete based on children
+    if (assignment.settings_json?.isParent) continue
+    
+    if (assignment.status === 'active' && 
+        assignment.totalQuestions > 0 && 
+        assignment.completedQuestions >= assignment.totalQuestions) {
+      // All questions answered - mark as completed
+      // For repeatable assignments, still mark as completed but they can retake
+      await supabase
+        .from('assignments')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', assignment.id)
+      assignment.status = 'completed'
+      assignment.completed_at = new Date().toISOString()
+    }
+  }
+  
+  // Check parent assignments - complete if all children are complete
+  for (const assignment of assignmentsWithProgress) {
+    if (assignment.settings_json?.isParent && assignment.status === 'active') {
+      // Get all child assignments
+      const childAssignments = assignmentsWithProgress.filter(
+        a => a.parent_assignment_id === assignment.id
+      )
+      const allChildrenComplete = childAssignments.length > 0 && 
+        childAssignments.every(c => c.status === 'completed')
+      
+      if (allChildrenComplete) {
+        await supabase
+          .from('assignments')
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('id', assignment.id)
+        assignment.status = 'completed'
+        assignment.completed_at = new Date().toISOString()
+      }
+    }
+  }
   
   // Group children under parents
   const groupAssignments = (list: AssignmentWithProgress[]): AssignmentWithProgress[] => {
@@ -385,11 +430,11 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
 
 function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) {
   const hasChildren = assignment.children && assignment.children.length > 0
-  const { totalQuestions } = assignment
+  const { totalQuestions, correctQuestions, mostRecentScore } = assignment
 
   if (hasChildren) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border opacity-75">
+      <div className="bg-white rounded-lg shadow-sm border">
         {/* Header */}
         <div className="p-6">
           <div className="flex justify-between items-center">
@@ -400,6 +445,11 @@ function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithPro
                 {assignment.children.length} parts
               </span>
             </div>
+            {mostRecentScore !== undefined && (
+              <span className="text-sm font-medium text-gray-600">
+                Score: {mostRecentScore}%
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-500 mt-1">
             {totalQuestions} questions • Completed {assignment.completed_at ? new Date(assignment.completed_at).toLocaleDateString('en-GB') : ''}
@@ -409,9 +459,8 @@ function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithPro
         {/* Sub-assignments list */}
         <div className="border-t border-gray-100 divide-y divide-gray-100">
           {assignment.children.map((child) => (
-            <Link
+            <div
               key={child.id}
-              href={`/student/assignments/${child.id}`}
               className="flex items-center gap-4 px-6 py-3 hover:bg-gray-50 transition-colors"
             >
               <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700">
@@ -419,10 +468,25 @@ function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithPro
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-700 truncate">{child.title}</div>
-                <div className="text-xs text-gray-500">{child.totalQuestions} questions</div>
+                <div className="text-xs text-gray-500">
+                  {child.totalQuestions} questions • {child.correctQuestions}/{child.totalQuestions} correct
+                </div>
               </div>
-              <span className="text-gray-400 text-sm">View →</span>
-            </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/student/assignments/${child.id}`}
+                  className="text-gray-500 text-sm hover:text-gray-700"
+                >
+                  View
+                </Link>
+                <Link
+                  href={`/student/assignments/${child.id}?retake=true`}
+                  className="text-blue-600 text-sm font-medium hover:text-blue-700"
+                >
+                  Redo
+                </Link>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -430,10 +494,7 @@ function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithPro
   }
 
   return (
-    <Link
-      href={`/student/assignments/${assignment.id}`}
-      className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow opacity-75"
-    >
+    <div className="bg-white rounded-lg shadow-sm border p-6">
       <div className="flex justify-between items-center">
         <div>
           <div className="flex items-center gap-2">
@@ -441,13 +502,26 @@ function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithPro
             <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            {totalQuestions} questions • Completed {assignment.completed_at ? new Date(assignment.completed_at).toLocaleDateString('en-GB') : ''}
+            {totalQuestions} questions • {correctQuestions}/{totalQuestions} correct
+            {mostRecentScore !== undefined && ` (${mostRecentScore}%)`}
+            {assignment.completed_at && ` • Completed ${new Date(assignment.completed_at).toLocaleDateString('en-GB')}`}
           </p>
         </div>
-        <span className="text-gray-400 text-sm">
-          View Results →
-        </span>
+        <div className="flex items-center gap-3">
+          <Link 
+            href={`/student/assignments/${assignment.id}`}
+            className="text-gray-500 text-sm hover:text-gray-700"
+          >
+            View
+          </Link>
+          <Link 
+            href={`/student/assignments/${assignment.id}?retake=true`}
+            className="text-blue-600 text-sm font-medium hover:text-blue-700"
+          >
+            Redo
+          </Link>
+        </div>
       </div>
-    </Link>
+    </div>
   )
 }

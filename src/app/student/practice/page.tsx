@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
+import { AnswerDisplay } from '@/components/answer-display'
 import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
 import { useSounds } from '@/lib/sounds'
 import { useConfetti } from '@/lib/confetti'
@@ -607,8 +608,15 @@ export default function PracticePage() {
 
   // Mode selection screen
   if (mode === 'select') {
+    // Primary weak topics: <60% accuracy with 3+ attempts
     const weakTopics = topicStats.filter(s => s.total >= 3 && s.accuracy < 60)
+    // Secondary: topics with room for improvement (<80% accuracy)
+    const improvementTopics = topicStats.filter(s => s.total >= 3 && s.accuracy >= 60 && s.accuracy < 80)
+    // Calculate total wrong answers across all topics
+    const totalWrongAnswers = topicStats.reduce((sum, s) => sum + (s.total - s.correct), 0)
+    // Has something to work on if we have weak topics, improvement topics, or any wrong answers
     const hasWeakTopics = weakTopics.length > 0
+    const hasSomethingToWorkOn = hasWeakTopics || improvementTopics.length > 0 || totalWrongAnswers > 0
     const totalPracticed = topicStats.reduce((sum, s) => sum + s.total, 0)
     
     // Filter topics based on student's program and selected grade level
@@ -702,29 +710,33 @@ export default function PracticePage() {
 
           {/* Weak Areas */}
           <button
-            onClick={() => hasWeakTopics && startPractice('weak')}
-            disabled={!hasWeakTopics}
+            onClick={() => hasSomethingToWorkOn && startPractice('weak')}
+            disabled={!hasSomethingToWorkOn}
             className={`group relative overflow-hidden rounded-2xl p-6 text-left shadow-lg transition-all ${
-              hasWeakTopics 
+              hasSomethingToWorkOn 
                 ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
             <div className="relative z-10">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform ${
-                hasWeakTopics ? 'bg-white/20 group-hover:scale-110' : 'bg-gray-200'
+                hasSomethingToWorkOn ? 'bg-white/20 group-hover:scale-110' : 'bg-gray-200'
               }`}>
                 {PRACTICE_MODES.weak.icon}
               </div>
               <h3 className="font-semibold text-lg mb-1">{PRACTICE_MODES.weak.title}</h3>
-              <p className={`text-sm opacity-90 ${hasWeakTopics ? 'text-amber-100' : 'text-gray-400'}`}>
+              <p className={`text-sm opacity-90 ${hasSomethingToWorkOn ? 'text-amber-100' : 'text-gray-400'}`}>
                 {hasWeakTopics 
                   ? `${weakTopics.length} topic${weakTopics.length > 1 ? 's' : ''} need attention`
-                  : totalPracticed >= 3 ? 'Great job! No weak areas' : 'Keep practicing to identify areas'
+                  : improvementTopics.length > 0
+                  ? `${improvementTopics.length} topic${improvementTopics.length > 1 ? 's' : ''} to improve`
+                  : totalWrongAnswers > 0
+                  ? `${totalWrongAnswers} question${totalWrongAnswers > 1 ? 's' : ''} to review`
+                  : totalPracticed >= 3 ? 'Keep practicing!' : 'Keep practicing to identify areas'
                 }
               </p>
             </div>
-            {hasWeakTopics && (
+            {hasSomethingToWorkOn && (
               <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform" />
             )}
           </button>
@@ -1227,25 +1239,25 @@ export default function PracticePage() {
         )}
         
         {mode === 'weak' && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-5 mb-8 text-left max-w-md mx-auto">
-            <h3 className="text-sm font-semibold text-green-900 mb-3 flex items-center gap-2">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-8 text-left max-w-md mx-auto">
+            <h3 className="text-sm font-semibold text-amber-900 mb-3 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
               </svg>
-              How Weak Areas Work
+              Areas for Improvement
             </h3>
-            <ul className="text-sm text-green-800 space-y-2">
+            <ul className="text-sm text-amber-800 space-y-2">
               <li className="flex items-start gap-2">
-                <span className="text-green-500 mt-1">•</span>
-                Topics with less than 60% accuracy are flagged
+                <span className="text-amber-500 mt-1">•</span>
+                Topics with less than 60% accuracy need attention
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-green-500 mt-1">•</span>
-                Requires at least 3 attempts per topic to calculate
+                <span className="text-amber-500 mt-1">•</span>
+                Topics between 60-80% are shown as improvement areas
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-green-500 mt-1">•</span>
-                Keep practicing to maintain your statistics
+                <span className="text-amber-500 mt-1">•</span>
+                Questions you&apos;ve gotten wrong will appear for review
               </li>
             </ul>
           </div>
@@ -1418,10 +1430,10 @@ export default function PracticePage() {
                       {!isCorrect && (
                         <p className="text-sm mt-1">
                           Correct answer: <span className="font-semibold text-green-700">
-                            <LatexRenderer content={
-                              question.correct_answer_json.latex || 
-                              formatMathForDisplay(String(question.correct_answer_json.value || ''))
-                            } />
+                            <AnswerDisplay
+                              answerType={question.answer_type}
+                              correctAnswer={question.correct_answer_json}
+                            />
                           </span>
                         </p>
                       )}

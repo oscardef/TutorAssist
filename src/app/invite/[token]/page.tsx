@@ -7,9 +7,11 @@ interface InviteInfo {
   workspaceName: string
   tutorName: string
   studentName?: string
+  expectedEmail?: string
   expiresAt: string
   isExpired: boolean
   isUsed: boolean
+  isAlreadyClaimed: boolean
 }
 
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
@@ -19,6 +21,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
     async function checkInvite() {
@@ -35,10 +38,11 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
         setInviteInfo(inviteData)
 
-        // Check if user is authenticated
+        // Check if user is authenticated and get their email
         const authRes = await fetch('/api/auth/status')
         const authData = await authRes.json()
         setIsAuthenticated(authData.authenticated)
+        setCurrentUserEmail(authData.email)
       } catch (err) {
         console.error('Error checking invite:', err)
         setError('Something went wrong. Please try again.')
@@ -143,6 +147,39 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     )
   }
 
+  // Check if the student profile was already claimed by another user
+  if (inviteInfo.isAlreadyClaimed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+          <div className="text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
+              <svg className="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-gray-900">Account Already Set Up</h1>
+            <p className="mt-2 text-gray-600">
+              This student account has already been claimed. If this is your account, please log in.
+            </p>
+            <Link
+              href="/login"
+              className="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500"
+            >
+              Go to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Check for email mismatch if user is authenticated
+  const emailMismatch = isAuthenticated && 
+    inviteInfo.expectedEmail && 
+    currentUserEmail && 
+    inviteInfo.expectedEmail.toLowerCase() !== currentUserEmail.toLowerCase()
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-xl">
@@ -166,11 +203,36 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 Profile: {inviteInfo.studentName}
               </p>
             )}
+            {inviteInfo.expectedEmail && (
+              <p className="mt-2 text-xs text-gray-400">
+                For: {inviteInfo.expectedEmail}
+              </p>
+            )}
           </div>
 
           <p className="mt-4 text-sm text-gray-500">
             Join to access your assignments, track progress, and practice with your tutor.
           </p>
+
+          {/* Email mismatch warning */}
+          {emailMismatch && (
+            <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-left">
+              <div className="flex items-start gap-2">
+                <svg className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+                <div className="text-sm">
+                  <p className="font-medium text-amber-800">Email Mismatch</p>
+                  <p className="mt-1 text-amber-700">
+                    This invite is for <span className="font-medium">{inviteInfo.expectedEmail}</span> but you&apos;re signed in as <span className="font-medium">{currentUserEmail}</span>.
+                  </p>
+                  <p className="mt-2 text-amber-600">
+                    Please sign out and create an account with the correct email.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">

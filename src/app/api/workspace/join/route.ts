@@ -11,19 +11,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (!user.email) {
+      return NextResponse.json({ error: 'User email is required' }, { status: 400 })
+    }
+
     const { token } = await request.json()
 
     if (!token || typeof token !== 'string' || token.trim().length === 0) {
       return NextResponse.json({ error: 'Invite token is required' }, { status: 400 })
     }
 
-    const result = await redeemInviteToken(token.trim(), user.id)
+    const result = await redeemInviteToken(token.trim(), user.id, user.email)
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true,
+      alreadyMember: result.alreadyMember || false 
+    })
   } catch (error) {
     console.error('Error joining workspace:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

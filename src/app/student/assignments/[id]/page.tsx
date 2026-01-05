@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
+import { AnswerDisplay } from '@/components/answer-display'
 import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
 import { useSounds } from '@/lib/sounds'
 import { useConfetti } from '@/lib/confetti'
@@ -39,6 +40,7 @@ interface Assignment {
   description?: string
   status: string
   due_at?: string
+  allow_repeat?: boolean
   settings_json: {
     showHints?: boolean
     showSolutions?: boolean
@@ -57,7 +59,9 @@ interface AttemptResult {
 export default function StudentAssignmentDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const assignmentId = params.id as string
+  const isRetakeMode = searchParams.get('retake') === 'true'
   const sounds = useSounds()
   const confetti = useConfetti()
 
@@ -77,6 +81,7 @@ export default function StudentAssignmentDetailPage() {
   const [showSolution, setShowSolution] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [streak, setStreak] = useState(0)
+  const [attemptNumber, setAttemptNumber] = useState(1)
 
   // Flagging state
   const [showFlagModal, setShowFlagModal] = useState(false)
@@ -97,34 +102,42 @@ export default function StudentAssignmentDetailPage() {
           .sort((a: AssignmentItem, b: AssignmentItem) => a.order_index - b.order_index)
         setItems(sortedItems)
         
-        // Load existing attempts
-        const existingAttempts: Record<string, AttemptResult> = {}
-        for (const item of sortedItems) {
-          const attemptRes = await fetch(`/api/attempts?questionId=${item.question_id}&assignmentId=${assignmentId}`)
-          const attemptData = await attemptRes.json()
-          if (attemptData.attempts && attemptData.attempts.length > 0) {
-            const latest = attemptData.attempts[0]
-            existingAttempts[item.question_id] = {
-              questionId: item.question_id,
-              isCorrect: latest.is_correct,
-              answer: latest.answer_raw || '',
+        // In retake mode, don't load existing attempts - start fresh
+        if (isRetakeMode) {
+          setAttempts({})
+          setCurrentIndex(0)
+          // Increment attempt number for tracking
+          setAttemptNumber(prev => prev + 1)
+        } else {
+          // Load existing attempts
+          const existingAttempts: Record<string, AttemptResult> = {}
+          for (const item of sortedItems) {
+            const attemptRes = await fetch(`/api/attempts?questionId=${item.question_id}&assignmentId=${assignmentId}`)
+            const attemptData = await attemptRes.json()
+            if (attemptData.attempts && attemptData.attempts.length > 0) {
+              const latest = attemptData.attempts[0]
+              existingAttempts[item.question_id] = {
+                questionId: item.question_id,
+                isCorrect: latest.is_correct,
+                answer: latest.answer_raw || '',
+              }
             }
           }
+          setAttempts(existingAttempts)
+          
+          // Find first unanswered question
+          const firstUnanswered = sortedItems.findIndex(
+            (item: AssignmentItem) => !existingAttempts[item.question_id]
+          )
+          setCurrentIndex(firstUnanswered >= 0 ? firstUnanswered : 0)
         }
-        setAttempts(existingAttempts)
-        
-        // Find first unanswered question
-        const firstUnanswered = sortedItems.findIndex(
-          (item: AssignmentItem) => !existingAttempts[item.question_id]
-        )
-        setCurrentIndex(firstUnanswered >= 0 ? firstUnanswered : 0)
       }
     } catch (err) {
       console.error('Failed to load assignment:', err)
     } finally {
       setLoading(false)
     }
-  }, [assignmentId])
+  }, [assignmentId, isRetakeMode])
 
   useEffect(() => {
     fetchAssignment()
@@ -603,6 +616,20 @@ export default function StudentAssignmentDetailPage() {
                   </button>
                 )}
               </div>
+              
+              {/* Always show correct answer when wrong */}
+              {!feedback.correct && !claimedCorrect && currentQuestion && (
+                <div className="mt-4 pt-4 border-t border-red-200">
+                  <p className="text-sm font-medium text-red-800 mb-2">Correct answer:</p>
+                  <div className="text-red-900 bg-red-100/50 px-3 py-2 rounded-lg inline-block">
+                    <AnswerDisplay 
+                      answerType={currentQuestion.answer_type}
+                      correctAnswer={currentQuestion.correct_answer_json}
+                      className="font-medium"
+                    />
+                  </div>
+                </div>
+              )}
               
               {claimedCorrect && (
                 <p className="mt-3 text-sm text-green-700">

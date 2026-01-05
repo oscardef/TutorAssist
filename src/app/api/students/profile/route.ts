@@ -22,9 +22,9 @@ export async function GET() {
     .select(`
       id,
       user_id,
-      full_name,
+      name,
       email,
-      notes,
+      private_notes,
       study_program_id,
       grade_level_id,
       study_program:study_programs(id, code, name, color),
@@ -59,14 +59,14 @@ export async function PUT(request: Request) {
   
   try {
     const body = await request.json()
-    const { studyProgramId, gradeLevelId, fullName } = body
+    const { studyProgramId, gradeLevelId, name } = body
     
     const supabase = await createServerClient()
     
     const updateData: Record<string, unknown> = {}
     if (studyProgramId !== undefined) updateData.study_program_id = studyProgramId
     if (gradeLevelId !== undefined) updateData.grade_level_id = gradeLevelId
-    if (fullName !== undefined) updateData.full_name = fullName
+    if (name !== undefined) updateData.name = name
     
     const { data: profile, error } = await supabase
       .from('student_profiles')
@@ -76,7 +76,7 @@ export async function PUT(request: Request) {
       .select(`
         id,
         user_id,
-        full_name,
+        name,
         email,
         study_program_id,
         grade_level_id,

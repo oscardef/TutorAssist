@@ -2,21 +2,37 @@ import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
+  return date.toLocaleDateString()
+}
+
 export default async function StudentsPage() {
   const context = await requireTutor()
   const supabase = await createServerClient()
 
-  const { data: students } = await supabase
+  const { data: students, error: studentsError } = await supabase
     .from('student_profiles')
     .select(`
       *,
-      study_programs (
+      study_programs!student_profiles_study_program_id_fkey (
         id,
         code,
         name,
         color
       ),
-      grade_levels (
+      grade_levels!student_profiles_grade_level_id_fkey (
         id,
         code,
         name
@@ -24,20 +40,26 @@ export default async function StudentsPage() {
     `)
     .eq('workspace_id', context.workspaceId)
     .order('name')
+  
+  if (studentsError) {
+    console.error('Error loading students:', studentsError)
+  }
 
-  // Get tutor assignments separately
+  // Get tutor assignments - profiles table doesn't exist so we get names from workspace_members
+  // For now we'll use a simple fallback since tutor names aren't stored separately
   const tutorIds = students?.filter(s => s.assigned_tutor_id).map(s => s.assigned_tutor_id) || []
-  const { data: tutorProfiles } = tutorIds.length > 0 
+  const { data: tutorMembers } = tutorIds.length > 0 
     ? await supabase
-        .from('profiles')
-        .select('user_id, name, email')
+        .from('workspace_members')
+        .select('user_id, role')
+        .eq('workspace_id', context.workspaceId)
         .in('user_id', tutorIds)
     : { data: [] }
   
-  // Build a map of tutor info
+  // Build a map of tutor info - names would need to come from a separate source
   const tutorMap = new Map<string, { user_id: string; name: string; email: string }>()
-  tutorProfiles?.forEach(t => {
-    tutorMap.set(t.user_id, t)
+  tutorMembers?.forEach(t => {
+    tutorMap.set(t.user_id, { user_id: t.user_id, name: 'Tutor', email: '' })
   })
 
   // Get all student user_ids for batch queries
@@ -47,7 +69,7 @@ export default async function StudentsPage() {
   const { data: attempts } = studentUserIds.length > 0 
     ? await supabase
         .from('attempts')
-        .select('student_user_id, is_correct, assignment_id')
+        .select('student_user_id, is_correct, assignment_id, submitted_at')
         .eq('workspace_id', context.workspaceId)
         .in('student_user_id', studentUserIds)
     : { data: [] }
@@ -62,20 +84,24 @@ export default async function StudentsPage() {
     : { data: [] }
 
   // Calculate stats per student
-  const studentStats = new Map<string, { correct: number; total: number; completed: number; assigned: number }>()
+  const studentStats = new Map<string, { correct: number; total: number; completed: number; assigned: number; lastActivity: string | null }>()
   
-  // Process attempts for accuracy stats
+  // Process attempts for accuracy stats and last activity
   attempts?.forEach(attempt => {
-    const existing = studentStats.get(attempt.student_user_id) || { correct: 0, total: 0, completed: 0, assigned: 0 }
+    const existing = studentStats.get(attempt.student_user_id) || { correct: 0, total: 0, completed: 0, assigned: 0, lastActivity: null }
     existing.total++
     if (attempt.is_correct) existing.correct++
+    // Track most recent activity
+    if (attempt.submitted_at && (!existing.lastActivity || attempt.submitted_at > existing.lastActivity)) {
+      existing.lastActivity = attempt.submitted_at
+    }
     studentStats.set(attempt.student_user_id, existing)
   })
 
   // Process assignments for completion stats
   assignments?.forEach(assignment => {
     if (!assignment.assigned_student_user_id) return
-    const existing = studentStats.get(assignment.assigned_student_user_id) || { correct: 0, total: 0, completed: 0, assigned: 0 }
+    const existing = studentStats.get(assignment.assigned_student_user_id) || { correct: 0, total: 0, completed: 0, assigned: 0, lastActivity: null }
     existing.assigned++
     if (assignment.status === 'completed') existing.completed++
     studentStats.set(assignment.assigned_student_user_id, existing)
@@ -120,6 +146,9 @@ export default async function StudentsPage() {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Last Activity
                 </th>
                 <th className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>
@@ -215,6 +244,15 @@ export default async function StudentsPage() {
                         <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                           Pending
                         </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      {stats?.lastActivity ? (
+                        <span title={new Date(stats.lastActivity).toLocaleString()}>
+                          {formatRelativeTime(stats.lastActivity)}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">

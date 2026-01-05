@@ -27,12 +27,39 @@ interface Flag {
   } | null
 }
 
+interface FlagInsight {
+  type: 'pattern' | 'question_issue' | 'student_pattern' | 'recommendation'
+  severity: 'high' | 'medium' | 'low'
+  title: string
+  description: string
+  affectedCount: number
+  questionIds?: string[]
+  actionSuggestion?: string
+}
+
+interface InsightsData {
+  insights: FlagInsight[]
+  summary: {
+    totalFlags: number
+    pendingCount: number
+    acceptedRate: number
+    commonTypes: { type: string; count: number }[]
+    problematicQuestionCount: number
+  }
+  aiSummary?: string | null
+}
+
 export default function FlagsPage() {
   const [flags, setFlags] = useState<Flag[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'pending' | 'reviewed' | 'fixed' | 'dismissed' | 'accepted'>('pending')
+  const [activeTab, setActiveTab] = useState<'flags' | 'insights'>('flags')
+  
+  // Insights state
+  const [insights, setInsights] = useState<InsightsData | null>(null)
+  const [loadingInsights, setLoadingInsights] = useState(false)
   
   // Review modal state
   const [reviewingFlag, setReviewingFlag] = useState<Flag | null>(null)
@@ -56,6 +83,30 @@ export default function FlagsPage() {
   useEffect(() => {
     fetchFlags()
   }, [])
+  
+  // Fetch insights when tab changes to insights
+  useEffect(() => {
+    if (activeTab === 'insights' && !insights && !loadingInsights) {
+      fetchInsights()
+    }
+  }, [activeTab, insights, loadingInsights])
+  
+  async function fetchInsights() {
+    setLoadingInsights(true)
+    try {
+      const response = await fetch('/api/flags/insights')
+      const data = await response.json()
+      if (response.ok) {
+        setInsights(data)
+      } else {
+        setError(data.error || 'Failed to load insights')
+      }
+    } catch {
+      setError('Failed to load insights')
+    } finally {
+      setLoadingInsights(false)
+    }
+  }
   
   async function fetchFlags() {
     try {
@@ -340,6 +391,175 @@ export default function FlagsPage() {
         </div>
       )}
       
+      {/* Main Tabs: Flags vs Insights */}
+      <div className="flex gap-4 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('flags')}
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'flags'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Flags
+          {pendingCount > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700 rounded-full">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('insights')}
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'insights'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+          </svg>
+          AI Insights
+        </button>
+      </div>
+      
+      {/* Insights Tab Content */}
+      {activeTab === 'insights' && (
+        <div className="space-y-6">
+          {loadingInsights ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            </div>
+          ) : insights ? (
+            <>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Total Flags (30d)</p>
+                  <p className="text-2xl font-bold text-gray-900">{insights.summary.totalFlags}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-600">{insights.summary.pendingCount}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Accept Rate</p>
+                  <p className="text-2xl font-bold text-emerald-600">{insights.summary.acceptedRate}%</p>
+                </div>
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <p className="text-sm text-gray-500">Problem Questions</p>
+                  <p className="text-2xl font-bold text-red-600">{insights.summary.problematicQuestionCount}</p>
+                </div>
+              </div>
+              
+              {/* Common Flag Types */}
+              {insights.summary.commonTypes.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <h3 className="font-semibold text-gray-900 mb-3">Most Common Flag Types</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {insights.summary.commonTypes.map(({ type, count }) => (
+                      <span key={type} className={`px-3 py-1 rounded-full text-sm font-medium ${flagTypeLabels[type]?.color || 'bg-gray-100 text-gray-700'}`}>
+                        {flagTypeLabels[type]?.icon || '📌'} {flagTypeLabels[type]?.label || type} ({count})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* AI Summary */}
+              {insights.aiSummary && (
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+                    </svg>
+                    <h3 className="font-semibold text-gray-900">AI Analysis</h3>
+                  </div>
+                  <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+                    {insights.aiSummary}
+                  </div>
+                </div>
+              )}
+              
+              {/* Insights */}
+              {insights.insights.length > 0 ? (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Actionable Insights</h3>
+                  {insights.insights.map((insight, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`rounded-lg border p-4 ${
+                        insight.severity === 'high' ? 'bg-red-50 border-red-200' :
+                        insight.severity === 'medium' ? 'bg-yellow-50 border-yellow-200' :
+                        'bg-blue-50 border-blue-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              insight.severity === 'high' ? 'bg-red-100 text-red-700' :
+                              insight.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {insight.severity.toUpperCase()}
+                            </span>
+                            <h4 className="font-medium text-gray-900">{insight.title}</h4>
+                          </div>
+                          <p className="mt-1 text-sm text-gray-600">{insight.description}</p>
+                          {insight.actionSuggestion && (
+                            <p className="mt-2 text-sm font-medium text-gray-700">
+                              💡 {insight.actionSuggestion}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-sm text-gray-500 shrink-0">
+                          {insight.affectedCount} affected
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                  <p>No actionable insights at this time</p>
+                  <p className="text-sm mt-1">Check back as more flags are submitted</p>
+                </div>
+              )}
+              
+              {/* Refresh button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={() => { setInsights(null); fetchInsights() }}
+                  className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Refresh Insights
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <p>Unable to load insights</p>
+              <button
+                onClick={fetchInsights}
+                className="mt-2 text-blue-600 hover:text-blue-800"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Flags Tab Content */}
+      {activeTab === 'flags' && (
+        <>
       {/* Filter Tabs */}
       <div className="flex gap-2 border-b border-gray-200 pb-4 overflow-x-auto">
         {(['all', 'pending', 'accepted', 'reviewed', 'fixed', 'dismissed'] as const).map((status) => (
@@ -672,6 +892,8 @@ export default function FlagsPage() {
               : 'When students report issues with questions, they will appear here.'}
           </p>
         </div>
+      )}
+      </>
       )}
       
       {/* Review Modal */}
