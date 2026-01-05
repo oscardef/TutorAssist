@@ -11,6 +11,8 @@ function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
   const [expectedEmail, setExpectedEmail] = useState<string | null>(null)
   const [studentName, setStudentName] = useState<string | null>(null)
   const [signupComplete, setSignupComplete] = useState(false)
@@ -75,7 +77,7 @@ function SignupForm() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -90,12 +92,49 @@ function SignupForm() {
         return
       }
 
+      // Check if this is a repeated signup (user exists but not confirmed)
+      // Supabase returns a user with identities = [] for repeated signups
+      if (data?.user && data.user.identities?.length === 0) {
+        // User already exists - they need to confirm their email or use resend
+        setSignupComplete(true)
+        return
+      }
+
       // Show confirmation message instead of redirecting
       setSignupComplete(true)
     } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendConfirmation = async () => {
+    setResending(true)
+    setResendSuccess(false)
+    setError(null)
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: inviteToken 
+            ? `${window.location.origin}/invite/${inviteToken}` 
+            : `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      setResendSuccess(true)
+    } catch {
+      setError('Failed to resend confirmation email')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -128,17 +167,28 @@ function SignupForm() {
                 Please check your inbox and click the confirmation link to activate your account.
               </p>
             </div>
-            <div className="pt-4 border-t border-gray-100">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+            {resendSuccess && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-700">Confirmation email sent! Check your inbox.</p>
+              </div>
+            )}
+            <div className="pt-4 border-t border-gray-100 space-y-2">
               <p className="text-xs text-gray-400">
-                Didn&apos;t receive the email? Check your spam folder or{' '}
-                <button 
-                  type="button"
-                  onClick={() => setSignupComplete(false)}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  try again
-                </button>
+                Didn&apos;t receive the email? Check your spam folder.
               </p>
+              <button 
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resending}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resending ? 'Sending...' : 'Resend confirmation email'}
+              </button>
             </div>
           </div>
 
