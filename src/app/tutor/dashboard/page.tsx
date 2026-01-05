@@ -30,8 +30,8 @@ export default async function TutorDashboard() {
     .from('sessions')
     .select('*, student_profiles(name)')
     .eq('workspace_id', context.workspaceId)
-    .gte('starts_at', new Date().toISOString())
-    .order('starts_at')
+    .gte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at')
     .limit(5)
 
   // Get student profiles with their stats
@@ -91,8 +91,8 @@ export default async function TutorDashboard() {
   }) || []
 
   // Get today's and tomorrow's sessions
-  const todaySessions = sessions?.filter(s => isToday(new Date(s.starts_at))) || []
-  const tomorrowSessions = sessions?.filter(s => isTomorrow(new Date(s.starts_at))) || []
+  const todaySessions = sessions?.filter(s => isToday(new Date(s.scheduled_at))) || []
+  const tomorrowSessions = sessions?.filter(s => isTomorrow(new Date(s.scheduled_at))) || []
 
   // Determine what needs attention
   const hasFlags = (flagCount || 0) > 0
@@ -185,10 +185,10 @@ export default async function TutorDashboard() {
                 <div key={session.id} className="flex items-center justify-between px-5 py-4">
                   <div>
                     <div className="font-medium text-gray-900">
-                      {session.student_profiles?.name || session.title}
+                      {session.student_profiles?.name || 'Session'}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {format(new Date(session.starts_at), 'h:mm a')}
+                      {format(new Date(session.scheduled_at), 'h:mm a')}
                     </div>
                   </div>
                   {session.meet_link && (
@@ -219,10 +219,10 @@ export default async function TutorDashboard() {
                   <div key={session.id} className="flex items-center justify-between px-5 py-3">
                     <div>
                       <div className="text-sm font-medium text-gray-700">
-                        {session.student_profiles?.name || session.title}
+                        {session.student_profiles?.name || 'Session'}
                       </div>
                       <div className="text-xs text-gray-400">
-                        {format(new Date(session.starts_at), 'h:mm a')}
+                        {format(new Date(session.scheduled_at), 'h:mm a')}
                       </div>
                     </div>
                   </div>

@@ -158,9 +158,9 @@ export default async function StudentDashboard() {
   const { data: upcomingSessions } = await supabase
     .from('sessions')
     .select('*')
-    .eq('student_user_id', user?.id)
-    .gte('starts_at', new Date().toISOString())
-    .order('starts_at')
+    .eq('student_id', user?.id)
+    .gte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at')
     .limit(3)
   
   // Calculate stats
@@ -478,9 +478,9 @@ export default async function StudentDashboard() {
               <ul className="divide-y divide-gray-50">
                 {upcomingSessions.map((session) => (
                   <li key={session.id} className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{session.title}</div>
-                    <div className="text-sm text-gray-500 mt-1">{format(new Date(session.starts_at), 'EEEE, MMM d')}</div>
-                    <div className="text-sm text-gray-500">{format(new Date(session.starts_at), 'h:mm a')} - {format(new Date(session.ends_at), 'h:mm a')}</div>
+                    <div className="font-medium text-gray-900">Tutoring Session</div>
+                    <div className="text-sm text-gray-500 mt-1">{format(new Date(session.scheduled_at), 'EEEE, MMM d')}</div>
+                    <div className="text-sm text-gray-500">{format(new Date(session.scheduled_at), 'h:mm a')} - {format(new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60000), 'h:mm a')}</div>
                     {session.meet_link && (
                       <a href={session.meet_link} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                         <span>Join Meeting</span>

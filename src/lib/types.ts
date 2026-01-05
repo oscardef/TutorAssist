@@ -332,19 +332,17 @@ export interface TutorFeedback {
 export interface Session {
   id: string
   workspace_id: string
-  tutor_user_id: string
-  student_user_id: string | null
+  tutor_id: string
+  student_id: string | null
   student_profile_id: string | null
-  title: string
-  description: string | null
-  starts_at: string
-  ends_at: string
+  scheduled_at: string
+  duration_minutes: number
+  notes: string | null
+  location: string | null
   google_event_id: string | null
   meet_link: string | null
   calendar_html_link: string | null
   status: 'scheduled' | 'confirmed' | 'cancelled' | 'completed'
-  change_request_text: string | null
-  change_request_at: string | null
   // Session tracking (Migration 013)
   actual_start: string | null
   actual_end: string | null
@@ -361,10 +359,10 @@ export interface OAuthConnection {
   workspace_id: string | null
   user_id: string
   provider: 'google'
-  encrypted_access_token: string | null
-  encrypted_refresh_token: string
-  token_expires_at: string | null
-  scopes: string[]
+  access_token: string | null
+  refresh_token: string | null
+  expires_at: string | null
+  provider_user_id: string | null
   created_at: string
   updated_at: string
 }

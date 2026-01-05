@@ -198,8 +198,7 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
     .from('sessions')
     .select(`
       *,
-      student:student_profiles(name, users(email)),
-      tutor:workspace_members!sessions_tutor_id_fkey(user_id)
+      student:student_profiles(name, users(email))
     `)
     .eq('id', sessionId)
     .single()
@@ -208,7 +207,7 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
     throw new Error('Session not found')
   }
   
-  const tutorUserId = (session.tutor as { user_id: string })?.user_id
+  const tutorUserId = session.tutor_id
   if (!tutorUserId) {
     throw new Error('Tutor not found')
   }

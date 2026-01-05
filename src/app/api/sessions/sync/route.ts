@@ -62,16 +62,19 @@ export async function POST(request: Request) {
     }
     
     // Create new session linked to calendar event
+    const startDate = startTime ? new Date(startTime) : new Date()
+    const endDate = endTime ? new Date(endTime) : new Date(Date.now() + 60 * 60 * 1000)
+    const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000)
+    
     const { data: session, error } = await supabase
       .from('sessions')
       .insert({
         workspace_id: context.workspaceId,
-        tutor_user_id: user.id,
+        tutor_id: user.id,
         student_profile_id: studentProfile.id,
-        student_user_id: studentProfile.user_id,
-        title: 'Tutoring Session',
-        starts_at: startTime || new Date().toISOString(),
-        ends_at: endTime || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        student_id: studentProfile.user_id,
+        scheduled_at: startDate.toISOString(),
+        duration_minutes: durationMinutes,
         google_event_id: googleEventId,
         meet_link: meetLink,
         status: 'scheduled',
