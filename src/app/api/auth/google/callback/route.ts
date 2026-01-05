@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser, getUserContext } from '@/lib/auth'
+import { getUser, getUserContext } from '@/lib/auth'
 import { getTokensFromCode, getGoogleUserInfo, saveOAuthConnection } from '@/lib/google'
 import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
-  const user = await requireUser()
   const cookieStore = await cookies()
+  
+  // Get user - don't use requireUser as it redirects and we need better error handling
+  const user = await getUser()
   
   // Get return URL from cookie, or determine default based on role
   const context = await getUserContext()
@@ -13,7 +15,8 @@ export async function GET(request: NextRequest) {
     (context?.role === 'student' ? '/student/settings' : '/tutor/settings')
   
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    // Session expired during OAuth flow - redirect to login with message
+    return NextResponse.redirect(new URL('/login?error=session_expired', request.url))
   }
   
   const searchParams = request.nextUrl.searchParams

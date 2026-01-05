@@ -15,6 +15,7 @@ function LoginForm() {
   const supabase = createClient()
   
   const inviteToken = searchParams.get('invite')
+  const authError = searchParams.get('error')
 
   // Check if already logged in and has invite token
   useEffect(() => {
@@ -27,6 +28,13 @@ function LoginForm() {
     }
     checkAuth()
   }, [inviteToken, router, supabase.auth])
+
+  // Show error message from URL params
+  useEffect(() => {
+    if (authError === 'session_expired') {
+      setError('Your session expired. Please log in again to continue.')
+    }
+  }, [authError])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,5 +1,5 @@
 import { google } from 'googleapis'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!
@@ -90,15 +90,20 @@ export async function saveOAuthConnection(
   },
   userInfo: { email: string }
 ) {
-  const supabase = await createServerClient()
+  // Use admin client to bypass RLS - the callback may have session issues
+  const supabase = await createAdminClient()
   
   // Check if connection already exists
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from('oauth_connections')
     .select('id')
     .eq('user_id', userId)
     .eq('provider', 'google')
     .single()
+  
+  if (selectError && selectError.code !== 'PGRST116') {
+    console.error('Error checking existing OAuth connection:', selectError)
+  }
   
   const connectionData = {
     user_id: userId,
@@ -112,14 +117,26 @@ export async function saveOAuthConnection(
   }
   
   if (existing) {
-    await supabase
+    const { error: updateError } = await supabase
       .from('oauth_connections')
       .update(connectionData)
       .eq('id', existing.id)
+    
+    if (updateError) {
+      console.error('Error updating OAuth connection:', updateError)
+      throw new Error('Failed to update OAuth connection')
+    }
+    console.log('Updated existing OAuth connection for user:', userId)
   } else {
-    await supabase
+    const { error: insertError } = await supabase
       .from('oauth_connections')
       .insert(connectionData)
+    
+    if (insertError) {
+      console.error('Error inserting OAuth connection:', insertError)
+      throw new Error('Failed to save OAuth connection')
+    }
+    console.log('Created new OAuth connection for user:', userId)
   }
 }
 

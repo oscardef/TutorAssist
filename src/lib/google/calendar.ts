@@ -86,7 +86,7 @@ export async function createCalendarEvent(params: CreateEventParams): Promise<Ca
 }
 
 // Get upcoming tutoring sessions
-export async function getUpcomingEvents(userId: string, maxResults: number = 10): Promise<CalendarEvent[]> {
+export async function getUpcomingEvents(userId: string, maxResults: number = 10, searchQuery?: string): Promise<CalendarEvent[]> {
   const auth = await getAuthenticatedClient(userId)
   if (!auth) {
     return []
@@ -100,7 +100,7 @@ export async function getUpcomingEvents(userId: string, maxResults: number = 10)
     maxResults,
     singleEvents: true,
     orderBy: 'startTime',
-    q: 'tutoring', // Filter for tutoring-related events
+    q: searchQuery || 'tutoring OR "Math Tutoring"', // Filter for tutoring-related events
   })
   
   return (response.data.items || []).map(event => ({
