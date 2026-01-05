@@ -1,5 +1,5 @@
 import { requireTutor } from '@/lib/auth'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
 function formatRelativeTime(dateString: string): string {
@@ -45,22 +45,37 @@ export default async function StudentsPage() {
     console.error('Error loading students:', studentsError)
   }
 
-  // Get tutor assignments - profiles table doesn't exist so we get names from workspace_members
-  // For now we'll use a simple fallback since tutor names aren't stored separately
+  // Get tutor assignments - use admin client to get actual tutor names
   const tutorIds = students?.filter(s => s.assigned_tutor_id).map(s => s.assigned_tutor_id) || []
-  const { data: tutorMembers } = tutorIds.length > 0 
+  const uniqueTutorIds = [...new Set(tutorIds)]
+  
+  const { data: tutorMembers } = uniqueTutorIds.length > 0 
     ? await supabase
         .from('workspace_members')
         .select('user_id, role')
         .eq('workspace_id', context.workspaceId)
-        .in('user_id', tutorIds)
+        .in('user_id', uniqueTutorIds)
     : { data: [] }
   
-  // Build a map of tutor info - names would need to come from a separate source
+  // Build a map of tutor info using admin client to get actual names
   const tutorMap = new Map<string, { user_id: string; name: string; email: string }>()
-  tutorMembers?.forEach(t => {
-    tutorMap.set(t.user_id, { user_id: t.user_id, name: 'Tutor', email: '' })
-  })
+  
+  if (tutorMembers && tutorMembers.length > 0) {
+    const adminClient = await createAdminClient()
+    
+    for (const tutorMember of tutorMembers) {
+      const { data: { user: tutorUser } } = await adminClient.auth.admin.getUserById(tutorMember.user_id)
+      
+      if (tutorUser) {
+        const metadata = tutorUser.user_metadata || {}
+        tutorMap.set(tutorMember.user_id, {
+          user_id: tutorMember.user_id,
+          name: metadata.full_name || metadata.name || tutorUser.email?.split('@')[0] || 'Tutor',
+          email: tutorUser.email || ''
+        })
+      }
+    }
+  }
 
   // Get all student user_ids for batch queries
   const studentUserIds = students?.filter(s => s.user_id).map(s => s.user_id) || []

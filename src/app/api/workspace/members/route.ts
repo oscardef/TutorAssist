@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -46,7 +46,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 })
   }
 
-  // Build member list - profiles table doesn't exist, so we get data from other sources
+  // Build member list - use admin client to get user names from auth metadata
+  const adminClient = await createAdminClient()
+  
   const formattedMembers = await Promise.all(
     (members || []).map(async (member) => {
       // For students - check student_profiles
@@ -68,18 +70,20 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // For current user, use their auth metadata
-      if (member.user_id === user.id) {
-        const metadata = user.user_metadata || {}
+      // For tutors/owners, use admin API to get their auth user info
+      const { data: { user: memberUser } } = await adminClient.auth.admin.getUserById(member.user_id)
+      
+      if (memberUser) {
+        const metadata = memberUser.user_metadata || {}
         return {
           id: member.user_id,
-          email: user.email || '',
-          name: metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Tutor',
+          email: memberUser.email || '',
+          name: metadata.full_name || metadata.name || memberUser.email?.split('@')[0] || 'Tutor',
           role: member.role,
         }
       }
       
-      // Fallback for other tutors
+      // Fallback
       return {
         id: member.user_id,
         email: '',

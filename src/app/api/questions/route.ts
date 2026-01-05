@@ -149,6 +149,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ questions, total: questions?.length || 0 })
   }
   
+  // If filtering by program or grade, we need to include questions that either:
+  // 1. Have the program/grade directly set on the question
+  // 2. Have a topic with that program/grade (fallback)
+  // We'll use a two-step approach: first find matching topics, then query questions
+  let topicIdsFromProgramGrade: string[] | null = null
+  
+  if ((programId || gradeLevelId) && !topicId) {
+    // Find topics that match the program/grade filter
+    let topicsQuery = supabase
+      .from('topics')
+      .select('id')
+      .eq('workspace_id', context.workspaceId)
+    
+    if (programId) {
+      topicsQuery = topicsQuery.eq('program_id', programId)
+    }
+    if (gradeLevelId) {
+      topicsQuery = topicsQuery.eq('grade_level_id', gradeLevelId)
+    }
+    
+    const { data: matchingTopics } = await topicsQuery
+    topicIdsFromProgramGrade = matchingTopics?.map(t => t.id) || []
+  }
+  
   let query = supabase
     .from('questions')
     .select(`
@@ -174,14 +198,29 @@ export async function GET(request: Request) {
     query = query.eq('grade_level', parseInt(gradeLevel))
   }
   
-  // Filter by primary program
-  if (programId) {
-    query = query.eq('primary_program_id', programId)
+  // Filter by program - use topic fallback if question doesn't have it directly
+  if (programId && topicIdsFromProgramGrade !== null) {
+    // Include questions that either have the program directly OR are in a topic with that program
+    if (topicIdsFromProgramGrade.length > 0) {
+      // Use OR filter: question has program OR question is in matching topic
+      query = query.or(`primary_program_id.eq.${programId},topic_id.in.(${topicIdsFromProgramGrade.join(',')})`)
+    } else {
+      // No matching topics, just filter by direct program
+      query = query.eq('primary_program_id', programId)
+    }
   }
   
-  // Filter by primary grade level
-  if (gradeLevelId) {
-    query = query.eq('primary_grade_level_id', gradeLevelId)
+  // Filter by grade level - use topic fallback if question doesn't have it directly
+  if (gradeLevelId && topicIdsFromProgramGrade !== null) {
+    // Only apply grade filter if we haven't already done the OR filter above
+    // The topic filter already includes grade-matched topics
+    // But we also want questions with the grade directly set
+    if (!programId && topicIdsFromProgramGrade.length > 0) {
+      query = query.or(`primary_grade_level_id.eq.${gradeLevelId},topic_id.in.(${topicIdsFromProgramGrade.join(',')})`)
+    } else if (!programId) {
+      query = query.eq('primary_grade_level_id', gradeLevelId)
+    }
+    // If programId was set, the topic filter already includes grade-appropriate topics
   }
   
   if (aiGenerated === 'true') {

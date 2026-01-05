@@ -1,5 +1,5 @@
 import { requireTutor } from '@/lib/auth'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -40,8 +40,7 @@ export default async function StudentDetailPage({
   }
 
   // Get assigned tutor info if set
-  // Note: We need to get tutor info from workspace_members + auth metadata
-  // since there's no separate profiles table for tutors
+  // Use admin client to get tutor's user metadata (name, email)
   let assignedTutor = null
   if (student.assigned_tutor_id) {
     // Get the tutor's workspace member record
@@ -53,11 +52,17 @@ export default async function StudentDetailPage({
       .single()
     
     if (tutorMember) {
-      // For now, use a placeholder - tutor names would need to come from auth metadata
+      // Use admin client to get the tutor's auth user info
+      const adminClient = await createAdminClient()
+      const { data: { user: tutorUser } } = await adminClient.auth.admin.getUserById(
+        student.assigned_tutor_id
+      )
+      
+      const metadata = tutorUser?.user_metadata || {}
       assignedTutor = {
         user_id: tutorMember.user_id,
-        name: 'Tutor',
-        email: ''
+        name: metadata.full_name || metadata.name || tutorUser?.email?.split('@')[0] || 'Tutor',
+        email: tutorUser?.email || ''
       }
     }
   }

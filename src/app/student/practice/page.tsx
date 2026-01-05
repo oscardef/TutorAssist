@@ -210,8 +210,12 @@ export default function PracticePage() {
           }
         }
         
-        // Fetch topics
-        const topicsRes = await fetch('/api/topics')
+        // Fetch topics - filter by student's program if they have one
+        let topicsUrl = '/api/topics'
+        if (profileData.profile?.study_program_id) {
+          topicsUrl += `?programId=${profileData.profile.study_program_id}`
+        }
+        const topicsRes = await fetch(topicsUrl)
         const topicsData = await topicsRes.json()
         setTopics(topicsData.topics || [])
         
@@ -242,19 +246,27 @@ export default function PracticePage() {
       params.set('limit', '20')
       
       if (practiceMode === 'topic' && topicId) {
+        // When practicing by topic, just filter by topic - don't add program/grade filter
+        // since the topic already belongs to the correct program/grade
         params.set('topicId', topicId)
       } else if (practiceMode === 'review') {
         params.set('mode', 'review') // Due for spaced repetition
+        // For review mode, filter by student's program/grade
+        if (studentProfile?.study_program_id) {
+          params.set('programId', studentProfile.study_program_id)
+        }
+        if (studentProfile?.grade_level_id) {
+          params.set('gradeLevelId', studentProfile.grade_level_id)
+        }
       } else if (practiceMode === 'weak') {
         params.set('mode', 'weak') // Topics with low accuracy
-      }
-      
-      // Filter by student's program and grade level
-      if (studentProfile?.study_program_id) {
-        params.set('programId', studentProfile.study_program_id)
-      }
-      if (studentProfile?.grade_level_id) {
-        params.set('gradeLevelId', studentProfile.grade_level_id)
+        // For weak areas, filter by student's program/grade
+        if (studentProfile?.study_program_id) {
+          params.set('programId', studentProfile.study_program_id)
+        }
+        if (studentProfile?.grade_level_id) {
+          params.set('gradeLevelId', studentProfile.grade_level_id)
+        }
       }
       
       const response = await fetch(`/api/questions?${params}`)
