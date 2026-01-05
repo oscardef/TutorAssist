@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     .from('sessions')
     .select(`
       *,
-      student:student_profiles(id, display_name, user_id)
+      student:student_profiles(id, name, user_id)
     `)
     .eq('workspace_id', context.workspaceId)
   
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     // Verify student belongs to workspace
     const { data: student, error: studentError } = await supabase
       .from('student_profiles')
-      .select('id, display_name, user_id')
+      .select('id, name, user_id')
       .eq('user_id', studentId)
       .eq('workspace_id', context.workspaceId)
       .single()

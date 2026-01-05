@@ -198,7 +198,7 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
     .from('sessions')
     .select(`
       *,
-      student:student_profiles(display_name, users(email)),
+      student:student_profiles(name, users(email)),
       tutor:workspace_members!sessions_tutor_id_fkey(user_id)
     `)
     .eq('id', sessionId)
@@ -214,7 +214,7 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
   }
   
   const studentProfile = session.student as { 
-    display_name: string
+    name: string
     users: { email: string } | null 
   } | null
   
@@ -222,7 +222,7 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
   
   const event = await createCalendarEvent({
     userId: tutorUserId,
-    summary: `Tutoring: ${studentProfile?.display_name || 'Student'}`,
+    summary: `Tutoring: ${studentProfile?.name || 'Student'}`,
     description: session.notes || `Tutoring session\n\nSession ID: ${session.id}`,
     startTime: new Date(session.scheduled_at),
     endTime: new Date(new Date(session.scheduled_at).getTime() + (session.duration_minutes || 60) * 60 * 1000),
