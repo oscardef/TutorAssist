@@ -1,5 +1,5 @@
 import { requireUser, getUserContext } from '@/lib/auth'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { StudentSettingsForms } from '@/components/student-settings-forms'
 
 export default async function StudentSettingsPage({
@@ -39,20 +39,21 @@ export default async function StudentSettingsPage({
     .eq('provider', 'google')
     .maybeSingle()
   
-  // Get tutor info
+  // Get tutor info - first get the tutor's user_id
   const { data: tutorMember } = await supabase
     .from('workspace_members')
-    .select('users(email)')
+    .select('user_id')
     .eq('workspace_id', context?.workspaceId)
     .eq('role', 'tutor')
     .maybeSingle()
   
-  // Extract tutor email
-  const tutorEmail = (() => {
-    const users = tutorMember?.users as { email: string }[] | { email: string } | undefined
-    if (Array.isArray(users)) return users[0]?.email || null
-    return users?.email || null
-  })()
+  // Get tutor email using admin client (to access auth.users)
+  let tutorEmail: string | null = null
+  if (tutorMember?.user_id) {
+    const adminSupabase = await createAdminClient()
+    const { data: tutorUser } = await adminSupabase.auth.admin.getUserById(tutorMember.user_id)
+    tutorEmail = tutorUser?.user?.email || null
+  }
 
   const success = params?.success
   const error = params?.error

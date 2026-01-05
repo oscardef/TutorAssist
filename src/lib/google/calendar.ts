@@ -1,6 +1,6 @@
 import { google, calendar_v3 } from 'googleapis'
 import { getAuthenticatedClient } from './oauth'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 
 interface CreateEventParams {
   userId: string
@@ -198,7 +198,7 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
     .from('sessions')
     .select(`
       *,
-      student:student_profiles(name, users(email))
+      student:student_profiles(name, user_id)
     `)
     .eq('id', sessionId)
     .single()
@@ -214,10 +214,16 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
   
   const studentProfile = session.student as { 
     name: string
-    users: { email: string } | null 
+    user_id: string | null 
   } | null
   
-  const studentEmail = studentProfile?.users?.email
+  // Get student email from auth.users using admin client
+  let studentEmail: string | undefined
+  if (studentProfile?.user_id) {
+    const adminSupabase = await createAdminClient()
+    const { data: studentUser } = await adminSupabase.auth.admin.getUserById(studentProfile.user_id)
+    studentEmail = studentUser?.user?.email || undefined
+  }
   
   const event = await createCalendarEvent({
     userId: tutorUserId,
