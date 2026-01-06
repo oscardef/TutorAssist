@@ -16,6 +16,8 @@ function SignupForm() {
   const [expectedEmail, setExpectedEmail] = useState<string | null>(null)
   const [studentName, setStudentName] = useState<string | null>(null)
   const [signupComplete, setSignupComplete] = useState(false)
+  const [userAlreadyExists, setUserAlreadyExists] = useState(false)
+  const [resetEmailSent, setResetEmailSent] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -88,6 +90,14 @@ function SignupForm() {
       })
 
       if (error) {
+        // Check if user already exists
+        if (error.message.includes('User already registered') || 
+            error.message.includes('already been registered') ||
+            error.status === 422) {
+          setUserAlreadyExists(true)
+          setError('An account with this email already exists. You can sign in or reset your password.')
+          return
+        }
         setError(error.message)
         return
       }
@@ -100,10 +110,52 @@ function SignupForm() {
         return
       }
 
-      // Show confirmation message instead of redirecting
+      // Account created successfully - since email confirmation is disabled,
+      // we can proceed to sign them in
+      if (data?.user && data?.session) {
+        // User is already signed in, redirect appropriately
+        if (inviteToken) {
+          router.push(`/invite/${inviteToken}`)
+        } else {
+          router.push('/')
+        }
+        router.refresh()
+        return
+      }
+
+      // Show confirmation message (for cases where email confirmation is still enabled)
       setSignupComplete(true)
     } catch {
       setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setError('Please enter your email address')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: inviteToken 
+          ? `${window.location.origin}/invite/${inviteToken}?reset=true` 
+          : `${window.location.origin}/auth/callback?reset=true`,
+      })
+
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      setResetEmailSent(true)
+    } catch {
+      setError('Failed to send password reset email')
     } finally {
       setLoading(false)
     }
@@ -136,6 +188,63 @@ function SignupForm() {
     } finally {
       setResending(false)
     }
+  }
+
+  // Show password reset email sent screen
+  if (resetEmailSent) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/25 mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            We&apos;ve sent a password reset link to your email
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-gray-900 font-medium">{email}</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Click the link in the email to set your password and access your account.
+              </p>
+            </div>
+            <div className="pt-4 border-t border-gray-100 space-y-2">
+              <p className="text-xs text-gray-400">
+                Didn&apos;t receive the email? Check your spam folder.
+              </p>
+              <button 
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={loading}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Sending...' : 'Resend reset email'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <Link
+              href={inviteToken ? `/login?invite=${inviteToken}` : '/login'}
+              className="block w-full text-center px-4 py-3 rounded-xl bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+            >
+              Go to login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Show email confirmation screen after successful signup
@@ -240,13 +349,33 @@ function SignupForm() {
         
         <form onSubmit={handleSignup} className="space-y-5">
           {error && (
-            <div className="rounded-xl bg-red-50 border border-red-100 p-4 flex items-start gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <div className="rounded-xl bg-red-50 border border-red-100 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
+                  <svg className="w-3 h-3 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <p className="text-sm text-red-700">{error}</p>
               </div>
-              <p className="text-sm text-red-700">{error}</p>
+              {userAlreadyExists && (
+                <div className="mt-3 pt-3 border-t border-red-200 flex flex-wrap gap-3">
+                  <Link
+                    href={inviteToken ? `/login?invite=${inviteToken}` : '/login'}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    Sign in instead →
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    disabled={loading}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Sending...' : 'Reset password →'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
