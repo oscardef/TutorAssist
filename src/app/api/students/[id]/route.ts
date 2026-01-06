@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { requireTutor } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
@@ -202,11 +202,12 @@ export async function DELETE(
     const { id } = await params
     const context = await requireTutor()
     const supabase = await createServerClient()
+    const adminClient = await createAdminClient()
 
-    // Verify student belongs to this workspace
+    // Verify student belongs to this workspace and get user_id
     const { data: existing } = await supabase
       .from('student_profiles')
-      .select('id')
+      .select('id, user_id')
       .eq('id', id)
       .eq('workspace_id', context.workspaceId)
       .single()
@@ -215,6 +216,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
 
+    const authUserId = existing.user_id
+
     // Delete any pending invite tokens for this student
     await supabase
       .from('invite_tokens')
@@ -222,15 +225,35 @@ export async function DELETE(
       .eq('student_profile_id', id)
       .eq('workspace_id', context.workspaceId)
 
-    // Delete student (cascade should handle related records)
+    // Delete workspace membership if user exists
+    if (authUserId) {
+      await adminClient
+        .from('workspace_members')
+        .delete()
+        .eq('user_id', authUserId)
+        .eq('workspace_id', context.workspaceId)
+    }
+
+    // Delete student profile (cascade should handle related records like attempts, etc.)
     const { error } = await supabase
       .from('student_profiles')
       .delete()
       .eq('id', id)
 
     if (error) {
-      console.error('Error deleting student:', error)
+      console.error('Error deleting student profile:', error)
       return NextResponse.json({ error: 'Failed to delete student' }, { status: 500 })
+    }
+
+    // Delete the auth user if they had one
+    // This ensures they can be re-invited with the same email
+    if (authUserId) {
+      const { error: authError } = await adminClient.auth.admin.deleteUser(authUserId)
+      if (authError) {
+        console.error('Error deleting auth user:', authError)
+        // Non-fatal - profile is already deleted, auth user just orphaned
+        // Log for manual cleanup if needed
+      }
     }
 
     return NextResponse.json({ success: true })

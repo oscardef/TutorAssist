@@ -121,12 +121,35 @@ export async function POST(request: Request) {
         }, { status: 400 })
       }
 
-      // User exists but not in this workspace - we can't update their password
-      // They need to log in with their existing credentials
-      return NextResponse.json({ 
-        error: 'An account with this email already exists. Please log in with your existing password.',
-        existingAccount: true 
-      }, { status: 400 })
+      // User exists but NOT in this workspace
+      // Check if they have ANY workspace memberships (they might be an orphaned user from a deleted student)
+      const { data: anyMembership } = await adminClient
+        .from('workspace_members')
+        .select('id')
+        .eq('user_id', existingUser.id)
+        .limit(1)
+        .single()
+
+      if (!anyMembership) {
+        // This is an orphaned auth user (no workspace memberships)
+        // This happens when a student was deleted but the auth user wasn't cleaned up
+        // Delete the orphaned user so we can create a fresh account
+        console.log('[Accept Invite] Found orphaned auth user, deleting:', existingUser.id)
+        const { error: deleteError } = await adminClient.auth.admin.deleteUser(existingUser.id)
+        if (deleteError) {
+          console.error('[Accept Invite] Failed to delete orphaned user:', deleteError)
+          return NextResponse.json({ 
+            error: 'Failed to set up account. Please contact support.',
+          }, { status: 500 })
+        }
+        // Continue to create fresh account below
+      } else {
+        // User has memberships in other workspaces - they need to log in
+        return NextResponse.json({ 
+          error: 'An account with this email already exists. Please log in with your existing password.',
+          existingAccount: true 
+        }, { status: 400 })
+      }
     }
 
     // 4. Create the new auth user using admin API
