@@ -219,14 +219,43 @@ export async function DELETE(
     const authUserId = existing.user_id
 
     // Delete any pending invite tokens for this student
-    await supabase
+    await adminClient
       .from('invite_tokens')
       .delete()
       .eq('student_profile_id', id)
-      .eq('workspace_id', context.workspaceId)
 
-    // Delete workspace membership if user exists
+    // If user has an auth account, clean up all related records first
+    // These tables have foreign keys to auth.users that block deletion
     if (authUserId) {
+      // Delete attempts by this user in this workspace
+      await adminClient
+        .from('attempts')
+        .delete()
+        .eq('student_user_id', authUserId)
+        .eq('workspace_id', context.workspaceId)
+
+      // Delete spaced repetition records
+      await adminClient
+        .from('spaced_repetition')
+        .delete()
+        .eq('student_user_id', authUserId)
+        .eq('workspace_id', context.workspaceId)
+
+      // Delete question flags by this user
+      await adminClient
+        .from('question_flags')
+        .delete()
+        .eq('student_user_id', authUserId)
+        .eq('workspace_id', context.workspaceId)
+
+      // Clear assigned_student_user_id on assignments (set to NULL instead of delete)
+      await adminClient
+        .from('assignments')
+        .update({ assigned_student_user_id: null })
+        .eq('assigned_student_user_id', authUserId)
+        .eq('workspace_id', context.workspaceId)
+
+      // Delete workspace membership
       await adminClient
         .from('workspace_members')
         .delete()
@@ -234,8 +263,8 @@ export async function DELETE(
         .eq('workspace_id', context.workspaceId)
     }
 
-    // Delete student profile (cascade should handle related records like attempts, etc.)
-    const { error } = await supabase
+    // Delete student profile
+    const { error } = await adminClient
       .from('student_profiles')
       .delete()
       .eq('id', id)
@@ -251,8 +280,10 @@ export async function DELETE(
       const { error: authError } = await adminClient.auth.admin.deleteUser(authUserId)
       if (authError) {
         console.error('Error deleting auth user:', authError)
-        // Non-fatal - profile is already deleted, auth user just orphaned
-        // Log for manual cleanup if needed
+        // This shouldn't happen now that we clean up FK references, but log it
+        return NextResponse.json({ 
+          error: 'Student data deleted but auth account remains. Contact support.' 
+        }, { status: 500 })
       }
     }
 

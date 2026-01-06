@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         .select('id')
         .eq('workspace_id', invite.workspace_id)
         .eq('user_id', existingUser.id)
-        .single()
+        .maybeSingle()  // Use maybeSingle to return null instead of throwing error
 
       if (existingMember) {
         // Already a member - just link profile if needed and mark used
@@ -123,18 +123,30 @@ export async function POST(request: Request) {
 
       // User exists but NOT in this workspace
       // Check if they have ANY workspace memberships (they might be an orphaned user from a deleted student)
-      const { data: anyMembership } = await adminClient
+      const { data: anyMemberships } = await adminClient
         .from('workspace_members')
         .select('id')
         .eq('user_id', existingUser.id)
         .limit(1)
-        .single()
+      
+      // anyMemberships is an array - check if it's empty
+      const hasAnyMembership = anyMemberships && anyMemberships.length > 0
 
-      if (!anyMembership) {
+      if (!hasAnyMembership) {
         // This is an orphaned auth user (no workspace memberships)
         // This happens when a student was deleted but the auth user wasn't cleaned up
-        // Delete the orphaned user so we can create a fresh account
-        console.log('[Accept Invite] Found orphaned auth user, deleting:', existingUser.id)
+        // We need to clean up FK references before deleting the auth user
+        console.log('[Accept Invite] Found orphaned auth user, cleaning up:', existingUser.id)
+        
+        // Clean up any orphaned records that reference this user
+        // These have foreign keys to auth.users that would block deletion
+        await adminClient.from('attempts').delete().eq('student_user_id', existingUser.id)
+        await adminClient.from('spaced_repetition').delete().eq('student_user_id', existingUser.id)
+        await adminClient.from('question_flags').delete().eq('student_user_id', existingUser.id)
+        await adminClient.from('assignments').update({ assigned_student_user_id: null }).eq('assigned_student_user_id', existingUser.id)
+        await adminClient.from('student_profiles').update({ user_id: null }).eq('user_id', existingUser.id)
+        
+        // Now delete the orphaned auth user
         const { error: deleteError } = await adminClient.auth.admin.deleteUser(existingUser.id)
         if (deleteError) {
           console.error('[Accept Invite] Failed to delete orphaned user:', deleteError)
@@ -142,6 +154,7 @@ export async function POST(request: Request) {
             error: 'Failed to set up account. Please contact support.',
           }, { status: 500 })
         }
+        console.log('[Accept Invite] Successfully deleted orphaned user, proceeding with fresh account')
         // Continue to create fresh account below
       } else {
         // User has memberships in other workspaces - they need to log in
