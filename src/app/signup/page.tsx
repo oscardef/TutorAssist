@@ -34,23 +34,11 @@ function SignupForm() {
         return
       }
       
-      // If there's an invite token, fetch the expected email
+      // If there's an invite token, redirect to the invite page for streamlined signup
+      // The invite page now handles account creation directly
       if (inviteToken) {
-        try {
-          const res = await fetch(`/api/invite/${inviteToken}`)
-          if (res.ok) {
-            const data = await res.json()
-            if (data.expectedEmail) {
-              setExpectedEmail(data.expectedEmail)
-              setEmail(data.expectedEmail) // Pre-fill the email
-            }
-            if (data.studentName) {
-              setStudentName(data.studentName)
-            }
-          }
-        } catch (err) {
-          console.error('Failed to fetch invite info:', err)
-        }
+        router.push(`/invite/${inviteToken}`)
+        return
       }
     }
     checkAuthAndInvite()

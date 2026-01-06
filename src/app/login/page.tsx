@@ -150,7 +150,7 @@ function LoginForm() {
       <p className="mt-6 text-center text-sm text-gray-500">
         Don&apos;t have an account?{' '}
         <Link 
-          href={inviteToken ? `/signup?invite=${inviteToken}` : '/signup'} 
+          href={inviteToken ? `/invite/${inviteToken}` : '/signup'} 
           className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
         >
           Create an account
