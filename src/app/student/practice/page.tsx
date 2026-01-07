@@ -137,6 +137,11 @@ export default function PracticePage() {
   const confetti = useConfetti()
   const topicParam = searchParams.get('topic')
   
+  // Preload sounds on mount for faster playback
+  useEffect(() => {
+    sounds.preload()
+  }, [sounds])
+  
   const [mode, setMode] = useState<PracticeMode>(modeParam || 'select')
   const [loading, setLoading] = useState(true)
   // Students don't choose program - we use their assigned one
@@ -149,6 +154,9 @@ export default function PracticePage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [question, setQuestion] = useState<Question | null>(null)
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null)
+  
+  // Question history tracking for smart sampling
+  const [questionHistory, setQuestionHistory] = useState<Map<string, { attempts: number; correct: number; lastAttempt: Date }>>(new Map())
   
   // Question state
   const [answer, setAnswer] = useState('')
@@ -225,6 +233,21 @@ export default function PracticePage() {
         if (statsData.topicStats) {
           setTopicStats(statsData.topicStats)
         }
+        
+        // Fetch question-level history for smart sampling
+        const historyRes = await fetch('/api/attempts?stats=byQuestion')
+        const historyData = await historyRes.json()
+        if (historyData.questionStats) {
+          const historyMap = new Map<string, { attempts: number; correct: number; lastAttempt: Date }>()
+          for (const stat of historyData.questionStats) {
+            historyMap.set(stat.questionId, {
+              attempts: stat.total,
+              correct: stat.correct,
+              lastAttempt: new Date(stat.lastAttempt)
+            })
+          }
+          setQuestionHistory(historyMap)
+        }
       } catch (error) {
         console.error('Failed to fetch data:', error)
       } finally {
@@ -233,6 +256,62 @@ export default function PracticePage() {
     }
     fetchData()
   }, [])
+
+  // Smart sampling: prioritize unanswered questions, then questions with lower accuracy
+  const smartSampleQuestions = useCallback((allQuestions: Question[], count: number): Question[] => {
+    if (allQuestions.length <= count) return allQuestions
+    
+    // Separate into unanswered and answered questions
+    const unanswered: Question[] = []
+    const answered: { question: Question; weight: number }[] = []
+    
+    for (const q of allQuestions) {
+      const history = questionHistory.get(q.id)
+      if (!history || history.attempts === 0) {
+        unanswered.push(q)
+      } else {
+        // Weight: lower accuracy = higher weight (more likely to be selected)
+        // Questions with 0% accuracy get weight 3, 100% accuracy gets weight 0.5
+        const accuracy = history.correct / history.attempts
+        const weight = 3 - (accuracy * 2.5)
+        answered.push({ question: q, weight })
+      }
+    }
+    
+    const selected: Question[] = []
+    
+    // Prioritize unanswered questions (70% of selection if available)
+    const unansweredTarget = Math.min(Math.ceil(count * 0.7), unanswered.length)
+    const shuffledUnanswered = [...unanswered].sort(() => Math.random() - 0.5)
+    selected.push(...shuffledUnanswered.slice(0, unansweredTarget))
+    
+    // Fill remaining slots with weighted random selection from answered questions
+    const remaining = count - selected.length
+    if (remaining > 0 && answered.length > 0) {
+      // Weighted random selection
+      const totalWeight = answered.reduce((sum, a) => sum + a.weight, 0)
+      const selectedFromAnswered: Question[] = []
+      const availableAnswered = [...answered]
+      
+      for (let i = 0; i < remaining && availableAnswered.length > 0; i++) {
+        let random = Math.random() * totalWeight
+        let cumulativeWeight = 0
+        
+        for (let j = 0; j < availableAnswered.length; j++) {
+          cumulativeWeight += availableAnswered[j].weight
+          if (random <= cumulativeWeight) {
+            selectedFromAnswered.push(availableAnswered[j].question)
+            availableAnswered.splice(j, 1)
+            break
+          }
+        }
+      }
+      selected.push(...selectedFromAnswered)
+    }
+    
+    // Shuffle the final selection
+    return selected.sort(() => Math.random() - 0.5)
+  }, [questionHistory])
 
   // Fetch questions based on mode
   const fetchQuestions = useCallback(async (practiceMode: PracticeMode, topicId?: string) => {
@@ -273,10 +352,10 @@ export default function PracticePage() {
       const data = await response.json()
       
       if (data.questions && data.questions.length > 0) {
-        // Shuffle questions for variety
-        const shuffled = [...data.questions].sort(() => Math.random() - 0.5)
-        setQuestions(shuffled)
-        setQuestion(shuffled[0])
+        // Use smart sampling to prioritize unanswered questions
+        const sampled = smartSampleQuestions(data.questions, 20)
+        setQuestions(sampled)
+        setQuestion(sampled[0])
         setStartTime(Date.now())
       }
     } catch (error) {
@@ -284,7 +363,7 @@ export default function PracticePage() {
     } finally {
       setLoading(false)
     }
-  }, [studentProfile])
+  }, [studentProfile, smartSampleQuestions])
 
   // Start practice when mode/topic changes
   useEffect(() => {
@@ -1305,9 +1384,9 @@ export default function PracticePage() {
         </div>
         <div className="text-right">
           <div className="text-sm text-gray-500 mb-1">
-            <span className="font-medium text-gray-700">{currentQuestionIndex + 1}</span>
-            <span className="mx-1">/</span>
-            <span>{questions.length}</span>
+            Question <span className="font-semibold text-gray-800">{currentQuestionIndex + 1}</span>
+            <span className="mx-1 text-gray-400">of</span>
+            <span className="font-medium">{questions.length}</span>
           </div>
           {streak > 1 && (
             <div className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
@@ -1459,17 +1538,13 @@ export default function PracticePage() {
           {/* Feedback */}
           {submitted && (
             <div className={`mt-4 p-4 rounded-lg ${
-              isCorrect ? 'bg-green-50 text-green-800' : claimedCorrect ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800'
+              isCorrect || claimedCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {isCorrect ? (
+                  {isCorrect || claimedCorrect ? (
                     <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                  ) : claimedCorrect ? (
-                    <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                   ) : (
                     <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -1477,7 +1552,7 @@ export default function PracticePage() {
                     </svg>
                   )}
                   <span className="font-medium">
-                    {isCorrect ? 'Correct!' : claimedCorrect ? 'Under review' : 'Not quite right'}
+                    {isCorrect ? 'Correct!' : claimedCorrect ? 'Marked correct!' : 'Not quite right'}
                   </span>
                 </div>
                 
@@ -1494,8 +1569,8 @@ export default function PracticePage() {
               </div>
               
               {claimedCorrect && (
-                <p className="mt-2 text-sm text-yellow-700">
-                  Your claim has been submitted for review. Your tutor will check if your answer should be accepted.
+                <p className="mt-2 text-sm text-green-700">
+                  ✓ This question has been marked correct. Your tutor will review the answer.
                 </p>
               )}
             </div>

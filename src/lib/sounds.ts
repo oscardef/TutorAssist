@@ -6,12 +6,36 @@
 class SoundManager {
   private audioContext: AudioContext | null = null
   private enabled: boolean = true
+  private preloaded: boolean = false
 
   private getContext(): AudioContext {
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
     }
+    // Resume if suspended (required after user interaction)
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume()
+    }
     return this.audioContext
+  }
+
+  // Preload the audio context to eliminate first-play delay
+  preload() {
+    if (this.preloaded) return
+    try {
+      const ctx = this.getContext()
+      // Create a silent oscillator to "warm up" the audio context
+      const oscillator = ctx.createOscillator()
+      const gainNode = ctx.createGain()
+      oscillator.connect(gainNode)
+      gainNode.connect(ctx.destination)
+      gainNode.gain.value = 0 // Silent
+      oscillator.start()
+      oscillator.stop(ctx.currentTime + 0.001)
+      this.preloaded = true
+    } catch (e) {
+      console.warn('Could not preload audio:', e)
+    }
   }
 
   setEnabled(enabled: boolean) {
@@ -212,5 +236,6 @@ export function useSounds() {
     playClick: () => soundManager?.playClick(),
     isEnabled: () => soundManager?.isEnabled() ?? true,
     setEnabled: (enabled: boolean) => soundManager?.setEnabled(enabled),
+    preload: () => soundManager?.preload(),
   }
 }

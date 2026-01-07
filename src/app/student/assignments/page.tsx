@@ -1,6 +1,7 @@
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { ExpandableTopics } from '@/components/expandable-topics'
 
 interface Assignment {
   id: string
@@ -270,21 +271,8 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
               {assignment.description && (
                 <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
               )}
-              {/* Topics badges */}
-              {topics.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {topics.slice(0, 4).map((topic) => (
-                    <span key={topic} className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                      {topic}
-                    </span>
-                  ))}
-                  {topics.length > 4 && (
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                      +{topics.length - 4} more
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* Topics badges - expandable */}
+              <ExpandableTopics topics={topics} maxVisible={4} />
             </div>
             {dueDate && (
               <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
@@ -377,21 +365,8 @@ function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) 
           {assignment.description && (
             <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
           )}
-          {/* Topics badges */}
-          {topics.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {topics.slice(0, 3).map((topic) => (
-                <span key={topic} className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                  {topic}
-                </span>
-              ))}
-              {topics.length > 3 && (
-                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                  +{topics.length - 3} more
-                </span>
-              )}
-            </div>
-          )}
+          {/* Topics badges - expandable */}
+          <ExpandableTopics topics={topics} maxVisible={3} />
         </div>
         {dueDate && (
           <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>

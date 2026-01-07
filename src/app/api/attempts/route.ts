@@ -308,6 +308,45 @@ export async function GET(request: Request) {
     return NextResponse.json({ topicStats })
   }
   
+  // Return question-level statistics for smart sampling
+  if (stats === 'byQuestion') {
+    const { data: attempts, error } = await supabase
+      .from('attempts')
+      .select('question_id, is_correct, submitted_at')
+      .eq('workspace_id', context.workspaceId)
+      .eq('student_user_id', user.id)
+      .order('submitted_at', { ascending: false })
+    
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    // Aggregate by question
+    const questionMap = new Map<string, { questionId: string; total: number; correct: number; lastAttempt: string }>()
+    
+    for (const attempt of attempts || []) {
+      const qId = attempt.question_id
+      const existing = questionMap.get(qId)
+      
+      if (!existing) {
+        questionMap.set(qId, {
+          questionId: qId,
+          total: 1,
+          correct: attempt.is_correct ? 1 : 0,
+          lastAttempt: attempt.submitted_at
+        })
+      } else {
+        existing.total += 1
+        if (attempt.is_correct) existing.correct += 1
+        // lastAttempt is already the most recent due to ordering
+      }
+    }
+    
+    const questionStats = Array.from(questionMap.values())
+    
+    return NextResponse.json({ questionStats })
+  }
+  
   let query = supabase
     .from('attempts')
     .select('*, questions(prompt_text, topics(name))')

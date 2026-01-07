@@ -65,6 +65,11 @@ export default function StudentAssignmentDetailPage() {
   const sounds = useSounds()
   const confetti = useConfetti()
 
+  // Preload sounds on mount for faster playback
+  useEffect(() => {
+    sounds.preload()
+  }, [sounds])
+
   const [loading, setLoading] = useState(true)
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [items, setItems] = useState<AssignmentItem[]>([])

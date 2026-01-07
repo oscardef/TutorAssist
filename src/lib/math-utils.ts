@@ -81,6 +81,8 @@ export function normalizeMathAnswer(answer: string): string {
     // Roots and powers
     [/√/g, 'sqrt'],
     [/∛/g, 'cbrt'],
+    // Unicode superscripts (common from MathLive and other math input)
+    [/¹/g, '^1'],
     [/²/g, '^2'],
     [/³/g, '^3'],
     [/⁴/g, '^4'],
@@ -90,6 +92,17 @@ export function normalizeMathAnswer(answer: string): string {
     [/⁸/g, '^8'],
     [/⁹/g, '^9'],
     [/⁰/g, '^0'],
+    // Unicode subscripts
+    [/₀/g, '_0'],
+    [/₁/g, '_1'],
+    [/₂/g, '_2'],
+    [/₃/g, '_3'],
+    [/₄/g, '_4'],
+    [/₅/g, '_5'],
+    [/₆/g, '_6'],
+    [/₇/g, '_7'],
+    [/₈/g, '_8'],
+    [/₉/g, '_9'],
     
     // Fractions (convert to decimal for comparison)
     [/½/g, '0.5'],
@@ -263,7 +276,7 @@ export function normalizeMathAnswer(answer: string): string {
     [/\\!/g, ''],
     [/\\ /g, ''],
     
-    // Superscripts and subscripts
+    // Superscripts and subscripts (with braces)
     [/\^\{([^}]*)\}/g, '^($1)'],
     [/_\{([^}]*)\}/g, '_($1)'],
   ]
@@ -282,8 +295,10 @@ export function normalizeMathAnswer(answer: string): string {
   normalized = normalized.replace(/\\/g, '')
   normalized = normalized.replace(/[{}]/g, '')
   
-  // Step 7: Clean up unnecessary parentheses around single numbers
+  // Step 7: Clean up unnecessary parentheses around single numbers/terms
   normalized = normalized.replace(/\((\d+)\)/g, '$1')
+  // Also clean up ^(n) to ^n for single digits
+  normalized = normalized.replace(/\^\((\d)\)/g, '^$1')
   
   // Step 8: Normalize decimal representation
   normalized = normalized.replace(/\.0+$/g, '') // Remove trailing zeros after decimal
@@ -360,11 +375,21 @@ export function compareMathAnswers(
     }
   }
   
-  // 3. Check alternate answers
+  // 3. Check alternate answers (also apply fraction comparison to alternates)
   if (alternates && Array.isArray(alternates)) {
     for (const alt of alternates) {
       const normalizedAlt = normalizeMathAnswer(String(alt))
+      // Direct match
       if (normalizedAlt === normalizedUser) {
+        return true
+      }
+      // Also try fraction comparison for alternates
+      const altFraction = parseFraction(normalizedAlt)
+      const altNum = parseFloat(normalizedAlt)
+      if (userFraction !== null && !isNaN(altNum) && Math.abs(userFraction - altNum) < 0.001) {
+        return true
+      }
+      if (!isNaN(userNum) && altFraction !== null && Math.abs(userNum - altFraction) < 0.001) {
         return true
       }
     }
