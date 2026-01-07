@@ -20,28 +20,112 @@ export default async function StudentDashboard() {
   const context = await getUserContext()
   const supabase = await createServerClient()
   
-  // Get student profile with assigned tutor and program/grade info
-  const { data: profile } = await supabase
-    .from('student_profiles')
-    .select(`
-      *,
-      study_programs (
+  // Performance: Fetch all independent data in parallel (Phase 1)
+  const [
+    profileResult,
+    authResult,
+    recentAttemptsResult,
+    assignmentsResult,
+    dueItemsResult,
+    upcomingSessionsResult,
+    totalAttemptsResult,
+    correctAttemptsResult,
+    streakDataResult,
+  ] = await Promise.all([
+    // Get student profile with program/grade info
+    supabase
+      .from('student_profiles')
+      .select(`
+        *,
+        study_programs (
+          id,
+          code,
+          name,
+          color
+        ),
+        grade_levels (
+          id,
+          code,
+          name
+        )
+      `)
+      .eq('user_id', user?.id)
+      .eq('workspace_id', context?.workspaceId)
+      .single(),
+    // Get user metadata for name
+    supabase.auth.getUser(),
+    // Get recent attempts
+    supabase
+      .from('attempts')
+      .select('*, questions(prompt_latex, prompt_text, difficulty, topics(name))')
+      .eq('student_user_id', user?.id)
+      .order('submitted_at', { ascending: false })
+      .limit(10),
+    // Get ALL assignments (both parent and children)
+    supabase
+      .from('assignments')
+      .select(`
         id,
-        code,
-        name,
-        color
-      ),
-      grade_levels (
-        id,
-        code,
-        name
-      )
-    `)
-    .eq('user_id', user?.id)
-    .eq('workspace_id', context?.workspaceId)
-    .single()
+        title,
+        description,
+        due_at,
+        status,
+        parent_assignment_id,
+        created_at,
+        assignment_items(count)
+      `)
+      .eq('assigned_student_user_id', user?.id)
+      .eq('status', 'active')
+      .order('due_at', { ascending: true })
+      .limit(20),
+    // Get spaced repetition items due
+    supabase
+      .from('spaced_repetition')
+      .select('*, questions(prompt_latex, topics(name))')
+      .eq('student_user_id', user?.id)
+      .lte('next_due', new Date().toISOString())
+      .order('next_due')
+      .limit(10),
+    // Get upcoming sessions
+    supabase
+      .from('sessions')
+      .select('*')
+      .eq('student_id', user?.id)
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at')
+      .limit(3),
+    // Calculate stats - total attempts count
+    supabase
+      .from('attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('student_user_id', user?.id),
+    // Calculate stats - correct attempts count
+    supabase
+      .from('attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('student_user_id', user?.id)
+      .eq('is_correct', true),
+    // Calculate streak
+    supabase
+      .from('attempts')
+      .select('submitted_at')
+      .eq('student_user_id', user?.id)
+      .order('submitted_at', { ascending: false })
+      .limit(100),
+  ])
 
-  // Get assigned tutor info - profiles table doesn't exist, use workspace_members
+  // Extract results
+  const profile = profileResult.data
+  const authUser = authResult.data?.user
+  const recentAttempts = recentAttemptsResult.data
+  const allAssignments = assignmentsResult.data as AssignmentWithItems[] | null
+  const dueItems = dueItemsResult.data
+  const upcomingSessions = upcomingSessionsResult.data
+  const totalAttempts = totalAttemptsResult.count
+  const correctAttempts = correctAttemptsResult.count
+  const streakData = streakDataResult.data
+
+  // Get assigned tutor info (conditional on profile having assigned_tutor_id)
   let assignedTutor = null
   if (profile?.assigned_tutor_id) {
     const { data: tutorMember } = await supabase
@@ -54,8 +138,6 @@ export default async function StudentDashboard() {
     }
   }
   
-  // Get user metadata for name
-  const { data: { user: authUser } } = await supabase.auth.getUser()
   const metadata = authUser?.user_metadata || {}
   const firstName = 
     profile?.name?.split(' ')[0] ||
@@ -65,32 +147,6 @@ export default async function StudentDashboard() {
     metadata.given_name ||
     authUser?.email?.split('@')[0] ||
     'Student'
-  
-  // Get recent attempts
-  const { data: recentAttempts } = await supabase
-    .from('attempts')
-    .select('*, questions(prompt_latex, prompt_text, difficulty, topics(name))')
-    .eq('student_user_id', user?.id)
-    .order('submitted_at', { ascending: false })
-    .limit(10)
-  
-  // Get ALL assignments (both parent and children)
-  const { data: allAssignments } = await supabase
-    .from('assignments')
-    .select(`
-      id,
-      title,
-      description,
-      due_at,
-      status,
-      parent_assignment_id,
-      created_at,
-      assignment_items(count)
-    `)
-    .eq('assigned_student_user_id', user?.id)
-    .eq('status', 'active')
-    .order('due_at', { ascending: true })
-    .limit(20) as { data: AssignmentWithItems[] | null }
   
   // Group assignments: parent assignments with their children
   const parentAssignments: AssignmentWithItems[] = []
@@ -118,15 +174,15 @@ export default async function StudentDashboard() {
     displayAssignments.push(parent)
   })
   
-  // Get count of completed assignment questions AND correct counts
+  // Get count of completed assignment questions AND correct counts (single query already fetched)
   const allAssignmentIds = allAssignments?.map(a => a.id) || []
-  const { data: attemptData } = allAssignmentIds.length > 0 
-    ? await supabase
+  const attemptData = allAssignmentIds.length > 0 
+    ? (await supabase
         .from('attempts')
         .select('assignment_id, is_correct')
         .eq('student_user_id', user?.id)
-        .in('assignment_id', allAssignmentIds)
-    : { data: [] }
+        .in('assignment_id', allAssignmentIds)).data
+    : []
   
   const completedByAssignment = new Map<string, number>()
   const correctByAssignment = new Map<string, number>()
@@ -145,44 +201,7 @@ export default async function StudentDashboard() {
     }
   })
   
-  // Get spaced repetition items due
-  const { data: dueItems } = await supabase
-    .from('spaced_repetition')
-    .select('*, questions(prompt_latex, topics(name))')
-    .eq('student_user_id', user?.id)
-    .lte('next_due', new Date().toISOString())
-    .order('next_due')
-    .limit(10)
-  
-  // Get upcoming sessions
-  const { data: upcomingSessions } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('student_id', user?.id)
-    .gte('scheduled_at', new Date().toISOString())
-    .order('scheduled_at')
-    .limit(3)
-  
-  // Calculate stats
-  const { count: totalAttempts } = await supabase
-    .from('attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('student_user_id', user?.id)
-  
-  const { count: correctAttempts } = await supabase
-    .from('attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('student_user_id', user?.id)
-    .eq('is_correct', true)
-  
-  // Calculate streak
-  const { data: streakData } = await supabase
-    .from('attempts')
-    .select('submitted_at')
-    .eq('student_user_id', user?.id)
-    .order('submitted_at', { ascending: false })
-    .limit(100)
-  
+  // Calculate streak (using already-fetched streakData)
   let currentStreak = 0
   if (streakData && streakData.length > 0) {
     const now = new Date()

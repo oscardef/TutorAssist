@@ -53,55 +53,80 @@ export default async function StudentAssignmentsPage() {
     .eq('workspace_id', context?.workspaceId)
     .order('created_at', { ascending: false })
   
-  // For each assignment, get unique questions that have been attempted
-  const assignmentsWithProgress = await Promise.all(
-    (assignments || []).map(async (assignment) => {
-      const items = assignment.assignment_items as { id: string; question_id: string; question?: { id: string; topics?: { name: string } | null } }[] || []
-      const questionIds = items.map(item => item.question_id)
-      
-      // Extract unique topic names from questions
-      const topicNames = new Set<string>()
-      items.forEach(item => {
-        if (item.question?.topics?.name) {
-          topicNames.add(item.question.topics.name)
-        }
+  // Get ALL question IDs across all assignments in one go
+  const allQuestionIds = new Set<string>()
+  const assignmentQuestionMap = new Map<string, string[]>()
+  
+  ;(assignments || []).forEach(assignment => {
+    const items = assignment.assignment_items as { id: string; question_id: string; question?: { id: string; topics?: { name: string } | null } }[] || []
+    const questionIds = items.map(item => item.question_id)
+    assignmentQuestionMap.set(assignment.id, questionIds)
+    questionIds.forEach(id => allQuestionIds.add(id))
+  })
+  
+  // Single query to get ALL attempts for this student in this workspace
+  // Performance: Replaces N+1 query pattern (was 1 query per assignment)
+  const { data: allAttempts } = allQuestionIds.size > 0 
+    ? await supabase
+        .from('attempts')
+        .select('question_id, is_correct, created_at, assignment_id')
+        .eq('student_user_id', user?.id)
+        .not('assignment_id', 'is', null)
+        .order('created_at', { ascending: false })
+    : { data: [] }
+  
+  // Group attempts by assignment_id
+  const attemptsByAssignment = new Map<string, { question_id: string; is_correct: boolean; created_at: string }[]>()
+  allAttempts?.forEach(attempt => {
+    if (attempt.assignment_id) {
+      const existing = attemptsByAssignment.get(attempt.assignment_id) || []
+      existing.push({
+        question_id: attempt.question_id,
+        is_correct: attempt.is_correct || false,
+        created_at: attempt.created_at
       })
-      
-      // Get distinct question_ids that have attempts for this assignment (with correctness)
-      // Order by created_at desc so we can get the most recent attempt per question
-      const { data: attemptedQuestions } = questionIds.length > 0 
-        ? await supabase
-            .from('attempts')
-            .select('question_id, is_correct, created_at')
-            .eq('assignment_id', assignment.id)
-            .eq('student_user_id', user?.id)
-            .in('question_id', questionIds)
-            .order('created_at', { ascending: false })
-        : { data: [] }
-      
-      // Track most recent attempt per question (first one we see since ordered desc)
-      const latestAttemptByQuestion = new Map<string, boolean>()
-      attemptedQuestions?.forEach(a => {
-        // Only keep the first (most recent) attempt for each question
-        if (!latestAttemptByQuestion.has(a.question_id)) {
-          latestAttemptByQuestion.set(a.question_id, a.is_correct || false)
-        }
-      })
-      
-      const uniqueAttempted = latestAttemptByQuestion.size
-      const correctCount = Array.from(latestAttemptByQuestion.values()).filter(v => v).length
-      
-      return {
-        ...assignment,
-        totalQuestions: items.length,
-        completedQuestions: Math.min(uniqueAttempted, items.length),
-        correctQuestions: correctCount,
-        topics: Array.from(topicNames),
-        children: [] as AssignmentWithProgress[],
-        mostRecentScore: uniqueAttempted > 0 ? Math.round((correctCount / uniqueAttempted) * 100) : undefined,
-      } as AssignmentWithProgress
+      attemptsByAssignment.set(attempt.assignment_id, existing)
+    }
+  })
+  
+  // Process all assignments with pre-fetched attempts (no additional queries)
+  const assignmentsWithProgress = (assignments || []).map(assignment => {
+    const items = assignment.assignment_items as { id: string; question_id: string; question?: { id: string; topics?: { name: string } | null } }[] || []
+    const questionIds = assignmentQuestionMap.get(assignment.id) || []
+    
+    // Extract unique topic names from questions
+    const topicNames = new Set<string>()
+    items.forEach(item => {
+      if (item.question?.topics?.name) {
+        topicNames.add(item.question.topics.name)
+      }
     })
-  )
+    
+    // Get attempts for this assignment from our pre-fetched data
+    const attemptedQuestions = attemptsByAssignment.get(assignment.id) || []
+    
+    // Track most recent attempt per question (first one we see since ordered desc)
+    const latestAttemptByQuestion = new Map<string, boolean>()
+    attemptedQuestions.forEach(a => {
+      // Only keep the first (most recent) attempt for each question that's in this assignment
+      if (questionIds.includes(a.question_id) && !latestAttemptByQuestion.has(a.question_id)) {
+        latestAttemptByQuestion.set(a.question_id, a.is_correct || false)
+      }
+    })
+    
+    const uniqueAttempted = latestAttemptByQuestion.size
+    const correctCount = Array.from(latestAttemptByQuestion.values()).filter(v => v).length
+    
+    return {
+      ...assignment,
+      totalQuestions: items.length,
+      completedQuestions: Math.min(uniqueAttempted, items.length),
+      correctQuestions: correctCount,
+      topics: Array.from(topicNames),
+      children: [] as AssignmentWithProgress[],
+      mostRecentScore: uniqueAttempted > 0 ? Math.round((correctCount / uniqueAttempted) * 100) : undefined,
+    } as AssignmentWithProgress
+  })
   
   // Auto-complete assignments where all questions have been answered
   // This runs server-side to ensure status is always up-to-date

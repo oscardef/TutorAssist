@@ -14,8 +14,57 @@ export default async function TutorDashboard() {
   const context = await requireTutor()
   const supabase = await createServerClient()
 
-  // Get user metadata for name - check multiple common metadata fields
-  const { data: { user: authUser } } = await supabase.auth.getUser()
+  // Performance: Fetch all independent data in parallel
+  const twoWeeksAgo = new Date()
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+
+  const [
+    authResult,
+    sessionsResult,
+    studentsResult,
+    flagCountResult,
+    assignmentsResult,
+    attemptStatsResult,
+  ] = await Promise.all([
+    // Get user metadata for name
+    supabase.auth.getUser(),
+    // Get upcoming sessions (today and tomorrow only)
+    supabase
+      .from('sessions')
+      .select('*, student_profiles(name)')
+      .eq('workspace_id', context.workspaceId)
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at')
+      .limit(5),
+    // Get student profiles with their stats
+    supabase
+      .from('student_profiles')
+      .select('*')
+      .eq('workspace_id', context.workspaceId)
+      .order('name'),
+    // Get pending flags count  
+    supabase
+      .from('question_flags')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', context.workspaceId)
+      .eq('status', 'pending'),
+    // Get assignments that are due soon or overdue
+    supabase
+      .from('assignments')
+      .select('*, student_profiles(name)')
+      .eq('workspace_id', context.workspaceId)
+      .eq('status', 'active')
+      .order('due_at'),
+    // Get student attempt stats for "needs attention" calculation
+    supabase
+      .from('attempts')
+      .select('student_user_id, is_correct')
+      .eq('workspace_id', context.workspaceId)
+      .gte('created_at', twoWeeksAgo.toISOString()),
+  ])
+
+  // Extract results
+  const authUser = authResult.data?.user
   const metadata = authUser?.user_metadata || {}
   const firstName = 
     metadata.first_name ||                           // Direct first_name field
@@ -24,47 +73,12 @@ export default async function TutorDashboard() {
     metadata.given_name ||                           // OAuth common field
     authUser?.email?.split('@')[0] ||                // Fall back to email prefix
     'Tutor'
-
-  // Get upcoming sessions (today and tomorrow only)
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('*, student_profiles(name)')
-    .eq('workspace_id', context.workspaceId)
-    .gte('scheduled_at', new Date().toISOString())
-    .order('scheduled_at')
-    .limit(5)
-
-  // Get student profiles with their stats
-  const { data: students } = await supabase
-    .from('student_profiles')
-    .select('*')
-    .eq('workspace_id', context.workspaceId)
-    .order('name')
-
-  // Get pending flags count  
-  const { count: flagCount } = await supabase
-    .from('question_flags')
-    .select('*', { count: 'exact', head: true })
-    .eq('workspace_id', context.workspaceId)
-    .eq('status', 'pending')
-
-  // Get assignments that are due soon or overdue
-  const { data: assignments } = await supabase
-    .from('assignments')
-    .select('*, student_profiles(name)')
-    .eq('workspace_id', context.workspaceId)
-    .eq('status', 'active')
-    .order('due_at')
-
-  // Get student attempt stats for "needs attention" calculation
-  const twoWeeksAgo = new Date()
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
   
-  const { data: attemptStats } = await supabase
-    .from('attempts')
-    .select('student_user_id, is_correct')
-    .eq('workspace_id', context.workspaceId)
-    .gte('created_at', twoWeeksAgo.toISOString())
+  const sessions = sessionsResult.data
+  const students = studentsResult.data
+  const flagCount = flagCountResult.count
+  const assignments = assignmentsResult.data
+  const attemptStats = attemptStatsResult.data
 
   // Calculate students needing attention (accuracy < 50% in last 2 weeks with >= 5 attempts)
   const studentStats = new Map<string, { correct: number; total: number }>()
