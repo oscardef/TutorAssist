@@ -34,46 +34,46 @@ export default async function StudentAssignmentsPage() {
   const context = await getUserContext()
   const supabase = await createServerClient()
   
-  // Get all assignments for student with items and topics
-  const { data: assignments } = await supabase
-    .from('assignments')
-    .select(`
-      *,
-      assignment_items(
-        id, 
-        question_id,
-        question:questions(
-          id,
-          topic_id,
-          topics(id, name)
+  // Performance: Fetch assignments and attempts in parallel
+  const [assignmentsResult, attemptsResult] = await Promise.all([
+    // Get all assignments for student with items and topics
+    supabase
+      .from('assignments')
+      .select(`
+        *,
+        assignment_items(
+          id, 
+          question_id,
+          question:questions(
+            id,
+            topic_id,
+            topics(id, name)
+          )
         )
-      )
-    `)
-    .eq('assigned_student_user_id', user?.id)
-    .eq('workspace_id', context?.workspaceId)
-    .order('created_at', { ascending: false })
+      `)
+      .eq('assigned_student_user_id', user?.id)
+      .eq('workspace_id', context?.workspaceId)
+      .order('created_at', { ascending: false }),
+    // Get ALL attempts for this student (we'll filter client-side)
+    supabase
+      .from('attempts')
+      .select('question_id, is_correct, created_at, assignment_id')
+      .eq('student_user_id', user?.id)
+      .not('assignment_id', 'is', null)
+      .order('created_at', { ascending: false })
+  ])
+  
+  const assignments = assignmentsResult.data
+  const allAttempts = attemptsResult.data
   
   // Get ALL question IDs across all assignments in one go
-  const allQuestionIds = new Set<string>()
   const assignmentQuestionMap = new Map<string, string[]>()
   
   ;(assignments || []).forEach(assignment => {
     const items = assignment.assignment_items as { id: string; question_id: string; question?: { id: string; topics?: { name: string } | null } }[] || []
     const questionIds = items.map(item => item.question_id)
     assignmentQuestionMap.set(assignment.id, questionIds)
-    questionIds.forEach(id => allQuestionIds.add(id))
   })
-  
-  // Single query to get ALL attempts for this student in this workspace
-  // Performance: Replaces N+1 query pattern (was 1 query per assignment)
-  const { data: allAttempts } = allQuestionIds.size > 0 
-    ? await supabase
-        .from('attempts')
-        .select('question_id, is_correct, created_at, assignment_id')
-        .eq('student_user_id', user?.id)
-        .not('assignment_id', 'is', null)
-        .order('created_at', { ascending: false })
-    : { data: [] }
   
   // Group attempts by assignment_id
   const attemptsByAssignment = new Map<string, { question_id: string; is_correct: boolean; created_at: string }[]>()
@@ -129,7 +129,10 @@ export default async function StudentAssignmentsPage() {
   })
   
   // Auto-complete assignments where all questions have been answered
-  // This runs server-side to ensure status is always up-to-date
+  // Performance: Batch all updates into a single operation instead of sequential awaits
+  const assignmentsToComplete: string[] = []
+  const parentAssignmentsToComplete: string[] = []
+  
   for (const assignment of assignmentsWithProgress) {
     // Skip parent assignments - they complete based on children
     if (assignment.settings_json?.isParent) continue
@@ -137,12 +140,7 @@ export default async function StudentAssignmentsPage() {
     if (assignment.status === 'active' && 
         assignment.totalQuestions > 0 && 
         assignment.completedQuestions >= assignment.totalQuestions) {
-      // All questions answered - mark as completed
-      // For repeatable assignments, still mark as completed but they can retake
-      await supabase
-        .from('assignments')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('id', assignment.id)
+      assignmentsToComplete.push(assignment.id)
       assignment.status = 'completed'
       assignment.completed_at = new Date().toISOString()
     }
@@ -159,14 +157,24 @@ export default async function StudentAssignmentsPage() {
         childAssignments.every(c => c.status === 'completed')
       
       if (allChildrenComplete) {
-        await supabase
-          .from('assignments')
-          .update({ status: 'completed', completed_at: new Date().toISOString() })
-          .eq('id', assignment.id)
+        parentAssignmentsToComplete.push(assignment.id)
         assignment.status = 'completed'
         assignment.completed_at = new Date().toISOString()
       }
     }
+  }
+  
+  // Execute batch updates in parallel (non-blocking, fire-and-forget for UI responsiveness)
+  const allToComplete = [...assignmentsToComplete, ...parentAssignmentsToComplete]
+  if (allToComplete.length > 0) {
+    // Don't await - let it run in background to avoid blocking render
+    // Wrap in Promise.resolve() for proper error handling
+    void Promise.resolve(
+      supabase
+        .from('assignments')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .in('id', allToComplete)
+    ).catch(err => console.error('Error auto-completing assignments:', err))
   }
   
   // Group children under parents
