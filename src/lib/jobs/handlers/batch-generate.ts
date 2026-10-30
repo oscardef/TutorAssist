@@ -1,3 +1,4 @@
+import { parseFigure } from '@/lib/figures'
 import OpenAI from 'openai'
 import { openai } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -257,6 +258,7 @@ export async function checkBatchStatus(jobId: string): Promise<boolean> {
             status: 'active' as const,
             prompt_text: stripLatex(q.questionLatex),
             prompt_latex: q.questionLatex,
+        figure_json: parseFigure((q as { figure?: unknown }).figure),
             answer_type: q.answerType || 'exact',
             correct_answer_json: {
               value: q.answerValue || q.answerLatex,

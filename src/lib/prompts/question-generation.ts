@@ -1,3 +1,4 @@
+import { FIGURE_SCHEMA_FOR_PROMPT } from '@/lib/figures'
 /**
  * Centralized AI Prompts for Mathium
  * 
@@ -158,8 +159,11 @@ Return a JSON object with a "questions" array. Each question object MUST have:
       "result": "Intermediate result"
     }
   ],
-  "tags": ["algebra", "linear-equations"]
+  "tags": ["algebra", "linear-equations"],
+  "figure": { /* optional, see below */ }
 }
+
+${FIGURE_SCHEMA_FOR_PROMPT}
 
 ## Quality Guidelines
 

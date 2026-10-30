@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { FigureEditor } from '@/components/figure-editor'
+import { ImageUpload } from '@/components/image-upload'
+import type { FigureSpec } from '@/lib/figures'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -31,6 +34,8 @@ export default function NewQuestionPage() {
   const [hints, setHints] = useState<string[]>([''])
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
   const [tags, setTags] = useState('')
+  const [figure, setFigure] = useState<FigureSpec | null>(null)
+  const [imageKey, setImageKey] = useState<string | null>(null)
   
   // Create topic modal state
   const [showCreateTopic, setShowCreateTopic] = useState(false)
@@ -185,6 +190,8 @@ export default function NewQuestionPage() {
           topicId: selectedTopic,
           promptText: questionText.trim(),
           promptLatex: questionLatex.trim() || null,
+          figure,
+          imageKey,
           correctAnswerJson: correctAnswerJson,
           answerType,
           tolerance: answerType === 'numeric' && answerTolerance ? parseFloat(answerTolerance) : null,
@@ -469,6 +476,19 @@ export default function NewQuestionPage() {
           </div>
         </div>
         
+        {/* Figure and image */}
+        <div className="card p-5">
+          <div className="mb-3">
+            <span className="label">Graph or diagram</span>
+            <p className="hint">Plot functions, points and shapes; students see it under the question.</p>
+          </div>
+          <FigureEditor value={figure} onChange={setFigure} />
+          <div className="mt-5 border-t border-line pt-5">
+            <span className="label">Image</span>
+            <ImageUpload value={imageKey} onChange={setImageKey} />
+          </div>
+        </div>
+
         {/* Hints */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">

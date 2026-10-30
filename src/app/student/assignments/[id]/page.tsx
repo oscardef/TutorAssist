@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
+import { QuestionMedia } from '@/components/question-media'
 import { IconButton, DifficultyDots, ProgressTrail, ProgressBar, ChoiceList, FeedbackBanner, HintsPanel, SolutionPanel, YourAnswerCard, FlagModal, CompletionModal } from '@/components/question-player'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
@@ -13,6 +14,8 @@ import { useSounds } from '@/lib/sounds'
 import { useConfetti } from '@/lib/confetti'
 
 interface Question {
+  prompt_image_r2_key?: string | null
+  figure_json?: Record<string, unknown> | null
   id: string
   prompt_text: string
   prompt_latex?: string
@@ -459,6 +462,7 @@ export default function StudentAssignmentDetailPage() {
           <div className="mb-6 text-xl leading-relaxed text-ink">
             <LatexRenderer content={currentQuestion?.prompt_latex || currentQuestion?.prompt_text || ''} />
           </div>
+          <QuestionMedia imageKey={currentQuestion?.prompt_image_r2_key} figure={currentQuestion?.figure_json} className="mb-6" />
 
           {currentQuestion?.answer_type === 'multiple_choice' && currentQuestion.correct_answer_json.choices ? (
             <ChoiceList

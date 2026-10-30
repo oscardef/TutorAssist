@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { parseFigure } from '@/lib/figures'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -344,6 +345,8 @@ export async function POST(request: Request) {
         status: 'active',
         prompt_text: questionText,
         prompt_latex: questionLatexFinal || null,
+        figure_json: body.figure ? parseFigure(body.figure) : null,
+        prompt_image_r2_key: typeof body.imageKey === 'string' ? body.imageKey : null,
         answer_type: answerType,
         correct_answer_json: answerJson,
         tolerance: tolerance || null,
@@ -456,6 +459,8 @@ export async function PATCH(request: Request) {
       updateFields.review_notes = null
     }
     if (body.tags !== undefined) updateFields.tags_json = body.tags
+    if (body.figure !== undefined) updateFields.figure_json = body.figure ? parseFigure(body.figure) : null
+    if (body.imageKey !== undefined) updateFields.prompt_image_r2_key = body.imageKey || null
     if (body.status !== undefined) updateFields.status = body.status
     
     updateFields.updated_at = new Date().toISOString()

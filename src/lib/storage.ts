@@ -11,7 +11,7 @@ import path from 'node:path'
  *  - s3:    any S3-compatible bucket (Cloudflare R2, MinIO, AWS) via STORAGE_S3_* / R2_* vars
  */
 
-export type StorageFolder = 'materials' | 'exports' | 'avatars'
+export type StorageFolder = 'materials' | 'exports' | 'avatars' | 'questions'
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -46,7 +46,7 @@ function generateKey(workspaceId: string, folder: StorageFolder, filename: strin
 
 /** Keys are `<workspaceId>/<folder>/<uuid>.<ext>`; anything else is rejected. */
 export function isValidKey(key: string): boolean {
-  return /^[0-9a-f-]{36}\/(materials|exports|avatars)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/.test(key)
+  return /^[0-9a-f-]{36}\/(materials|exports|avatars|questions)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/.test(key)
 }
 
 export function workspaceIdFromKey(key: string): string | null {
@@ -192,6 +192,15 @@ export async function deleteFile(key: string): Promise<void> {
 
 export async function getFile(key: string): Promise<Buffer> {
   return storage().get(key)
+}
+
+/** Copy a stored file into another workspace (used when importing library questions). */
+export async function copyFile(key: string, workspaceId: string, folder: StorageFolder): Promise<string> {
+  const body = await storage().get(key)
+  const contentType = (await localContentType(key)) || 'application/octet-stream'
+  const newKey = generateKey(workspaceId, folder, key.split('/').pop() || 'file')
+  await storage().put(newKey, body, contentType, { 'workspace-id': workspaceId, 'copied-from': key })
+  return newKey
 }
 
 export { ALLOWED_MIME_TYPES, MAX_FILE_SIZE }

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { copyFile } from '@/lib/storage'
 
 /**
  * Shared question library. Every question belongs to a workspace bank; a
@@ -16,7 +17,7 @@ export function isPlatformOwnerEmail(email: string | null | undefined) {
 const COPY_FIELDS = [
   'origin', 'status', 'prompt_text', 'prompt_latex', 'prompt_image_r2_key', 'answer_type', 'correct_answer_json',
   'tolerance', 'solution_steps_json', 'hints_json', 'difficulty', 'calculator_allowed', 'estimated_minutes',
-  'tags_json', 'curriculum_json', 'quality_score', 'generation_metadata', 'primary_program_id', 'primary_grade_level_id',
+  'tags_json', 'curriculum_json', 'quality_score', 'generation_metadata', 'primary_program_id', 'primary_grade_level_id', 'figure_json',
 ] as const
 
 type QuestionRow = Record<string, unknown> & { id: string; workspace_id: string; topic_id: string | null }
@@ -42,6 +43,9 @@ export async function approveToLibrary(questionId: string, reviewerId: string, r
   const topic = await topicMeta(q.topic_id)
   const copy: Record<string, unknown> = {}
   for (const f of COPY_FIELDS) copy[f] = q[f] ?? null
+  if (typeof q.prompt_image_r2_key === 'string' && q.prompt_image_r2_key) {
+    try { copy.prompt_image_r2_key = await copyFile(q.prompt_image_r2_key, reviewerWorkspaceId, 'questions') } catch { copy.prompt_image_r2_key = null }
+  }
   Object.assign(copy, {
     workspace_id: reviewerWorkspaceId,
     topic_id: null,
@@ -101,6 +105,9 @@ export async function importFromLibrary(globalQuestionId: string, workspaceId: s
   if (already) return { id: already.id as string, duplicate: true }
   const copy: Record<string, unknown> = {}
   for (const f of COPY_FIELDS) copy[f] = q[f] ?? null
+  if (typeof q.prompt_image_r2_key === 'string' && q.prompt_image_r2_key) {
+    try { copy.prompt_image_r2_key = await copyFile(q.prompt_image_r2_key, workspaceId, 'questions') } catch { copy.prompt_image_r2_key = null }
+  }
   Object.assign(copy, {
     workspace_id: workspaceId,
     topic_id: topicId,

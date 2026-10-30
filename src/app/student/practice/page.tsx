@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
+import { QuestionMedia } from '@/components/question-media'
 import { InfoTip } from '@/components/ui/info-tip'
 import { IconButton, DifficultyDots, ProgressBar, ChoiceList, FeedbackBanner, HintsPanel, SolutionPanel, YourAnswerCard, FlagModal } from '@/components/question-player'
 import LatexRenderer from '@/components/latex-renderer'
@@ -14,6 +15,8 @@ import { useSounds } from '@/lib/sounds'
 import { useConfetti } from '@/lib/confetti'
 
 interface Question {
+  prompt_image_r2_key?: string | null
+  figure_json?: Record<string, unknown> | null
   id: string
   prompt_text: string
   prompt_latex: string | null
@@ -1116,6 +1119,7 @@ export default function PracticePage() {
           <div className="mb-6 text-xl leading-relaxed text-ink">
             <LatexRenderer content={question.prompt_latex || question.prompt_text} />
           </div>
+          <QuestionMedia imageKey={question.prompt_image_r2_key} figure={question.figure_json} className="mb-6" />
 
           {question.answer_type === 'multiple_choice' && question.correct_answer_json.choices ? (
             <ChoiceList

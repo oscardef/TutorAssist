@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect, use, useCallback } from 'react'
+import { FigureEditor } from '@/components/figure-editor'
+import { ImageUpload } from '@/components/image-upload'
+import { parseFigure, type FigureSpec } from '@/lib/figures'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -28,6 +31,8 @@ interface GradeLevel {
 }
 
 interface Question {
+  prompt_image_r2_key?: string | null
+  figure_json?: Record<string, unknown> | null
   id: string
   topic_id: string | null
   prompt_text: string
@@ -78,6 +83,8 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   const [hints, setHints] = useState<string[]>([''])
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
   const [tags, setTags] = useState('')
+  const [figure, setFigure] = useState<FigureSpec | null>(null)
+  const [imageKey, setImageKey] = useState<string | null>(null)
   const [status, setStatus] = useState('active')
   
   // Get available grade levels for the selected program
@@ -118,6 +125,8 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         ) || ['']
         setSolutionSteps(steps.length > 0 ? steps : [''])
         setTags(q.tags_json?.join(', ') || '')
+        setFigure(parseFigure(q.figure_json))
+        setImageKey(q.prompt_image_r2_key || null)
         setStatus(q.status || 'active')
         
         // Parse answer based on type
@@ -181,6 +190,8 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           topic_id: topicId || null,
           prompt_text: promptText,
           prompt_latex: promptLatex || null,
+          figure,
+          imageKey,
           answer_type: answerType,
           correct_answer_json: correctAnswerJson,
           difficulty,
@@ -565,6 +576,19 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
             </select>
           </div>
           
+          {/* Figure and image */}
+          <div className="card p-5">
+            <div className="mb-3">
+              <span className="label">Graph or diagram</span>
+              <p className="hint">Plot functions, points and shapes; students see it under the question.</p>
+            </div>
+            <FigureEditor value={figure} onChange={setFigure} />
+            <div className="mt-5 border-t border-line pt-5">
+              <span className="label">Image</span>
+              <ImageUpload value={imageKey} onChange={setImageKey} />
+            </div>
+          </div>
+
           {/* Hints */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
