@@ -117,7 +117,7 @@ Every question lives in a workspace bank. A tutor can **propose** a question for
 
 ### 3.5 Figures and images (built 2026-10-30, first slice of WS2)
 
-`questions.figure_json` holds a declarative spec (`src/lib/figures.ts`): visible x/y ranges and a list of elements (function of x, point, segment, line, circle, polygon, vector, text). It is rendered in the browser with JSXGraph, authored in the question editor with a live preview, returned optionally by the AI generator, and shown under the prompt in practice and assignments. Images use the existing storage key column through the storage adapter and `/api/files`. Still to do from WS2: multi-part questions with marks, interactive "sketch the graph" answers, server-side SVG for PDF worksheets, CAS-backed grading.
+`questions.figure_json` holds a declarative spec (`src/lib/figures.ts`): visible x/y ranges and a list of elements (function of x, point, segment, line, circle, polygon, vector, text). It is rendered in the browser with JSXGraph, authored in the question editor with a live preview, returned optionally by the AI generator, and shown under the prompt in practice and assignments. Images use the existing storage key column through the storage adapter and `/api/files`. Multi-part questions with marks shipped the same day (`questions.parts_json`, `src/lib/parts.ts`): parts (a), (b), … with their own answer types and marks, one attempt per question with marks stored as partial credit, editor and generator support. Still to do from WS2: markscheme lines (M/A/R) and command terms per part, interactive "sketch the graph" answers, server-side SVG for PDF worksheets, CAS-backed grading.
 
 ## 4. Workstreams
 
