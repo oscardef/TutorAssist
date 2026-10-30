@@ -1,6 +1,7 @@
 import { requireTutor, getUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { Icons } from '@/components/ui/icons'
 import { format, isToday, isTomorrow, isPast, differenceInDays } from 'date-fns'
 
 function getGreeting(): string {
@@ -107,255 +108,210 @@ export default async function TutorDashboard() {
   const hasStruggling = studentsNeedingAttention.length > 0
   const hasActionItems = hasFlags || hasOverdue || hasStruggling
 
+  const totalAttempts = attemptStats?.length || 0
+  const correctAttempts = attemptStats?.filter(a => a.is_correct).length || 0
+  const fortnightAccuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : null
+  const activeStudents = new Set(attemptStats?.map(a => a.student_user_id)).size
+
+  const Flag = Icons.flag
+  const Clock = Icons.clock
+  const Students = Icons.students
+  const Plus = Icons.plus
+  const Calendar = Icons.calendar
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {firstName}!</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {hasActionItems ? "Here's what needs your attention" : "Everything looks good!"}
-        </p>
-      </div>
-
-      {/* Action Items - Only show if there's something to do */}
-      {hasActionItems && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {hasFlags && (
-            <Link
-              href="/tutor/flags"
-              className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-200">
-                  <svg className="h-5 w-5 text-amber-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-amber-800">{flagCount} Flags</div>
-                  <div className="text-sm text-amber-600">Questions need review</div>
-                </div>
-              </div>
-            </Link>
-          )}
-
-          {hasOverdue && (
-            <Link
-              href="/tutor/assignments"
-              className="rounded-xl border-2 border-red-200 bg-red-50 p-4 hover:bg-red-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-200">
-                  <svg className="h-5 w-5 text-red-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-red-800">{overdueAssignments.length} Overdue</div>
-                  <div className="text-sm text-red-600">Assignments past due</div>
-                </div>
-              </div>
-            </Link>
-          )}
-
-          {hasStruggling && (
-            <Link
-              href="/tutor/students"
-              className="rounded-xl border-2 border-orange-200 bg-orange-50 p-4 hover:bg-orange-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-200">
-                  <svg className="h-5 w-5 text-orange-700" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-orange-800">{studentsNeedingAttention.length} Struggling</div>
-                  <div className="text-sm text-orange-600">Students need help</div>
-                </div>
-              </div>
-            </Link>
-          )}
+    <div className="space-y-8">
+      {/* Hero band: greeting plus the numbers that matter this fortnight */}
+      <section className="bg-graph-fade -mx-4 -mt-6 px-4 pb-6 pt-8 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-10">
+        <div className="animate-rise">
+          <h1 className="page-title">{getGreeting()}, {firstName}</h1>
+          <p className="page-subtitle">
+            {hasActionItems ? 'A few things need your attention.' : 'Nothing is waiting on you. Nice.'}
+          </p>
         </div>
+        <dl className="animate-rise-2 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="Students" value={students?.length || 0} />
+          <Stat label="Active in 14 days" value={activeStudents} />
+          <Stat label="Accuracy, 14 days" value={fortnightAccuracy === null ? '–' : `${fortnightAccuracy}%`} />
+          <Stat label="Sessions today" value={todaySessions.length} />
+        </dl>
+      </section>
+
+      {/* Attention items */}
+      {hasActionItems && (
+        <section aria-labelledby="attention" className="animate-rise-3">
+          <h2 id="attention" className="sr-only">Needs attention</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {hasFlags && (
+              <Attention href="/tutor/flags" icon={<Flag className="h-5 w-5" />} tone="spark" title={`${flagCount} flagged question${flagCount === 1 ? '' : 's'}`} body="Students reported answers to check" />
+            )}
+            {hasOverdue && (
+              <Attention href="/tutor/assignments" icon={<Clock className="h-5 w-5" />} tone="red" title={`${overdueAssignments.length} overdue`} body="Assignments past their due date" />
+            )}
+            {hasStruggling && (
+              <Attention href="/tutor/students" icon={<Students className="h-5 w-5" />} tone="red" title={`${studentsNeedingAttention.length} struggling`} body="Under 50% in the last two weeks" />
+            )}
+          </div>
+        </section>
       )}
 
-      {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Today's Schedule */}
-        <div className="rounded-xl border border-gray-200 bg-white">
-          <div className="border-b border-gray-100 px-5 py-4">
-            <h2 className="font-semibold text-gray-900">Today&apos;s Schedule</h2>
+        {/* Today's schedule */}
+        <section className="card">
+          <div className="card-header">
+            <h2 className="card-title">Today</h2>
+            <Link href="/tutor/sessions" className="btn btn-ghost btn-sm">Calendar</Link>
           </div>
-          <div className="divide-y divide-gray-50">
-            {todaySessions.length > 0 ? (
-              todaySessions.map((session) => (
-                <div key={session.id} className="flex items-center justify-between px-5 py-4">
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {session.student_profiles?.name || 'Session'}
+          {todaySessions.length > 0 ? (
+            <ul className="divide-y divide-line">
+              {todaySessions.map(session => (
+                <li key={session.id} className="flex items-center justify-between gap-4 px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+                      <Calendar className="h-5 w-5" />
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {format(new Date(session.scheduled_at), 'h:mm a')}
+                    <div>
+                      <div className="font-bold text-ink">{session.student_profiles?.name || 'Session'}</div>
+                      <div className="text-sm text-gray-500 tnum">{format(new Date(session.scheduled_at), 'HH:mm')}</div>
                     </div>
                   </div>
                   {session.meet_link && (
-                    <a
-                      href={session.meet_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
-                    >
-                      Join
-                    </a>
+                    <a href={session.meet_link} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">Join</a>
                   )}
-                </div>
-              ))
-            ) : (
-              <div className="px-5 py-8 text-center text-sm text-gray-500">
-                No sessions scheduled for today
-              </div>
-            )}
-          </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyRow>No sessions today.</EmptyRow>
+          )}
           {tomorrowSessions.length > 0 && (
             <>
-              <div className="border-t border-gray-100 bg-gray-50 px-5 py-2">
-                <span className="text-xs font-medium text-gray-500 uppercase">Tomorrow</span>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {tomorrowSessions.slice(0, 2).map((session) => (
-                  <div key={session.id} className="flex items-center justify-between px-5 py-3">
-                    <div>
-                      <div className="text-sm font-medium text-gray-700">
-                        {session.student_profiles?.name || 'Session'}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {format(new Date(session.scheduled_at), 'h:mm a')}
-                      </div>
-                    </div>
-                  </div>
+              <div className="border-t border-line bg-paper px-6 py-2 text-xs font-bold text-gray-500">Tomorrow</div>
+              <ul className="divide-y divide-line">
+                {tomorrowSessions.slice(0, 2).map(session => (
+                  <li key={session.id} className="flex items-center justify-between px-6 py-3">
+                    <span className="text-sm font-semibold text-gray-700">{session.student_profiles?.name || 'Session'}</span>
+                    <span className="text-sm text-gray-500 tnum">{format(new Date(session.scheduled_at), 'HH:mm')}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </>
           )}
-          <div className="border-t border-gray-100 px-5 py-3">
-            <Link href="/tutor/sessions" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-              View full calendar →
-            </Link>
-          </div>
-        </div>
+        </section>
 
-        {/* Assignments Due Soon */}
-        <div className="rounded-xl border border-gray-200 bg-white">
-          <div className="border-b border-gray-100 px-5 py-4">
-            <h2 className="font-semibold text-gray-900">Assignments Due Soon</h2>
+        {/* Due soon */}
+        <section className="card">
+          <div className="card-header">
+            <h2 className="card-title">Due soon</h2>
+            <Link href="/tutor/assignments" className="btn btn-ghost btn-sm">All assignments</Link>
           </div>
-          <div className="divide-y divide-gray-50">
-            {dueSoonAssignments.length > 0 ? (
-              dueSoonAssignments.slice(0, 5).map((assignment) => (
-                <Link
-                  key={assignment.id}
-                  href={`/tutor/assignments/${assignment.id}`}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-gray-50"
-                >
-                  <div>
-                    <div className="font-medium text-gray-900">{assignment.title}</div>
-                    <div className="text-sm text-gray-500">
-                      {assignment.student_profiles?.name || 'All students'}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${
-                      isToday(new Date(assignment.due_at)) ? 'text-red-600' : 
-                      isTomorrow(new Date(assignment.due_at)) ? 'text-orange-600' : 'text-gray-600'
-                    }`}>
-                      {isToday(new Date(assignment.due_at)) ? 'Today' :
-                       isTomorrow(new Date(assignment.due_at)) ? 'Tomorrow' :
-                       format(new Date(assignment.due_at), 'MMM d')}
-                    </div>
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="px-5 py-8 text-center text-sm text-gray-500">
-                No assignments due soon
-              </div>
-            )}
-          </div>
-          <div className="border-t border-gray-100 px-5 py-3">
-            <Link href="/tutor/assignments" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-              View all assignments →
-            </Link>
-          </div>
-        </div>
+          {dueSoonAssignments.length > 0 ? (
+            <ul className="divide-y divide-line">
+              {dueSoonAssignments.slice(0, 5).map(assignment => {
+                const due = new Date(assignment.due_at)
+                const label = isToday(due) ? 'Today' : isTomorrow(due) ? 'Tomorrow' : format(due, 'd MMM')
+                const tone = isToday(due) ? 'text-red-700' : isTomorrow(due) ? 'text-spark-700' : 'text-gray-600'
+                return (
+                  <li key={assignment.id}>
+                    <Link href={`/tutor/assignments/${assignment.id}`} className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-paper">
+                      <div className="min-w-0">
+                        <div className="truncate font-bold text-ink">{assignment.title}</div>
+                        <div className="text-sm text-gray-500">{assignment.student_profiles?.name || 'All students'}</div>
+                      </div>
+                      <span className={`text-sm font-bold ${tone}`}>{label}</span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <EmptyRow>Nothing due in the next three days.</EmptyRow>
+          )}
+        </section>
       </div>
 
-      {/* Students Overview */}
-      <div className="rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Students ({students?.length || 0})</h2>
-          <Link
-            href="/tutor/students/new"
-            className="text-sm font-medium text-blue-600 hover:text-blue-500"
-          >
-            + Add student
-          </Link>
+      {/* Students */}
+      <section className="card">
+        <div className="card-header">
+          <h2 className="card-title">Students <span className="ml-1 text-gray-400 tnum">{students?.length || 0}</span></h2>
+          <Link href="/tutor/students/new" className="btn btn-secondary btn-sm"><Plus className="h-4 w-4" /> Add student</Link>
         </div>
-        <div className="divide-y divide-gray-50">
-          {students && students.length > 0 ? (
-            students.slice(0, 5).map((student) => {
+        {students && students.length > 0 ? (
+          <ul className="divide-y divide-line">
+            {students.slice(0, 6).map(student => {
               const stats = student.user_id ? studentStats.get(student.user_id) : null
               const accuracy = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
-              
               return (
-                <Link
-                  key={student.id}
-                  href={`/tutor/students/${student.id}`}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
-                      {student.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{student.name}</div>
-                      <div className="text-sm text-gray-500">
-                        {student.grade_current ? `Grade ${student.grade_current}` : ''}
-                        {student.school && student.grade_current ? ' • ' : ''}
-                        {student.school || ''}
+                <li key={student.id}>
+                  <Link href={`/tutor/students/${student.id}`} className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-paper">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-spark-100 text-sm font-extrabold text-spark-700">
+                        {student.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate font-bold text-ink">{student.name}</div>
+                        <div className="truncate text-sm text-gray-500">
+                          {[student.grade_current ? `Grade ${student.grade_current}` : null, student.school].filter(Boolean).join(' · ') || 'No details yet'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {accuracy !== null && (
-                    <div className={`text-sm font-medium ${
-                      accuracy >= 70 ? 'text-green-600' : 
-                      accuracy >= 50 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
-                      {accuracy}%
-                    </div>
-                  )}
-                </Link>
+                    {accuracy !== null ? (
+                      <AccuracyPill value={accuracy} />
+                    ) : (
+                      <span className="text-sm text-gray-400">No attempts yet</span>
+                    )}
+                  </Link>
+                </li>
               )
-            })
-          ) : (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm text-gray-500 mb-3">No students yet</p>
-              <Link
-                href="/tutor/students/new"
-                className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
-              >
-                Add your first student
-              </Link>
-            </div>
-          )}
-        </div>
-        {students && students.length > 5 && (
-          <div className="border-t border-gray-100 px-5 py-3">
-            <Link href="/tutor/students" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-              View all {students.length} students →
-            </Link>
+            })}
+          </ul>
+        ) : (
+          <div className="px-6 py-12 text-center">
+            <p className="font-bold text-ink">No students yet</p>
+            <p className="mt-1 text-sm text-gray-500">Add a student and send them an invite link.</p>
+            <Link href="/tutor/students/new" className="btn btn-primary mt-5"><Plus className="h-4 w-4" /> Add your first student</Link>
           </div>
         )}
-      </div>
+        {students && students.length > 6 && (
+          <div className="border-t border-line px-6 py-3">
+            <Link href="/tutor/students" className="text-sm font-bold text-brand-700 hover:text-brand-800">See all {students.length} students</Link>
+          </div>
+        )}
+      </section>
     </div>
   )
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="card px-4 py-3">
+      <dt className="text-xs font-semibold text-gray-500">{label}</dt>
+      <dd className="mt-1 text-2xl font-extrabold text-ink tnum">{value}</dd>
+    </div>
+  )
+}
+
+function Attention({ href, icon, tone, title, body }: { href: string; icon: React.ReactNode; tone: 'spark' | 'red'; title: string; body: string }) {
+  const tones = {
+    spark: 'border-spark-200 bg-spark-50 hover:bg-spark-100 [&_.ico]:bg-spark-200 [&_.ico]:text-spark-700',
+    red: 'border-red-200 bg-red-50 hover:bg-red-100 [&_.ico]:bg-red-200 [&_.ico]:text-red-700',
+  }
+  return (
+    <Link href={href} className={`flex items-center gap-3 rounded-2xl border p-4 transition-colors ${tones[tone]}`}>
+      <div className="ico flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full">{icon}</div>
+      <div className="min-w-0">
+        <div className="font-extrabold text-ink">{title}</div>
+        <div className="text-sm text-gray-600">{body}</div>
+      </div>
+    </Link>
+  )
+}
+
+function AccuracyPill({ value }: { value: number }) {
+  const cls = value >= 70 ? 'chip-good' : value >= 50 ? 'chip-spark' : 'chip-bad'
+  return <span className={`chip ${cls} tnum`}>{value}%</span>
+}
+
+function EmptyRow({ children }: { children: React.ReactNode }) {
+  return <div className="px-6 py-10 text-center text-sm text-gray-500">{children}</div>
 }

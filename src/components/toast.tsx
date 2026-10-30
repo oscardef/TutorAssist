@@ -59,25 +59,25 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[], removeToast:
   const getToastStyles = (type: Toast['type']) => {
     switch (type) {
       case 'success':
-        return 'bg-white border-l-4 border-l-green-500 border-y border-r border-gray-200'
+        return 'bg-white border border-line'
       case 'error':
-        return 'bg-white border-l-4 border-l-red-500 border-y border-r border-gray-200'
+        return 'bg-white border border-red-200'
       case 'warning':
-        return 'bg-white border-l-4 border-l-amber-500 border-y border-r border-gray-200'
+        return 'bg-white border border-spark-200'
       case 'info':
       default:
-        return 'bg-white border-l-4 border-l-blue-500 border-y border-r border-gray-200'
+        return 'bg-white border border-line'
     }
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3">
+    <div className="fixed bottom-20 right-4 z-50 flex flex-col gap-3 md:bottom-4" aria-live="polite">
       {toasts.map(toast => (
         <div
           key={toast.id}
           className={`
-            flex items-start gap-3 px-4 py-3.5 rounded-lg min-w-[320px] max-w-md animate-slide-up
-            shadow-lg shadow-black/5 backdrop-blur-sm
+            flex items-start gap-3 px-4 py-3.5 rounded-2xl min-w-[320px] max-w-md animate-slide-up
+            shadow-lg
             ${getToastStyles(toast.type)}
           `}
           role="alert"

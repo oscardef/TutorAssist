@@ -743,7 +743,7 @@ export default function PracticePage() {
           {/* Practice by Topic */}
           <button
             onClick={() => document.getElementById('topic-section')?.scrollIntoView({ behavior: 'smooth' })}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 text-left text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative overflow-hidden rounded-2xl bg-indigo-500 p-6 text-left text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="relative z-10">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -761,7 +761,7 @@ export default function PracticePage() {
               setMode('browse')
               fetchBrowseQuestions()
             }}
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 text-left text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="group relative overflow-hidden rounded-2xl bg-emerald-500 p-6 text-left text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="relative z-10">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -779,7 +779,7 @@ export default function PracticePage() {
             disabled={totalPracticed === 0}
             className={`group relative overflow-hidden rounded-2xl p-6 text-left shadow-lg transition-all ${
               totalPracticed > 0 
-                ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
+                ? 'bg-blue-500 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
@@ -805,7 +805,7 @@ export default function PracticePage() {
             disabled={!hasSomethingToWorkOn}
             className={`group relative overflow-hidden rounded-2xl p-6 text-left shadow-lg transition-all ${
               hasSomethingToWorkOn 
-                ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
+                ? 'bg-amber-500 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' 
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
@@ -1038,7 +1038,7 @@ export default function PracticePage() {
             {selectedQuestionIds.size > 0 && (
               <button
                 onClick={startCustomPractice}
-                className="hidden sm:flex px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25 items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="hidden sm:flex px-5 py-2.5 bg-emerald-500 text-white font-medium rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25 items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
@@ -1240,7 +1240,7 @@ export default function PracticePage() {
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
             <button
               onClick={startCustomPractice}
-              className="px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-2xl shadow-xl shadow-emerald-500/30 hover:from-emerald-600 hover:to-emerald-700 flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="px-6 py-3.5 bg-emerald-500 text-white font-semibold rounded-2xl shadow-xl shadow-emerald-500/30 hover:from-emerald-600 hover:to-emerald-700 flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
@@ -1269,9 +1269,9 @@ export default function PracticePage() {
     return (
       <div className="max-w-2xl mx-auto text-center py-12 px-4">
         <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 ${
-          mode === 'review' ? 'bg-gradient-to-br from-blue-100 to-blue-200' :
-          mode === 'weak' ? 'bg-gradient-to-br from-green-100 to-green-200' :
-          'bg-gradient-to-br from-gray-100 to-gray-200'
+          mode === 'review' ? 'bg-blue-100' :
+          mode === 'weak' ? 'bg-green-100' :
+          'bg-gray-100'
         }`}>
           {mode === 'review' ? (
             <svg className="w-10 h-10 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -1356,7 +1356,7 @@ export default function PracticePage() {
         
         <button
           onClick={backToSelection}
-          className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="px-6 py-3 bg-indigo-500 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           Choose Another Practice Mode
         </button>
@@ -1403,7 +1403,7 @@ export default function PracticePage() {
       <div className="mb-6">
         <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+            className="h-full bg-indigo-500 rounded-full transition-all duration-500 ease-out"
             style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
           />
         </div>
@@ -1664,14 +1664,14 @@ export default function PracticePage() {
             <button
               onClick={handleSubmit}
               disabled={question.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim()}
-              className="px-8 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100"
+              className="px-8 py-2.5 bg-indigo-500 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100"
             >
               Check Answer
             </button>
           ) : (
             <button
               onClick={nextQuestion}
-              className="px-8 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
+              className="px-8 py-2.5 bg-indigo-500 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
             >
               {currentQuestionIndex < questions.length - 1 ? (
                 <>

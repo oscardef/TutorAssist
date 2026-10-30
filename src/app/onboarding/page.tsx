@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { AuthShell, Spinner } from '@/components/ui/auth-shell'
 
 export default function OnboardingPage() {
   const [role, setRole] = useState<'tutor' | 'student' | null>(null)
@@ -104,21 +105,21 @@ export default function OnboardingPage() {
   // Show loading while checking for existing workspace
   if (checkingWorkspace) {
     return (
-      <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking your account...</p>
+      <AuthShell>
+        <div className="flex items-center justify-center gap-3 text-gray-600">
+          <Spinner className="h-5 w-5 text-brand-600" />
+          Checking your account…
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome to Mathium</h1>
-          <p className="mt-2 text-sm text-gray-600">
+    <AuthShell>
+      <div className="w-full">
+        <div>
+          <h1 className="text-[1.75rem] font-extrabold leading-tight text-ink">Welcome to Mathium</h1>
+          <p className="mt-2 text-base text-gray-600">
             Let&apos;s get you set up. Are you a tutor or a student?
           </p>
         </div>
@@ -127,7 +128,7 @@ export default function OnboardingPage() {
           <div className="mt-8 space-y-4">
             <button
               onClick={() => setRole('tutor')}
-              className="w-full rounded-lg border-2 border-gray-200 p-6 text-left hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              className="card w-full p-5 text-left transition-colors hover:border-brand-400 hover:bg-brand-50"
             >
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
@@ -144,7 +145,7 @@ export default function OnboardingPage() {
 
             <button
               onClick={() => setRole('student')}
-              className="w-full rounded-lg border-2 border-gray-200 p-6 text-left hover:border-green-500 hover:bg-green-50 transition-colors"
+              className="card w-full p-5 text-left transition-colors hover:border-spark-400 hover:bg-spark-50"
             >
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
@@ -162,7 +163,7 @@ export default function OnboardingPage() {
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
             {error && (
-              <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+              <div className="alert-error">
                 {error}
               </div>
             )}
@@ -181,7 +182,7 @@ export default function OnboardingPage() {
                   value={workspaceName}
                   onChange={(e) => setWorkspaceName(e.target.value)}
                   required
-                  className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-2"
                   placeholder="My Tutoring Practice"
                 />
               </div>
@@ -199,7 +200,7 @@ export default function OnboardingPage() {
                   value={inviteToken}
                   onChange={(e) => setInviteToken(e.target.value)}
                   required
-                  className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-2"
                   placeholder="abc123..."
                 />
               </div>
@@ -212,7 +213,7 @@ export default function OnboardingPage() {
                   setRole(null)
                   setError(null)
                 }}
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                className="btn btn-secondary w-full"
               >
                 Back
               </button>
@@ -227,6 +228,6 @@ export default function OnboardingPage() {
           </form>
         )}
       </div>
-    </div>
+    </AuthShell>
   )
 }

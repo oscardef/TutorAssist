@@ -174,9 +174,9 @@ export default async function StudentProgressPage() {
                       <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                         <div 
                           className={`h-full rounded-full transition-all duration-500 ${
-                            accuracy >= 80 ? 'bg-gradient-to-r from-green-400 to-green-500' :
-                            accuracy >= 60 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 
-                            'bg-gradient-to-r from-red-400 to-red-500'
+                            accuracy >= 80 ? 'bg-green-400' :
+                            accuracy >= 60 ? 'bg-yellow-400' : 
+                            'bg-red-400'
                           }`}
                           style={{ width: `${accuracy}%` }}
                         />
@@ -206,19 +206,19 @@ export default async function StudentProgressPage() {
               
               const colors = {
                 easy: { 
-                  bg: 'bg-gradient-to-r from-green-400 to-green-500', 
+                  bg: 'bg-green-400', 
                   label: 'Easy', 
                   badge: 'bg-green-100 text-green-700',
                   icon: '🌱'
                 },
                 medium: { 
-                  bg: 'bg-gradient-to-r from-yellow-400 to-yellow-500', 
+                  bg: 'bg-yellow-400', 
                   label: 'Medium', 
                   badge: 'bg-yellow-100 text-yellow-700',
                   icon: '🌿'
                 },
                 hard: { 
-                  bg: 'bg-gradient-to-r from-red-400 to-red-500', 
+                  bg: 'bg-red-400', 
                   label: 'Hard', 
                   badge: 'bg-red-100 text-red-700',
                   icon: '🌳'
@@ -301,8 +301,8 @@ export default async function StudentProgressPage() {
                         stats.total === 0 
                           ? 'bg-gray-100' 
                           : accuracy >= 70 
-                          ? 'bg-gradient-to-t from-blue-400 to-blue-500' 
-                          : 'bg-gradient-to-t from-blue-300 to-blue-400'
+                          ? 'bg-blue-400' 
+                          : 'bg-blue-300'
                       }`}
                       style={{ height: `${Math.max(height, 8)}%` }}
                     />
@@ -318,7 +318,7 @@ export default async function StudentProgressPage() {
       
       {/* Empty state message */}
       {totalAttempts === 0 && (
-        <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-100 p-8 text-center">
+        <div className="mt-6 bg-blue-50 rounded-2xl border border-blue-100 p-8 text-center">
           <div className="text-5xl mb-4">🚀</div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">Ready to Start?</h3>
           <p className="text-gray-600 max-w-md mx-auto">

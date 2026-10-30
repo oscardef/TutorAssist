@@ -1,35 +1,23 @@
 import { redirect } from 'next/navigation'
 import { requireUser, getUserContext } from '@/lib/auth'
+import { createServerClient } from '@/lib/supabase/server'
 import { StudentNav } from '@/components/student-nav'
+import { ToastProvider } from '@/components/toast'
 
-export default async function StudentLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
-  
-  if (!user) {
-    redirect('/login')
-  }
-  
   const context = await getUserContext()
-  
-  if (!context) {
-    redirect('/onboarding')
-  }
-  
-  // Students only
-  if (context.role !== 'student') {
-    redirect('/tutor/dashboard')
-  }
-  
+  if (!context) redirect('/onboarding')
+  if (context.role !== 'student') redirect('/tutor/dashboard')
+
+  const supabase = await createServerClient()
+  const { data: workspace } = await supabase.from('workspaces').select('name').eq('id', context.workspaceId).maybeSingle()
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <StudentNav />
-      <main className="flex-1 overflow-y-auto p-8">
+    <ToastProvider>
+      <StudentNav userName={user.name || user.email} workspaceName={workspace?.name}>
         {children}
-      </main>
-    </div>
+      </StudentNav>
+    </ToastProvider>
   )
 }

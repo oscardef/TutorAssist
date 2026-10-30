@@ -458,7 +458,7 @@ export default function AIAssignmentPage() {
           ← Back to Assignments
         </Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-2 flex items-center gap-2">
-          <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          <span className="bg-purple-600 bg-clip-text text-transparent">
             AI Assignment Generator
           </span>
           <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
@@ -675,7 +675,7 @@ export default function AIAssignmentPage() {
               <button
                 type="submit"
                 disabled={generating || !prompt.trim()}
-                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg shadow-sm hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 bg-purple-600 text-white font-semibold rounded-lg shadow-sm hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {generating ? (
                   <>

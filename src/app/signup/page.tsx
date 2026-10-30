@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { authClient } from '@/lib/identity/client'
+import { AuthShell } from '@/components/ui/auth-shell'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -160,18 +161,13 @@ function SignupForm() {
     return (
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mx-auto w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/25 mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
-          </div>
           <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
           <p className="mt-2 text-sm text-gray-500">
             We&apos;ve sent a password reset link to your email
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+        <div className="card p-8">
           <div className="text-center space-y-4">
             <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
               <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -217,18 +213,13 @@ function SignupForm() {
     return (
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mx-auto w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/25 mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
-          </div>
           <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
           <p className="mt-2 text-sm text-gray-500">
             We&apos;ve sent a confirmation link to your email
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+        <div className="card p-8">
           <div className="text-center space-y-4">
             <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
               <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -283,13 +274,6 @@ function SignupForm() {
     <div className="w-full max-w-md">
       {/* Logo/Brand */}
       <div className="text-center mb-8">
-        <div className="mx-auto w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25 mb-4">
-          <svg className="w-8 h-8 text-white" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M24 10L36 18V30L24 38L12 30V18L24 10Z" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M24 10V38" strokeLinecap="round"/>
-            <path d="M12 18L24 26L36 18" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
         <h1 className="text-2xl font-bold text-gray-900">
           {studentName ? `Welcome, ${studentName}!` : 'Create your account'}
         </h1>
@@ -302,7 +286,7 @@ function SignupForm() {
       </div>
 
       {/* Signup Card */}
-      <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+      <div className="card p-8">
         {/* Invite info banner */}
         {expectedEmail && (
           <div className="mb-5 rounded-xl bg-blue-50 border border-blue-100 p-4">
@@ -378,7 +362,7 @@ function SignupForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+              className="input"
               placeholder="••••••••"
             />
             <p className="mt-1.5 text-xs text-gray-500">Must be at least 8 characters</p>
@@ -395,7 +379,7 @@ function SignupForm() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={8}
-              className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+              className="input"
               placeholder="••••••••"
             />
           </div>
@@ -403,7 +387,7 @@ function SignupForm() {
           <button
             type="submit"
             disabled={loading}
-            className="relative w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 hover:shadow-blue-500/30 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
+            className="btn btn-primary btn-lg w-full"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -449,7 +433,7 @@ function SignupLoading() {
         <div className="mx-auto h-7 w-48 bg-gray-200 rounded-lg skeleton"></div>
         <div className="mt-2 mx-auto h-4 w-64 bg-gray-200 rounded skeleton"></div>
       </div>
-      <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+      <div className="card p-8">
         <div className="space-y-5">
           <div className="space-y-1.5">
             <div className="h-4 w-24 bg-gray-200 rounded skeleton"></div>
@@ -473,10 +457,10 @@ function SignupLoading() {
 
 export default function SignupPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12 bg-gradient-to-b from-gray-50 to-white">
+    <AuthShell>
       <Suspense fallback={<SignupLoading />}>
         <SignupForm />
       </Suspense>
-    </div>
+    </AuthShell>
   )
 }

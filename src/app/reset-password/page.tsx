@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { authClient } from '@/lib/identity/client'
+import { AuthShell } from '@/components/ui/auth-shell'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -42,7 +43,7 @@ function ResetPasswordForm() {
         <h1 className="text-2xl font-bold text-gray-900">Choose a new password</h1>
         <p className="mt-2 text-sm text-gray-500">For your Mathium account</p>
       </div>
-      <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+      <div className="card p-8">
         {invalid ? (
           <div className="text-center space-y-4">
             <p className="text-sm text-red-700">This password reset link is invalid or has expired.</p>
@@ -58,15 +59,15 @@ function ResetPasswordForm() {
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">New password</label>
               <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
-                className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                className="input" />
             </div>
             <div>
               <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 mb-1.5">Confirm password</label>
               <input id="confirm" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={8}
-                className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all" />
+                className="input" />
             </div>
             <button type="submit" disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 disabled:opacity-50 transition-all">
+              className="btn btn-primary btn-lg w-full">
               {loading ? 'Saving…' : 'Set new password'}
             </button>
           </form>
@@ -78,10 +79,10 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12 bg-gradient-to-b from-gray-50 to-white">
+    <AuthShell>
       <Suspense fallback={null}>
         <ResetPasswordForm />
       </Suspense>
-    </div>
+    </AuthShell>
   )
 }

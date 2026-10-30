@@ -208,7 +208,7 @@ export default async function StudentDetailPage({
 
       {/* Assigned Tutor Banner */}
       {assignedTutor && (
-        <div className="rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-4">
+        <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
               {assignedTutor.name?.charAt(0).toUpperCase() || 'T'}

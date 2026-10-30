@@ -344,7 +344,7 @@ export default function TutorAssignmentDetailPage() {
           </div>
           <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full"
+              className="h-full bg-blue-500 rounded-full"
               style={{ width: `${(answeredCount / items.length) * 100}%` }}
             />
           </div>

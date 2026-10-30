@@ -457,7 +457,7 @@ export default function TopicsPage() {
       
       {/* Statistics Banner */}
       {topics.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 p-4">
+        <div className="bg-blue-50 rounded-lg border border-blue-100 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div>

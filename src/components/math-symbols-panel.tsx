@@ -266,7 +266,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
           onMouseDown={(e) => e.preventDefault()} // Prevent focus stealing
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <div className="flex items-center justify-between px-3 py-2 bg-blue-500 text-white">
             <span className="text-sm font-medium">Math Symbols</span>
             <button
               onClick={() => setIsOpen(false)}

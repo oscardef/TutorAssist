@@ -6,7 +6,7 @@ import { getSessionCookie } from 'better-auth/cookies'
  * every page and API route still verifies it (see lib/auth.ts). Onboarding
  * redirects for users without a workspace are handled by requireUserContext().
  */
-const publicPrefixes = ['/login', '/signup', '/reset-password', '/invite', '/auth', '/api', '/_next', '/favicon.ico']
+const publicPrefixes = ['/login', '/signup', '/reset-password', '/forgot-password', '/invite', '/auth', '/api', '/_next', '/favicon.ico']
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/identity/client'
+import { AuthShell } from '@/components/ui/auth-shell'
 
 interface InviteInfo {
   workspaceName: string
@@ -155,20 +156,20 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   // Loading state
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <AuthShell>
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading invite...</p>
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600">Loading invite…</p>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
   // Error state (invalid invite)
   if (error && !inviteInfo) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+      <AuthShell>
+        <div className="card w-full p-8">
           <div className="text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
               <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -185,15 +186,15 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </Link>
           </div>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
   // Expired or used invite
   if (inviteInfo?.isExpired || inviteInfo?.isUsed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+      <AuthShell>
+        <div className="card w-full p-8">
           <div className="text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
               <svg className="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -216,15 +217,15 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </Link>
           </div>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
   // Already claimed by another user
   if (inviteInfo?.isAlreadyClaimed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+      <AuthShell>
+        <div className="card w-full p-8">
           <div className="text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
               <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -243,7 +244,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </Link>
           </div>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
@@ -254,8 +255,8 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     inviteInfo.expectedEmail.toLowerCase() !== currentUserEmail.toLowerCase()
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-xl">
+    <AuthShell>
+      <div className="card w-full p-8">
         <div className="text-center">
           {/* Logo/Icon */}
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
@@ -418,6 +419,6 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           </p>
         </div>
       </div>
-    </div>
+    </AuthShell>
   )
 }
