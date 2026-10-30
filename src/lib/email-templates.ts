@@ -996,3 +996,20 @@ export function assignmentEmail(params: { name: string; title: string; descripti
   `
   return emailWrapper(content, `New assignment: ${esc(params.title)}`)
 }
+
+/** Warning before an inactive account is deleted. */
+export function inactivityEmail(params: { name: string; deleteOn: string; url: string }): string {
+  const firstName = esc(params.name?.split(' ')[0] || 'there')
+  const content = `
+    ${emailHeader('Still using Mathium?', 'Your account will be deleted soon', '👋')}
+    <div class="content" style="padding: 32px 40px;">
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+      <p style="margin: 0 0 24px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
+        You haven't signed in to Mathium for almost two years. To avoid keeping data we no longer need, we will delete your account on <strong>${esc(params.deleteOn)}</strong>. To keep it, just sign in before then.
+      </p>
+      ${emailButton('Sign in to keep my account', params.url)}
+    </div>
+    ${emailFooter()}
+  `
+  return emailWrapper(content, 'Your Mathium account will be deleted soon')
+}

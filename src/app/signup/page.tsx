@@ -403,12 +403,9 @@ function SignupForm() {
           </button>
         </form>
 
-        {/* Terms notice */}
+        {/* Privacy notice */}
         <p className="mt-5 text-center text-xs text-gray-500">
-          By creating an account, you agree to our{' '}
-          <span className="text-gray-700 hover:text-blue-600 cursor-pointer">Terms of Service</span>
-          {' '}and{' '}
-          <span className="text-gray-700 hover:text-blue-600 cursor-pointer">Privacy Policy</span>
+          Our <Link href="/privacy" className="font-semibold text-gray-700 underline underline-offset-2 hover:text-ink">privacy policy</Link> explains what we store and why.
         </p>
       </div>
 

@@ -107,7 +107,7 @@ export default async function HomePage() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-sm text-gray-500 sm:px-8">
           <span className="inline-flex items-center gap-2"><LogoMark size={22} /> Mathium</span>
-          <span>Not affiliated with or endorsed by the International Baccalaureate.</span>
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-1"><Link href="/privacy" className="hover:text-ink hover:underline">Privacy</Link><span>Not affiliated with or endorsed by the International Baccalaureate.</span></span>
         </div>
       </footer>
     </div>

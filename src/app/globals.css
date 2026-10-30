@@ -310,3 +310,12 @@ p {
     scroll-behavior: auto !important;
   }
 }
+
+/* Long-form text (privacy policy and similar pages) */
+.prose-policy p + p { margin-top: 0.75rem; }
+.prose-policy ul { list-style: disc; padding-left: 1.25rem; display: grid; gap: 0.4rem; }
+.prose-policy dl { display: grid; gap: 0.25rem 1.5rem; }
+.prose-policy dt { font-weight: 800; color: var(--color-ink); margin-top: 0.75rem; }
+.prose-policy dt:first-child { margin-top: 0; }
+.prose-policy a { color: var(--color-brand-700); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.prose-policy code { font-size: 0.9em; background: var(--color-paper); padding: 0 0.25rem; border-radius: 0.25rem; }

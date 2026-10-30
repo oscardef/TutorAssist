@@ -1,4 +1,6 @@
 import { requireUser, getUserContext } from '@/lib/auth'
+import { AccountDataCard } from '@/components/account-data-card'
+import { AiPrivacyCard } from '@/components/ai-privacy-card'
 import { createServerClient } from '@/lib/supabase/server'
 import { SettingsForms } from '@/components/settings-forms'
 
@@ -15,7 +17,7 @@ export default async function TutorSettingsPage({
   // Get workspace info
   const { data: workspace } = await supabase
     .from('workspaces')
-    .select('id, name')
+    .select('id, name, settings_json')
     .eq('id', context?.workspaceId)
     .maybeSingle()
   
@@ -79,6 +81,12 @@ export default async function TutorSettingsPage({
         }}
         role={context?.role || 'tutor'}
       />
+      <div className="mt-6">
+        <AiPrivacyCard initial={(workspace?.settings_json as { ai_student_data?: boolean } | null)?.ai_student_data !== false} />
+      </div>
+      <div className="mt-6">
+        <AccountDataCard email={user.email} isTutor />
+      </div>
     </div>
   )
 }

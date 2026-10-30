@@ -204,3 +204,11 @@ export async function copyFile(key: string, workspaceId: string, folder: Storage
 }
 
 export { ALLOWED_MIME_TYPES, MAX_FILE_SIZE }
+
+/** Remove every stored file of a deleted workspace (local disk backend). */
+export async function deleteWorkspaceFiles(workspaceId: string): Promise<void> {
+  if (!/^[0-9a-f-]{36}$/.test(workspaceId)) throw new Error('Invalid workspace id')
+  if (process.env.STORAGE_BACKEND && process.env.STORAGE_BACKEND !== 'local') return
+  const root = path.resolve(process.env.STORAGE_LOCAL_DIR || '.data/files')
+  await fs.rm(path.join(root, workspaceId), { recursive: true, force: true })
+}

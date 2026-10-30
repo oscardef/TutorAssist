@@ -1,5 +1,6 @@
 import { requireUser, getUserContext } from '@/lib/auth'
 import { CalendarFeedCard } from '@/components/calendar-feed-card'
+import { AccountDataCard } from '@/components/account-data-card'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserById } from '@/lib/users'
 import { StudentSettingsForms } from '@/components/student-settings-forms'
@@ -112,6 +113,7 @@ export default async function StudentSettingsPage({
       />
       <div className="mt-6">
         <CalendarFeedCard />
+        <div className="mt-6"><AccountDataCard email={user.email} isTutor={false} /></div>
       </div>
     </div>
   )

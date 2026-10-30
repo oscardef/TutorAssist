@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { aiAccessError } from '@/lib/ai-access'
+import { aiAccessError, sharesStudentDataWithAI } from '@/lib/ai-access'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
@@ -961,9 +961,11 @@ export async function POST(request: Request) {
       .eq('workspace_id', context.workspaceId)
 
     // Generate assignment with AI
+    // The workspace can keep student results out of AI prompts entirely
+    const shareResults = await sharesStudentDataWithAI(context.workspaceId)
     const assignment = await generateAssignmentWithAI(
       prompt,
-      studentHistory,
+      shareResults ? studentHistory : { ...studentHistory, totalAttempts: 0 },
       availableQuestions,
       topics || [],
       {

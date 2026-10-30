@@ -109,6 +109,9 @@ function LoginForm() {
           Create an account
         </Link>
       </p>
+      <p className="mt-3 text-center text-xs text-gray-500">
+        <Link href="/privacy" className="hover:text-ink hover:underline">Privacy policy</Link>
+      </p>
     </>
   )
 }

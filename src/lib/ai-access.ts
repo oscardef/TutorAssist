@@ -35,3 +35,14 @@ export async function aiAccessError(caller: Caller): Promise<NextResponse | null
   }
   return null
 }
+
+/**
+ * Whether AI features may use anonymised student results (accuracy, weaker
+ * topics; never names or emails) in this workspace. On unless the workspace
+ * turned it off in settings (settings_json.ai_student_data = false).
+ */
+export async function sharesStudentDataWithAI(workspaceId: string): Promise<boolean> {
+  const admin = await createAdminClient()
+  const { data } = await admin.from('workspaces').select('settings_json').eq('id', workspaceId).maybeSingle()
+  return (data?.settings_json as { ai_student_data?: boolean } | null)?.ai_student_data !== false
+}

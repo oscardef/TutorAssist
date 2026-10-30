@@ -8,6 +8,16 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const { name } = body
 
+    // Privacy switch: may AI features use anonymised student results?
+    if (typeof body.aiStudentData === 'boolean' && name === undefined) {
+      const admin = await createAdminClient()
+      const { data: ws } = await admin.from('workspaces').select('settings_json').eq('id', context.workspaceId).single()
+      const settings = { ...((ws?.settings_json as Record<string, unknown> | null) ?? {}), ai_student_data: body.aiStudentData }
+      const { error } = await admin.from('workspaces').update({ settings_json: settings, updated_at: new Date().toISOString() }).eq('id', context.workspaceId)
+      if (error) return NextResponse.json({ error: 'Failed to update workspace' }, { status: 500 })
+      return NextResponse.json({ ok: true, aiStudentData: body.aiStudentData })
+    }
+
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
         { error: 'Workspace name is required' },
