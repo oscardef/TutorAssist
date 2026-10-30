@@ -2,12 +2,9 @@
 # validate and reload (see deploy/README.md, "Going live").
 mathium.app {
 	encode zstd gzip
+	# Access log to Caddy's journal (journalctl -u caddy); /var/log/caddy is
+	# root-managed on m70q, so no new file there
 	log {
-		output file /var/log/caddy/mathium-access.log {
-			roll_size 10MiB
-			roll_keep 10
-			roll_keep_for 720h
-		}
 		format json
 	}
 	header {
