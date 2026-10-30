@@ -147,6 +147,8 @@ Exit criterion unchanged: Oscar tutors a real student on staging for two weeks w
 
 ### WS2: Question engine v2 (4–6 weeks)
 
+**Built 2026-10-30:** figures (JSXGraph spec) and images; multi-part questions with marks and partial credit; command terms per part (detected from the prompt) and markscheme lines shown after checking; server-side symbolic grading with the Compute Engine (equivalent forms, surds, equations, identities by sampling) with optional required form (factorised, expanded, exact); opt-in 3 s.f. rounding; author tolerance honoured. Still open below: paper styles, M/A marks awarded per line (needs working capture), interactive graph answers, server-side SVG for PDFs, difficulty_observed.
+
 The current model is "one prompt, one answer". IB-style assessment needs more.
 
 - **Multi-part questions**: `question` → `parts[]` (a, b, c…) each with its own answer type, marks and markscheme lines (M/A/R marks). Total marks per question; paper style (`paper1_no_calc`, `paper2_calc`, `paper3_hl`, `myp_criterion_a/b/c/d`).
@@ -161,6 +163,8 @@ The current model is "one prompt, one answer". IB-style assessment needs more.
 - **Generation pipeline**: syllabus node + exemplar style + constraints → draft → automatic checks (solve independently, numeric re-check, LaTeX lint, duplicate check via embeddings) → human review queue → publish. Every published question records who approved it.
 
 ### WS3: Curriculum library and content at scale (4–6 weeks, overlaps WS2)
+
+**Built 2026-10-30:** platform tables `curricula` / `curriculum_nodes` (migration 0007) with IB DP Math AA and AI (first assessment 2021) seeded from `db/curricula/` as **draft** (structure from memory, to be checked against the guides); syllabus tagging on questions and topics; generation scoped to a topic's syllabus point; library filters and a coverage view (target 30 reviewed per point). Open: verify outlines, the 2027 guides, MYP and other frameworks, importers, credit sweep, calibration.
 
 - **Credit sweep (decision 2026-10-30).** The $100 of monthly API credit expires unused, so a worker cron runs three days before the billing-cycle end: read month-to-date spend from `ai_usage_log` (the table and `lib/ai-usage.ts` exist), take `remaining = 100 − spend − 5` dollars of margin, and submit Batch API generation jobs (50 % off, results within 24 h) sized to that amount against the syllabus nodes with the fewest reviewed questions. Output lands in the review queue, never straight into the bank. Rough yield at Opus 5.5 batch prices: $0.02–0.04 per question, so $50–80 left over is 1,500–3,000 draft questions a month. Guard rails: a Console workspace spend limit at $100 so purchased credit is never touched, and a per-run cap in the job payload. Needs the billing-cycle day (unknown; Oscar).
 
@@ -188,6 +192,8 @@ The current model is "one prompt, one answer". IB-style assessment needs more.
 
 ### WS5: Live tutoring tools (3–4 weeks)
 
+**Built 2026-10-30:** `/session/<id>` with Excalidraw 0.18.1 synced live through an in-process event bus and Server-Sent Events (no extra service; one web container), live cursors, board saved per session, tutor panel to show a bank question and keep notes, start/end recorded. Open: canvas snapshot to the student timeline, follow-up assignment from a session, math-specific tools, multi-replica bus.
+
 - **Session room** at `/session/<id>`: shared canvas, a "push question to student" panel, a shared scratch MathLive line, timer, and a notes pane that saves to the session record.
 - **Canvas decision (2026-10-30):** start with **Excalidraw** (MIT) embedded via `@excalidraw/excalidraw`, restyled with its theme and `UIOptions` and a custom toolbar so it reads as this product, with collaboration through a self-hosted `excalidraw-room` (MIT). Budget: one week. If the canvas becomes the signature feature, replace it with a **custom canvas** built on `perfect-freehand` (MIT, the stroke algorithm tldraw itself uses), a thin SVG/Canvas renderer, Yjs for multiplayer and maths-specific tools (grid paper, LaTeX stickers, function plot insert, pointer/laser). That is 3–4 weeks and no licence. Nothing needs reverse-engineering: the hard parts are open source. **tldraw rejected**: no public price, the free hobby licence is non-commercial and watermarked, so it becomes a trap the day the product sells.
 - Video stays on Google Meet (link already created by the calendar integration); building WebRTC is not worth it.
@@ -195,6 +201,8 @@ The current model is "one prompt, one answer". IB-style assessment needs more.
 - Async tools: tutor comments on attempts (table exists, no UI), audio/voice-note feedback later.
 
 ### WS6: Scheduling (3–4 weeks)
+
+**Built 2026-10-30:** availability rules (weekly windows in the tutor's zone, length, breaks, notice, horizon, cancel window), Google free/busy merged in when connected, student self-booking and cancellation, Google event + Meet and emails on booking, double-booking guard, private ICS feed per user. Open: public booking page for new students, rescheduling, reminders, two-way sync, packages and payments.
 
 - Tutor availability rules (weekly windows, buffers, min notice, timezone), Google free/busy merge, public booking page per tutor, student self-booking and rescheduling within policy, reminders (email, later push).
 - Two-way Google Calendar sync (webhooks + periodic reconcile) instead of today's create-only; ICS feed per user; Outlook later.
