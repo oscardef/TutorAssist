@@ -85,7 +85,7 @@ export function StudentNav() {
         {!isCollapsed && (
           <div>
             <Link href="/student/dashboard" className="text-xl font-bold text-gray-900">
-              TutorAssist
+              Mathium
             </Link>
             <p className="text-xs text-gray-500">Student Portal</p>
           </div>

@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TutorAssist - Math Tutoring Practice & Progress",
+  title: "Mathium - Math Tutoring Practice & Progress",
   description: "A platform for math tutoring practice and progress tracking",
 };
 

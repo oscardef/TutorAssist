@@ -140,7 +140,7 @@ export function TutorNav() {
       <div className="flex h-16 items-center justify-between border-b border-gray-200 px-3">
         {!isCollapsed && (
           <Link href="/tutor/dashboard" className="text-xl font-bold text-gray-900 truncate">
-            TutorAssist
+            Mathium
           </Link>
         )}
         <button

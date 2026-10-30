@@ -319,7 +319,7 @@ function SignupForm() {
         <p className="mt-2 text-sm text-gray-500">
           {inviteToken 
             ? 'Create your account to join your tutor\'s workspace'
-            : 'Start your math tutoring journey with TutorAssist'
+            : 'Start your math tutoring journey with Mathium'
           }
         </p>
       </div>

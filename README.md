@@ -1,4 +1,4 @@
-# TutorAssist
+# Mathium (formerly TutorAssist)
 
 A modern math tutoring platform for practice and progress tracking, built with Next.js, Supabase, and AI-powered question generation.
 
@@ -350,4 +350,4 @@ MIT License
 
 ---
 
-Created by Oscar de Francesca
+Created by Oscar de Francesca. Product domain: mathium.app. Repository name unchanged for now.

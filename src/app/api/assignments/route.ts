@@ -366,7 +366,7 @@ export async function PATCH(request: Request) {
               : ''
             
             await transporter.sendMail({
-              from: `"${workspace?.name || 'TutorAssist'}" <${process.env.SMTP_EMAIL}>`,
+              from: `"${workspace?.name || 'Mathium'}" <${process.env.SMTP_EMAIL}>`,
               to: studentEmail,
               subject: `New Assignment: ${assignment.title}`,
               html: `

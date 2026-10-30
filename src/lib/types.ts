@@ -1,4 +1,4 @@
-// Database types for TutorAssist
+// Database types for Mathium
 // These types correspond to the Supabase schema
 
 export type UserRole = 'platform_owner' | 'tutor' | 'student'

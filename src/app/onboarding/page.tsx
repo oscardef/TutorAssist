@@ -117,7 +117,7 @@ export default function OnboardingPage() {
     <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome to TutorAssist</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome to Mathium</h1>
           <p className="mt-2 text-sm text-gray-600">
             Let&apos;s get you set up. Are you a tutor or a student?
           </p>

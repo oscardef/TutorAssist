@@ -57,13 +57,13 @@ export async function POST(request: Request) {
       .eq('id', context.workspaceId)
       .single()
 
-    const workspaceName = workspace?.name || 'TutorAssist'
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tutor-assist.vercel.app'
+    const workspaceName = workspace?.name || 'Mathium'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mathium.app'
     const inviteUrl = `${baseUrl}/invite/${token}`
 
     // Send the email using Nodemailer
     await transporter.sendMail({
-      from: `"TutorAssist" <${process.env.SMTP_EMAIL}>`,
+      from: `"Mathium" <${process.env.SMTP_EMAIL}>`,
       to: email,
       subject: `${tutorName} has invited you to join ${workspaceName}`,
       html: generateInviteEmail({

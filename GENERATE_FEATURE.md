@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Generate** page is the core selling point of TutorAssist - a comprehensive AI-powered studio for creating educational content. It provides maximum flexibility and customization for tutors to generate high-quality materials.
+The **Generate** page is the core selling point of Mathium - a comprehensive AI-powered studio for creating educational content. It provides maximum flexibility and customization for tutors to generate high-quality materials.
 
 ## Key Features
 

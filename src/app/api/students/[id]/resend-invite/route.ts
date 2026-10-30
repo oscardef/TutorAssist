@@ -37,7 +37,7 @@ function generateInviteEmail(params: {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You're Invited to TutorAssist</title>
+  <title>You're Invited to Mathium</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -57,7 +57,7 @@ function generateInviteEmail(params: {
                 Hi ${studentName},
               </p>
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                <strong>${tutorName}</strong> has invited you to join their tutoring workspace on TutorAssist.
+                <strong>${tutorName}</strong> has invited you to join their tutoring workspace on Mathium.
               </p>
               <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 30px 0; background-color: #f9fafb; border-radius: 8px;">
                 <tr>
@@ -68,7 +68,7 @@ function generateInviteEmail(params: {
                 </tr>
               </table>
               <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
-                With TutorAssist, you'll be able to:
+                With Mathium, you'll be able to:
               </p>
               <ul style="margin: 0 0 30px; padding-left: 20px; color: #374151; font-size: 15px; line-height: 1.8;">
                 <li>Complete assignments tailored to your learning needs</li>
@@ -100,7 +100,7 @@ function generateInviteEmail(params: {
           <tr>
             <td style="padding: 30px 40px; text-align: center;">
               <p style="margin: 0; color: #9ca3af; font-size: 13px;">
-                © ${new Date().getFullYear()} TutorAssist. All rights reserved.
+                © ${new Date().getFullYear()} Mathium. All rights reserved.
               </p>
             </td>
           </tr>
@@ -191,13 +191,13 @@ export async function POST(
       .eq('id', context.workspaceId)
       .single()
 
-    const workspaceName = workspace?.name || 'TutorAssist'
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tutor-assist.vercel.app'
+    const workspaceName = workspace?.name || 'Mathium'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mathium.app'
     const inviteUrl = `${baseUrl}/invite/${token}`
 
     try {
       await transporter.sendMail({
-        from: `"TutorAssist" <${process.env.SMTP_EMAIL}>`,
+        from: `"Mathium" <${process.env.SMTP_EMAIL}>`,
         to: student.email,
         subject: `${tutorName} has invited you to join ${workspaceName}`,
         html: generateInviteEmail({

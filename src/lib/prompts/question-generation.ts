@@ -1,5 +1,5 @@
 /**
- * Centralized AI Prompts for TutorAssist
+ * Centralized AI Prompts for Mathium
  * 
  * This file contains all AI prompts used for question generation, assignment
  * creation, and other AI features. Centralizing prompts ensures consistent

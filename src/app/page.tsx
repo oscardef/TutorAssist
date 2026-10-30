@@ -24,7 +24,7 @@ export default async function HomePage() {
     <div className="flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-4">
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-          TutorAssist
+          Mathium
         </h1>
         <p className="mt-6 text-lg leading-8 text-gray-600">
           A modern platform for math tutoring practice and progress tracking. 
@@ -89,7 +89,7 @@ export default async function HomePage() {
       {/* About Section */}
       <div className="mt-20 w-full max-w-4xl">
         <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-8 md:p-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">About TutorAssist</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">About Mathium</h2>
           
           <div className="grid md:grid-cols-2 gap-8">
             <div>
@@ -100,7 +100,7 @@ export default async function HomePage() {
                 Our Mission
               </h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                TutorAssist was created to make math tutoring more effective and engaging. 
+                Mathium was created to make math tutoring more effective and engaging. 
                 We believe every student can excel at mathematics with the right practice 
                 and personalized guidance.
               </p>
@@ -144,7 +144,7 @@ export default async function HomePage() {
               </h3>
               <p className="text-gray-600 text-sm leading-relaxed">
                 Whether you&apos;re a private tutor, a tutoring center, or a parent helping 
-                your child, TutorAssist adapts to your needs with customizable workspaces.
+                your child, Mathium adapts to your needs with customizable workspaces.
               </p>
             </div>
           </div>

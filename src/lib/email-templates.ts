@@ -1,5 +1,5 @@
 /**
- * Email Templates for TutorAssist
+ * Email Templates for Mathium
  * 
  * These templates provide beautiful, consistent email designs for:
  * - Supabase auth emails (confirmation, password reset, magic link)
@@ -44,7 +44,7 @@ function emailWrapper(content: string, previewText?: string): string {
   <meta name="color-scheme" content="light">
   <meta name="supported-color-schemes" content="light">
   ${previewText ? `<!--[if !mso]><!--><meta name="x-apple-disable-message-reformatting"><!--<![endif]-->` : ''}
-  <title>TutorAssist</title>
+  <title>Mathium</title>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -162,10 +162,10 @@ function emailFooter(showUnsubscribe = false): string {
     <tr>
       <td style="padding: 32px 40px; text-align: center; border-top: 1px solid ${BRAND.gray[200]};">
         <p style="margin: 0 0 12px; color: ${BRAND.gray[400]}; font-size: 13px;">
-          This email was sent by <strong style="color: ${BRAND.gray[500]};">TutorAssist</strong>
+          This email was sent by <strong style="color: ${BRAND.gray[500]};">Mathium</strong>
         </p>
         <p style="margin: 0; color: ${BRAND.gray[400]}; font-size: 12px;">
-          © ${new Date().getFullYear()} TutorAssist. All rights reserved.
+          © ${new Date().getFullYear()} Mathium. All rights reserved.
         </p>
         ${showUnsubscribe ? `
           <p style="margin: 16px 0 0; color: ${BRAND.gray[400]}; font-size: 12px;">
@@ -228,7 +228,7 @@ export const SUPABASE_CONFIRMATION_EMAIL = `
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Confirm your TutorAssist account</title>
+  <title>Confirm your Mathium account</title>
   <style>
     body { margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     @media only screen and (max-width: 600px) {
@@ -241,7 +241,7 @@ export const SUPABASE_CONFIRMATION_EMAIL = `
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   <!-- Preview text -->
-  <div style="display: none; max-height: 0; overflow: hidden;">Welcome to TutorAssist! Please confirm your email to get started.</div>
+  <div style="display: none; max-height: 0; overflow: hidden;">Welcome to Mathium! Please confirm your email to get started.</div>
   
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
     <tr>
@@ -262,7 +262,7 @@ export const SUPABASE_CONFIRMATION_EMAIL = `
                 </table>
               </div>
               <h1 style="margin: 0 0 8px; color: #ffffff; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
-                Welcome to TutorAssist!
+                Welcome to Mathium!
               </h1>
               <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 15px;">
                 Let's get your account set up
@@ -275,7 +275,7 @@ export const SUPABASE_CONFIRMATION_EMAIL = `
             <td class="content" style="background-color: #ffffff; padding: 36px 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 20px rgba(0, 0, 0, 0.03);">
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                Thanks for signing up! To complete your registration and start using TutorAssist, please confirm your email address by clicking the button below.
+                Thanks for signing up! To complete your registration and start using Mathium, please confirm your email address by clicking the button below.
               </p>
               
               <!-- CTA Button -->
@@ -300,7 +300,7 @@ export const SUPABASE_CONFIRMATION_EMAIL = `
                         </td>
                         <td style="color: #6b7280; font-size: 13px; line-height: 1.5;">
                           <strong style="color: #374151;">Didn't request this?</strong><br>
-                          If you didn't create a TutorAssist account, you can safely ignore this email.
+                          If you didn't create a Mathium account, you can safely ignore this email.
                         </td>
                       </tr>
                     </table>
@@ -321,10 +321,10 @@ export const SUPABASE_CONFIRMATION_EMAIL = `
           <tr>
             <td style="padding: 24px 40px; text-align: center;">
               <p style="margin: 0 0 8px; color: #9ca3af; font-size: 13px;">
-                <strong style="color: #6b7280;">TutorAssist</strong> — Math Tutoring Made Easy
+                <strong style="color: #6b7280;">Mathium</strong> — Math Tutoring Made Easy
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                © 2024 TutorAssist. All rights reserved.
+                © 2024 Mathium. All rights reserved.
               </p>
             </td>
           </tr>
@@ -348,7 +348,7 @@ export const SUPABASE_PASSWORD_RESET_EMAIL = `
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Reset your TutorAssist password</title>
+  <title>Reset your Mathium password</title>
   <style>
     body { margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     @media only screen and (max-width: 600px) {
@@ -360,7 +360,7 @@ export const SUPABASE_PASSWORD_RESET_EMAIL = `
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <div style="display: none; max-height: 0; overflow: hidden;">Reset your TutorAssist password - link expires in 24 hours</div>
+  <div style="display: none; max-height: 0; overflow: hidden;">Reset your Mathium password - link expires in 24 hours</div>
   
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
     <tr>
@@ -393,7 +393,7 @@ export const SUPABASE_PASSWORD_RESET_EMAIL = `
             <td class="content" style="background-color: #ffffff; padding: 36px 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 20px rgba(0, 0, 0, 0.03);">
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                Someone requested a password reset for your TutorAssist account. Click the button below to choose a new password.
+                Someone requested a password reset for your Mathium account. Click the button below to choose a new password.
               </p>
               
               <!-- Expiry notice -->
@@ -449,10 +449,10 @@ export const SUPABASE_PASSWORD_RESET_EMAIL = `
           <tr>
             <td style="padding: 24px 40px; text-align: center;">
               <p style="margin: 0 0 8px; color: #9ca3af; font-size: 13px;">
-                <strong style="color: #6b7280;">TutorAssist</strong> — Math Tutoring Made Easy
+                <strong style="color: #6b7280;">Mathium</strong> — Math Tutoring Made Easy
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                © 2024 TutorAssist. All rights reserved.
+                © 2024 Mathium. All rights reserved.
               </p>
             </td>
           </tr>
@@ -476,7 +476,7 @@ export const SUPABASE_MAGIC_LINK_EMAIL = `
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Your TutorAssist login link</title>
+  <title>Your Mathium login link</title>
   <style>
     body { margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     @media only screen and (max-width: 600px) {
@@ -488,7 +488,7 @@ export const SUPABASE_MAGIC_LINK_EMAIL = `
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <div style="display: none; max-height: 0; overflow: hidden;">Your secure login link for TutorAssist - expires in 1 hour</div>
+  <div style="display: none; max-height: 0; overflow: hidden;">Your secure login link for Mathium - expires in 1 hour</div>
   
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
     <tr>
@@ -511,7 +511,7 @@ export const SUPABASE_MAGIC_LINK_EMAIL = `
                 Your Login Link
               </h1>
               <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 15px;">
-                One-click secure access to TutorAssist
+                One-click secure access to Mathium
               </p>
             </td>
           </tr>
@@ -521,7 +521,7 @@ export const SUPABASE_MAGIC_LINK_EMAIL = `
             <td class="content" style="background-color: #ffffff; padding: 36px 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 20px rgba(0, 0, 0, 0.03);">
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                Click the button below to securely log in to your TutorAssist account. No password needed!
+                Click the button below to securely log in to your Mathium account. No password needed!
               </p>
               
               <!-- Expiry notice -->
@@ -540,7 +540,7 @@ export const SUPABASE_MAGIC_LINK_EMAIL = `
                 <tr>
                   <td align="center" style="padding: 20px 0 24px;">
                     <a href="{{ .ConfirmationURL }}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
-                      Log In to TutorAssist
+                      Log In to Mathium
                     </a>
                   </td>
                 </tr>
@@ -577,10 +577,10 @@ export const SUPABASE_MAGIC_LINK_EMAIL = `
           <tr>
             <td style="padding: 24px 40px; text-align: center;">
               <p style="margin: 0 0 8px; color: #9ca3af; font-size: 13px;">
-                <strong style="color: #6b7280;">TutorAssist</strong> — Math Tutoring Made Easy
+                <strong style="color: #6b7280;">Mathium</strong> — Math Tutoring Made Easy
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                © 2024 TutorAssist. All rights reserved.
+                © 2024 Mathium. All rights reserved.
               </p>
             </td>
           </tr>
@@ -616,7 +616,7 @@ export const SUPABASE_EMAIL_CHANGE_EMAIL = `
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <div style="display: none; max-height: 0; overflow: hidden;">Confirm your new email address for TutorAssist</div>
+  <div style="display: none; max-height: 0; overflow: hidden;">Confirm your new email address for Mathium</div>
   
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
     <tr>
@@ -649,7 +649,7 @@ export const SUPABASE_EMAIL_CHANGE_EMAIL = `
             <td class="content" style="background-color: #ffffff; padding: 36px 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 20px rgba(0, 0, 0, 0.03);">
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                You've requested to change your email address for your TutorAssist account. Please confirm this change by clicking the button below.
+                You've requested to change your email address for your Mathium account. Please confirm this change by clicking the button below.
               </p>
               
               <!-- CTA Button -->
@@ -694,10 +694,10 @@ export const SUPABASE_EMAIL_CHANGE_EMAIL = `
           <tr>
             <td style="padding: 24px 40px; text-align: center;">
               <p style="margin: 0 0 8px; color: #9ca3af; font-size: 13px;">
-                <strong style="color: #6b7280;">TutorAssist</strong> — Math Tutoring Made Easy
+                <strong style="color: #6b7280;">Mathium</strong> — Math Tutoring Made Easy
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                © 2024 TutorAssist. All rights reserved.
+                © 2024 Mathium. All rights reserved.
               </p>
             </td>
           </tr>
@@ -732,7 +732,7 @@ export function generateInviteEmail(params: InviteEmailParams): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>You're Invited to TutorAssist</title>
+  <title>You're Invited to Mathium</title>
   <style>
     body { margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     .button:hover { background-color: #1d4ed8 !important; }
@@ -745,7 +745,7 @@ export function generateInviteEmail(params: InviteEmailParams): string {
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <div style="display: none; max-height: 0; overflow: hidden;">${tutorName} has invited you to join ${workspaceName} on TutorAssist!</div>
+  <div style="display: none; max-height: 0; overflow: hidden;">${tutorName} has invited you to join ${workspaceName} on Mathium!</div>
   
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6;">
     <tr>
@@ -768,7 +768,7 @@ export function generateInviteEmail(params: InviteEmailParams): string {
                 You're Invited! 🎉
               </h1>
               <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 15px;">
-                Join ${workspaceName} on TutorAssist
+                Join ${workspaceName} on Mathium
               </p>
             </td>
           </tr>
@@ -782,7 +782,7 @@ export function generateInviteEmail(params: InviteEmailParams): string {
               </p>
               
               <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
-                <strong>${tutorName}</strong> has invited you to join their tutoring workspace on TutorAssist!
+                <strong>${tutorName}</strong> has invited you to join their tutoring workspace on Mathium!
               </p>
               
               <!-- Workspace Info Box -->
@@ -796,7 +796,7 @@ export function generateInviteEmail(params: InviteEmailParams): string {
               </table>
               
               <p style="margin: 0 0 16px; color: #374151; font-size: 15px; font-weight: 600;">
-                With TutorAssist, you'll be able to:
+                With Mathium, you'll be able to:
               </p>
               
               <!-- Features List -->
@@ -882,10 +882,10 @@ export function generateInviteEmail(params: InviteEmailParams): string {
           <tr>
             <td style="padding: 24px 40px; text-align: center;">
               <p style="margin: 0 0 8px; color: #9ca3af; font-size: 13px;">
-                <strong style="color: #6b7280;">TutorAssist</strong> — Math Tutoring Made Easy
+                <strong style="color: #6b7280;">Mathium</strong> — Math Tutoring Made Easy
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                © 2024 TutorAssist. All rights reserved.
+                © 2024 Mathium. All rights reserved.
               </p>
             </td>
           </tr>
