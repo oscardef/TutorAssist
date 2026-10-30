@@ -166,6 +166,15 @@ p {
 /* ---------------------------------------------------------------------------
    Component classes shared across pages
 --------------------------------------------------------------------------- */
+/* Tailwind 4 draws a bare `border` in currentColor (ink). Pages written for
+   Tailwind 3 expect a light grey, so give every border the line colour by
+   default; explicit border-* colours still win. */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--color-line, currentColor);
+  }
+}
+
 @layer components {
   .card {
     background-color: #ffffff;

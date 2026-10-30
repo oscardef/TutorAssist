@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 /** Inline two-step cancel for an upcoming session (no browser dialog). */
-export function CancelSessionButton({ sessionId }: { sessionId: string }) {
+export function CancelSessionButton({ sessionId, onDone }: { sessionId: string; onDone?: () => void }) {
   const router = useRouter()
   const [step, setStep] = useState<'idle' | 'confirm' | 'busy'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +13,7 @@ export function CancelSessionButton({ sessionId }: { sessionId: string }) {
     const res = await fetch('/api/booking/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }) })
     const d = await res.json().catch(() => ({}))
     if (!res.ok) { setError(d.error || 'Could not cancel'); setStep('idle'); return }
-    router.refresh()
+    if (onDone) { setStep('idle'); onDone() } else router.refresh()
   }
   if (error) return <p className="mt-2 text-xs text-[#9b2c2c]" role="alert">{error}</p>
   if (step === 'idle') return <button type="button" onClick={() => setStep('confirm')} className="btn btn-ghost btn-sm">Cancel</button>

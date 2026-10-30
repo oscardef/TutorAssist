@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { CancelSessionButton } from '@/components/cancel-session-button'
 import { Icons } from '@/components/ui/icons'
 import Link from 'next/link'
 
@@ -284,75 +285,44 @@ export default function SessionsPage() {
       
       {/* Sessions List */}
       {sessions.length > 0 ? (
-        <div className="space-y-4">
-          {sessions.map((session) => {
+        <ul className="space-y-3">
+          {[...sessions].sort((a, b) => Number(a.status === 'cancelled') - Number(b.status === 'cancelled') || new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()).map((session) => {
             const date = new Date(session.scheduled_at)
             const endTime = new Date(date.getTime() + session.duration_minutes * 60 * 1000)
-            
+            const cancelled = session.status === 'cancelled'
+            const fromCalendar = session.source === 'calendar'
+            const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+
             return (
-              <div
-                key={session.id}
-                className={`bg-white rounded-lg shadow-sm border p-6 ${
-                  session.source === 'calendar' ? 'border-l-4 border-l-purple-500' : ''
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">
-                        {session.student?.name || 'Unknown Student'}
-                      </h3>
-                      {session.source === 'calendar' && !session.student && (
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">
-                          Unmatched
-                        </span>
-                      )}
-                      {session.source === 'calendar' && (
-                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                          From Calendar
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {date.toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {date.toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
-                      {' - '}
-                      {endTime.toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
-                      {' '}
-                      ({session.duration_minutes} min)
-                    </div>
-                    {session.attendees && session.attendees.length > 0 && !session.student && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        Attendees: {session.attendees.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                  
+              <li key={session.id} className={`card flex flex-wrap items-center gap-4 p-4 sm:p-5 ${cancelled ? 'opacity-60' : ''}`}>
+                <div className={`flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-2xl ${cancelled ? 'bg-paper text-gray-500' : 'bg-brand-50 text-brand-700'}`} aria-hidden>
+                  <span className="text-[11px] font-bold uppercase">{date.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                  <span className="text-xl font-extrabold leading-none tnum">{date.getDate()}</span>
+                </div>
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    {session.source !== 'calendar' && session.status !== 'cancelled' && (
+                    <h3 className="truncate font-extrabold text-ink">{session.student?.name || 'Unknown student'}</h3>
+                    {cancelled && <span className="chip !py-0">Cancelled</span>}
+                    {session.status === 'completed' && <span className="chip chip-good !py-0">Done</span>}
+                    {fromCalendar && <span className="chip chip-spark !py-0" title="From your Google calendar">{session.student ? 'Calendar' : 'Calendar · not linked'}</span>}
+                  </div>
+                  <p className={`text-sm text-gray-500 tnum ${cancelled ? 'line-through' : ''}`}>
+                    {date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })} · {time(date)} – {time(endTime)}
+                  </p>
+                  {session.attendees && session.attendees.length > 0 && !session.student && (
+                    <p className="mt-0.5 truncate text-xs text-gray-400">{session.attendees.join(', ')}</p>
+                  )}
+                  {session.notes && <p className="mt-1 line-clamp-2 text-sm text-gray-600">{session.notes}</p>}
+                </div>
+                {!cancelled && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!fromCalendar && (
                       <Link href={`/session/${session.id}`} className="btn btn-primary btn-sm" title="Shared whiteboard for this session">
                         <Icons.board className="h-4 w-4" /> Open room
                       </Link>
                     )}
                     {session.meet_link && (
-                      <a
-                        href={session.meet_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-secondary btn-sm"
-                      >
+                      <a href={session.meet_link} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
                         <Icons.video className="h-4 w-4" /> Video call
                       </a>
                     )}
@@ -363,7 +333,7 @@ export default function SessionsPage() {
                             syncCalendarEvent(session.google_event_id, e.target.value)
                           }
                         }}
-                        className="text-sm border rounded px-2 py-1"
+                        className="input !min-h-9 !py-1 w-auto text-sm"
                         disabled={syncingCalendar}
                       >
                         <option value="">Link to student...</option>
@@ -372,45 +342,22 @@ export default function SessionsPage() {
                         ))}
                       </select>
                     )}
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      session.status === 'scheduled'
-                        ? 'bg-blue-100 text-blue-700'
-                        : session.status === 'completed'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {session.status}
-                    </span>
+                    {!fromCalendar && session.status !== 'completed' && <CancelSessionButton sessionId={session.id} onDone={fetchData} />}
                   </div>
-                </div>
-                
-                {session.notes && (
-                  <p className="text-sm text-gray-600 mt-3 pt-3 border-t">
-                    {session.notes}
-                  </p>
                 )}
-                
-                {session.location && (
-                  <p className="text-xs text-gray-500 mt-2">
-                     {session.location}
-                  </p>
-                )}
-              </div>
+              </li>
             )
           })}
-        </div>
+        </ul>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Sessions</h3>
-          <p className="text-gray-600 mb-4">
-            Schedule your first tutoring session.
-          </p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn btn-primary btn-sm"
-          >
-            Schedule Session
-          </button>
+        <div className="card px-6 py-14 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700"><Icons.calendar className="h-6 w-6" /></div>
+          <p className="mt-4 font-bold text-ink">No upcoming sessions</p>
+          <p className="mt-1 text-sm text-gray-500">Schedule one, or open your availability so students can book.</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <button onClick={() => setShowModal(true)} className="btn btn-primary btn-sm"><Icons.plus className="h-4 w-4" /> Schedule session</button>
+            <Link href="/tutor/sessions/availability" className="btn btn-secondary btn-sm"><Icons.clock className="h-4 w-4" /> Availability</Link>
+          </div>
         </div>
       )}
       
