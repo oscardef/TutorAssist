@@ -42,3 +42,7 @@ next-env.d.ts
 
 # admin documentation (contains sensitive setup info)
 ADMIN_README.md
+
+# Local file storage and dev data
+.data/
+AGENTS.md

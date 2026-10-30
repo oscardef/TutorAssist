@@ -3,6 +3,9 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
   moduleNameMapper: {
+    // Modules that pull in the ESM-only postgres driver are replaced in unit tests
+    '^@/lib/users$': '<rootDir>/src/__mocks__/lib-users.ts',
+    '^@/lib/db$': '<rootDir>/src/__mocks__/lib-users.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {

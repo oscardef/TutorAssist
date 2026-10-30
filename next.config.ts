@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Next 16 writes an AGENTS.md on dev start; we keep our own docs.
+  agentRules: false,
+
+  // Self-hosted: run with `next start` inside the container (see Dockerfile)
+  output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
+
   // Performance: Optimize package imports to reduce bundle size
   experimental: {
     optimizePackageImports: [

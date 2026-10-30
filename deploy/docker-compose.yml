@@ -1,0 +1,83 @@
+# Mathium stack for m70q. Copy to /opt/stacks/mathium/ with a .env (mode 0600).
+# Services bind to the tailnet address only; Caddy fronts the web container
+# once the site is approved to go public.
+name: mathium
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mathium
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - /srv/appdata/mathium/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mathium"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    security_opt: ["no-new-privileges:true"]
+
+  postgrest:
+    image: postgrest/postgrest:v16.5
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgresql://authenticator:${AUTHENTICATOR_PASSWORD:?set in .env}@db:5432/mathium
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:?set in .env}
+      PGRST_OPENAPI_MODE: disabled
+      PGRST_DB_POOL: "10"
+      PGRST_SERVER_HOST: "0.0.0.0"
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+
+  web:
+    image: mathium:${MATHIUM_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+    env_file: .env
+    environment:
+      POSTGREST_URL: http://postgrest:3000
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/mathium
+      STORAGE_BACKEND: local
+      STORAGE_LOCAL_DIR: /data/files
+    volumes:
+      - /srv/appdata/mathium/files:/data/files
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3100}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/auth/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    security_opt: ["no-new-privileges:true"]
+
+  worker:
+    image: mathium:${MATHIUM_TAG:-latest}
+    restart: unless-stopped
+    command: ["node", "node_modules/.bin/tsx", "src/worker.ts"]
+    depends_on:
+      db:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+    env_file: .env
+    environment:
+      POSTGREST_URL: http://postgrest:3000
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/mathium
+      STORAGE_BACKEND: local
+      STORAGE_LOCAL_DIR: /data/files
+    volumes:
+      - /srv/appdata/mathium/files:/data/files
+    security_opt: ["no-new-privileges:true"]
