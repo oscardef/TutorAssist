@@ -2,7 +2,8 @@ import { requireTutor, getUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
-import { format, isToday, isTomorrow, isPast, differenceInDays } from 'date-fns'
+import { isPast, differenceInDays } from 'date-fns'
+import { userTimeZone, zoned } from '@/lib/tz'
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -15,6 +16,7 @@ export default async function TutorDashboard() {
   const context = await requireTutor()
   const user = await getUser()
   const supabase = await createServerClient()
+  const { fmt, isToday, isTomorrow } = zoned(await userTimeZone())
 
   // Performance: Fetch all independent data in parallel
   const twoWeeksAgo = new Date()
@@ -172,7 +174,7 @@ export default async function TutorDashboard() {
                     </div>
                     <div>
                       <div className="font-bold text-ink">{session.student_profiles?.name || 'Session'}</div>
-                      <div className="text-sm text-gray-500 tnum">{format(new Date(session.scheduled_at), 'HH:mm')}</div>
+                      <div className="text-sm text-gray-500 tnum">{fmt(new Date(session.scheduled_at), 'HH:mm')}</div>
                     </div>
                   </div>
                   {session.meet_link && (
@@ -191,7 +193,7 @@ export default async function TutorDashboard() {
                 {tomorrowSessions.slice(0, 2).map(session => (
                   <li key={session.id} className="flex items-center justify-between px-6 py-3">
                     <span className="text-sm font-semibold text-gray-700">{session.student_profiles?.name || 'Session'}</span>
-                    <span className="text-sm text-gray-500 tnum">{format(new Date(session.scheduled_at), 'HH:mm')}</span>
+                    <span className="text-sm text-gray-500 tnum">{fmt(new Date(session.scheduled_at), 'HH:mm')}</span>
                   </li>
                 ))}
               </ul>
@@ -209,7 +211,7 @@ export default async function TutorDashboard() {
             <ul className="divide-y divide-line">
               {dueSoonAssignments.slice(0, 5).map(assignment => {
                 const due = new Date(assignment.due_at)
-                const label = isToday(due) ? 'Today' : isTomorrow(due) ? 'Tomorrow' : format(due, 'd MMM')
+                const label = isToday(due) ? 'Today' : isTomorrow(due) ? 'Tomorrow' : fmt(due, 'd MMM')
                 const tone = isToday(due) ? 'text-red-700' : isTomorrow(due) ? 'text-spark-700' : 'text-gray-600'
                 return (
                   <li key={assignment.id}>

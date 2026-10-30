@@ -4,6 +4,7 @@ import { assignmentEmail } from '@/lib/email-templates'
 import { getUserById } from '@/lib/users'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { formatDate } from '@/lib/dates'
 
 // Get assignments for workspace
 export async function GET(request: Request) {
@@ -361,7 +362,7 @@ export async function PATCH(request: Request) {
                 name: studentProfile.name || '',
                 title: assignment.title,
                 description: assignment.description,
-                due: assignment.due_at ? new Date(assignment.due_at).toLocaleDateString('en-GB', { timeZone: process.env.TZ || 'Europe/Zurich' }) : null,
+                due: assignment.due_at ? formatDate(assignment.due_at, { tz: process.env.TZ || 'Europe/Zurich', withYear: true }) : null,
                 from: workspace?.name || 'Your tutor',
                 url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/student/assignments/${assignment.id}`,
               }),

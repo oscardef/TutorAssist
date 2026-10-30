@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Icons } from '@/components/ui/icons'
+import { formatLongDay, formatTime, isoDate } from '@/lib/dates'
 
 interface SlotsResponse { tutors: { id: string; name: string }[]; tutorId: string | null; timezone?: string; slotMinutes?: number; cancelNoticeHours?: number; slots: string[]; error?: string }
 
@@ -27,7 +28,7 @@ export default function BookPage() {
   const days = useMemo(() => {
     const map = new Map<string, string[]>()
     for (const iso of data?.slots ?? []) {
-      const key = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+      const key = isoDate(iso)
       map.set(key, [...(map.get(key) ?? []), iso])
     }
     return [...map.entries()]
@@ -43,8 +44,8 @@ export default function BookPage() {
     setDone(picked)
   }
 
-  const fmtDay = (iso: string) => new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso))
-  const fmtTime = (iso: string) => new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+  const fmtDay = (iso: string) => formatLongDay(iso)
+  const fmtTime = (iso: string) => formatTime(iso)
   const Back = Icons.chevronLeft
   const Check = Icons.check
   const Cal = Icons.calendar

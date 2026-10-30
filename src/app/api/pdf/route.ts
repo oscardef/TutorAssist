@@ -3,6 +3,7 @@ import { requireUser, getUserContext } from '@/lib/auth'
 import { enqueueJob, getJob } from '@/lib/jobs'
 import { createServerClient } from '@/lib/supabase/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { formatDate } from '@/lib/dates'
 
 // Generate PDF
 export async function POST(request: Request) {
@@ -266,11 +267,7 @@ async function generatePdfImmediate(options: {
   yPosition -= 38
   
   // Subtitle with date and question count
-  const dateStr = new Date().toLocaleDateString('en-GB', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  })
+  const dateStr = formatDate(new Date(), { tz: process.env.TZ, withYear: true })
   const subtitleText = `${questions.length} Questions  |  ${dateStr}`
   currentPage.drawText(subtitleText, {
     x: MARGIN_LEFT,

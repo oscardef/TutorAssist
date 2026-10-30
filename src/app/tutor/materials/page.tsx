@@ -188,7 +188,7 @@ export default function MaterialsPage() {
                     </span>
                   </div>
                   <p className="mt-2 text-xs text-gray-500">
-                    Uploaded {format(new Date(material.created_at), 'MMM d, yyyy')}
+                    Uploaded {format(new Date(material.created_at), 'd MMM yyyy')}
                   </p>
                 </div>
               </div>

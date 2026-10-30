@@ -452,16 +452,8 @@ export interface UserContext {
   isPlatformOwner: boolean
 }
 
-// Date formatting utilities
-export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('en-GB') // DD/MM/YYYY
-}
-
-export function formatDateTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString('en-GB') // DD/MM/YYYY, HH:MM:SS
-}
+// Date formatting lives in lib/dates ("2 Nov 2026", 24-hour times)
+export { formatDate, formatDateTime } from '@/lib/dates'
 
 // ============================================
 // AI GENERATION METADATA TYPES

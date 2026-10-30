@@ -5,7 +5,8 @@ import { Icons } from '@/components/ui/icons'
 import { InfoTip } from '@/components/ui/info-tip'
 import { CancelSessionButton } from '@/components/cancel-session-button'
 import LatexRenderer from '@/components/latex-renderer'
-import { format, isToday, isTomorrow, isPast } from 'date-fns'
+import { isPast } from 'date-fns'
+import { userTimeZone, zoned } from '@/lib/tz'
 
 interface AssignmentWithItems {
   id: string
@@ -23,6 +24,9 @@ export default async function StudentDashboard() {
   const user = await requireUser()
   const context = await getUserContext()
   const supabase = await createServerClient()
+  // Times and day boundaries in the student's own time zone
+  const tz = await userTimeZone()
+  const { fmt, isToday, isTomorrow, hour } = zoned(tz)
   
   // Performance: Fetch all independent data in parallel (Phase 1)
   const [
@@ -219,15 +223,15 @@ export default async function StudentDashboard() {
   if (streakData && streakData.length > 0) {
     const now = new Date()
     const dates = new Set(
-      streakData.map(a => format(new Date(a.submitted_at!), 'yyyy-MM-dd'))
+      streakData.map(a => fmt(new Date(a.submitted_at!), 'yyyy-MM-dd'))
     )
-    const today = format(now, 'yyyy-MM-dd')
+    const today = fmt(now, 'yyyy-MM-dd')
     const yesterdayDate = new Date(now.getTime() - 86400000)
-    const yesterday = format(yesterdayDate, 'yyyy-MM-dd')
+    const yesterday = fmt(yesterdayDate, 'yyyy-MM-dd')
     
     if (dates.has(today) || dates.has(yesterday)) {
       let checkDate = dates.has(today) ? now : yesterdayDate
-      while (dates.has(format(checkDate, 'yyyy-MM-dd'))) {
+      while (dates.has(fmt(checkDate, 'yyyy-MM-dd'))) {
         currentStreak++
         checkDate = new Date(checkDate.getTime() - 86400000)
       }
@@ -238,16 +242,16 @@ export default async function StudentDashboard() {
     ? Math.round((correctAttempts || 0) / totalAttempts * 100)
     : 0
   
-  const greeting = getGreeting()
+  const greeting = getGreeting(hour())
 
   const DAILY_GOAL = 10
   const weekStartDate = new Date(); weekStartDate.setDate(weekStartDate.getDate() - ((weekStartDate.getDay() + 6) % 7)); weekStartDate.setHours(0, 0, 0, 0)
-  const todayKey = format(new Date(), 'yyyy-MM-dd')
-  const todayCount = (streakData || []).filter(a => a.submitted_at && format(new Date(a.submitted_at), 'yyyy-MM-dd') === todayKey).length
-  const activeDays = new Set((streakData || []).map(a => a.submitted_at ? format(new Date(a.submitted_at), 'yyyy-MM-dd') : '').filter(Boolean))
+  const todayKey = fmt(new Date(), 'yyyy-MM-dd')
+  const todayCount = (streakData || []).filter(a => a.submitted_at && fmt(new Date(a.submitted_at), 'yyyy-MM-dd') === todayKey).length
+  const activeDays = new Set((streakData || []).map(a => a.submitted_at ? fmt(new Date(a.submitted_at), 'yyyy-MM-dd') : '').filter(Boolean))
   const weekDots = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i))
-    return { label: format(d, 'EEEEE'), active: activeDays.has(format(d, 'yyyy-MM-dd')), today: i === 6 }
+    return { label: fmt(d, 'EEEEE'), active: activeDays.has(fmt(d, 'yyyy-MM-dd')), today: i === 6 }
   })
   // The next thing to do: first unfinished assignment (earliest due)
   const nextUpAssignment = displayAssignments.find(a => {
@@ -264,7 +268,7 @@ export default async function StudentDashboard() {
     href: nextUpAssignment.children && nextUpAssignment.children.length > 0
       ? `/student/assignments/${(nextUpAssignment.children.find(c => (completedByAssignment.get(c.id) || 0) < ((c.assignment_items as { count: number }[])?.[0]?.count || 0)) || nextUpAssignment.children[0]).id}`
       : `/student/assignments/${nextUpAssignment.id}`,
-    due: nextUpAssignment.due_at ? (isToday(new Date(nextUpAssignment.due_at)) ? 'today' : isTomorrow(new Date(nextUpAssignment.due_at)) ? 'tomorrow' : format(new Date(nextUpAssignment.due_at), 'd MMM')) : null,
+    due: nextUpAssignment.due_at ? (isToday(new Date(nextUpAssignment.due_at)) ? 'today' : isTomorrow(new Date(nextUpAssignment.due_at)) ? 'tomorrow' : fmt(new Date(nextUpAssignment.due_at), 'd MMM')) : null,
   } : null
   
   const Practice = Icons.practice
@@ -361,7 +365,7 @@ export default async function StudentDashboard() {
                       }, null as Date | null)
                     : assignment.due_at ? new Date(assignment.due_at) : null
                   const isOverdue = !!dueDate && isPast(dueDate) && progress < 100
-                  const dueLabel = !dueDate ? null : isOverdue ? 'Overdue' : isToday(dueDate) ? 'Due today' : isTomorrow(dueDate) ? 'Due tomorrow' : `Due ${format(dueDate, 'd MMM')}`
+                  const dueLabel = !dueDate ? null : isOverdue ? 'Overdue' : isToday(dueDate) ? 'Due today' : isTomorrow(dueDate) ? 'Due tomorrow' : `Due ${fmt(dueDate, 'd MMM')}`
                   const targetLink = hasChildren ? `/student/assignments/${assignment.children![0].id}` : `/student/assignments/${assignment.id}`
                   return (
                     <li key={assignment.id}>
@@ -411,7 +415,7 @@ export default async function StudentDashboard() {
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-bold text-ink">{question?.topics?.name || 'Practice question'}</div>
                         <div className="text-xs text-gray-500 tnum">
-                          {format(new Date(attempt.submitted_at!), 'd MMM, HH:mm')}
+                          {fmt(new Date(attempt.submitted_at!), 'd MMM, HH:mm')}
                           {attempt.time_spent_seconds ? ` · ${formatTime(attempt.time_spent_seconds)}` : ''}
                         </div>
                       </div>
@@ -454,8 +458,8 @@ export default async function StudentDashboard() {
                   const live = nowMs >= start.getTime() - 15 * 60000 && nowMs <= end.getTime()
                   return (
                     <li key={session.id} className={`px-6 py-4 ${live ? 'bg-brand-50' : ''}`}>
-                      <div className="flex items-center gap-2 font-bold text-ink">{format(start, 'EEEE d MMM')}{live && <span className="chip chip-brand !py-0">Now</span>}</div>
-                      <div className="text-sm text-gray-500 tnum">{format(start, 'HH:mm')} – {format(end, 'HH:mm')}</div>
+                      <div className="flex items-center gap-2 font-bold text-ink">{fmt(start, 'EEE d MMM')}{live && <span className="chip chip-brand !py-0">Now</span>}</div>
+                      <div className="text-sm text-gray-500 tnum">{fmt(start, 'HH:mm')} – {fmt(end, 'HH:mm')}</div>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Link href={`/session/${session.id}`} className={`btn btn-sm ${live ? 'btn-primary' : 'btn-secondary'}`}><Icons.board className="h-4 w-4" /> Join room</Link>
                         {session.meet_link && (
@@ -483,7 +487,7 @@ export default async function StudentDashboard() {
                       {q && <div className="line-clamp-2 text-xs text-gray-500"><LatexRenderer content={q.prompt_latex || q.prompt_text} /></div>}
                       {(n.error_tags as string[] | null)?.length ? <div className="mt-1.5 flex flex-wrap gap-1">{(n.error_tags as string[]).map(t => <span key={t} className="chip !py-0 text-[11px]">{t}</span>)}</div> : null}
                       {n.comment && <p className="mt-1.5 text-sm text-ink">{n.comment}</p>}
-                      <p className="mt-1 text-[11px] text-gray-400">{format(new Date(n.created_at), 'd MMM')}</p>
+                      <p className="mt-1 text-[11px] text-gray-400">{fmt(new Date(n.created_at), 'd MMM')}</p>
                     </li>
                   )
                 })}
@@ -494,7 +498,7 @@ export default async function StudentDashboard() {
           <section className="card p-6">
             <h2 className="card-title">This week</h2>
             {(recentAttempts || []).some(a => a.submitted_at && new Date(a.submitted_at) >= weekStartDate) ? (
-              <div className="mt-4"><WeeklyProgressChart attempts={recentAttempts || []} /></div>
+              <div className="mt-4"><WeeklyProgressChart attempts={recentAttempts || []} fmt={fmt} /></div>
             ) : (
               <div className="mt-4 rounded-xl bg-paper px-4 py-5 text-center">
                 <p className="text-sm font-bold text-ink">No practice yet this week</p>
@@ -568,7 +572,7 @@ function ProgressRing({ value }: { value: number }) {
   )
 }
 
-function WeeklyProgressChart({ attempts }: { attempts: { submitted_at: string | null; is_correct: boolean | null }[] }) {
+function WeeklyProgressChart({ attempts, fmt }: { attempts: { submitted_at: string | null; is_correct: boolean | null }[]; fmt: (d: Date | string | number, pattern: string) => string }) {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const today = new Date()
   const weekStart = new Date(today)
@@ -576,9 +580,9 @@ function WeeklyProgressChart({ attempts }: { attempts: { submitted_at: string | 
   const dailyCounts = days.map((_, index) => {
     const dayDate = new Date(weekStart)
     dayDate.setDate(weekStart.getDate() + index)
-    const dayStr = format(dayDate, 'yyyy-MM-dd')
-    const dayAttempts = attempts.filter(a => a.submitted_at && format(new Date(a.submitted_at), 'yyyy-MM-dd') === dayStr)
-    return { day: days[index], total: dayAttempts.length, correct: dayAttempts.filter(a => a.is_correct).length, isToday: format(today, 'yyyy-MM-dd') === dayStr }
+    const dayStr = fmt(dayDate, 'yyyy-MM-dd')
+    const dayAttempts = attempts.filter(a => a.submitted_at && fmt(new Date(a.submitted_at), 'yyyy-MM-dd') === dayStr)
+    return { day: days[index], total: dayAttempts.length, correct: dayAttempts.filter(a => a.is_correct).length, isToday: fmt(today, 'yyyy-MM-dd') === dayStr }
   })
   const maxCount = Math.max(...dailyCounts.map(d => d.total), 5)
   return (
@@ -599,8 +603,7 @@ function WeeklyProgressChart({ attempts }: { attempts: { submitted_at: string | 
   )
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours()
+function getGreeting(hour: number): string {
   if (hour < 12) return 'Good morning'
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'

@@ -11,6 +11,7 @@ import { InfoTip } from '@/components/ui/info-tip'
 import LatexRenderer from '@/components/latex-renderer'
 import { QuestionMedia } from '@/components/question-media'
 import type { FigureSpec } from '@/lib/figures'
+import { formatDate } from '@/lib/dates'
 
 const Excalidraw = dynamic(async () => (await import('@excalidraw/excalidraw')).Excalidraw, {
   ssr: false,
@@ -162,7 +163,7 @@ export default function SessionRoom(props: {
     setEnded(true)
     setEnding(false)
     if (followUp && reviewed.length > 0 && props.studentProfileId) {
-      const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(new Date())
+      const day = formatDate(new Date())
       const due = new Date(Date.now() + 7 * 86_400_000).toISOString()
       const a = await fetch('/api/assignments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `Follow-up from ${day}`, description: 'Questions from our session. Try them again on your own.', studentProfileId: props.studentProfileId, questionIds: reviewed, dueAt: due }) })
       setEndNote(a.ok ? `Follow-up with ${reviewed.length} question${reviewed.length === 1 ? '' : 's'} assigned` : 'Session ended, but the follow-up could not be assigned')

@@ -1,7 +1,7 @@
 import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { userTimeZone, zoned } from '@/lib/tz'
 
 interface Assignment {
   id: string
@@ -32,6 +32,7 @@ interface StudentGroup {
 export default async function AssignmentsPage() {
   const context = await requireTutor()
   const supabase = await createServerClient()
+  const tz = await userTimeZone()
 
   // Get assignments with student info
   const { data: assignments } = await supabase
@@ -189,9 +190,8 @@ export default async function AssignmentsPage() {
               <div className="space-y-6">
                 {activeByStudent.map((group) => (
                   <StudentAssignmentGroup 
-                    key={group.student?.id || 'unassigned'} 
-                    group={group} 
-                  />
+          key={group.student?.id || 'unassigned'} 
+          group={group} tz={tz} />
                 ))}
               </div>
             </div>
@@ -206,7 +206,7 @@ export default async function AssignmentsPage() {
               </h2>
               <div className="space-y-3">
                 {draftAssignments.map((assignment) => (
-                  <AssignmentCard key={assignment.id} assignment={assignment as Assignment} />
+                  <AssignmentCard key={assignment.id} assignment={assignment as Assignment} tz={tz} />
                 ))}
               </div>
             </div>
@@ -222,10 +222,9 @@ export default async function AssignmentsPage() {
               <div className="space-y-6">
                 {completedByStudent.map((group) => (
                   <StudentAssignmentGroup 
-                    key={group.student?.id || 'unassigned'} 
-                    group={group}
-                    collapsed 
-                  />
+          key={group.student?.id || 'unassigned'} 
+          group={group}
+          collapsed tz={tz} />
                 ))}
               </div>
             </div>
@@ -283,7 +282,7 @@ export default async function AssignmentsPage() {
   )
 }
 
-function StudentAssignmentGroup({ group, collapsed = false }: { group: StudentGroup; collapsed?: boolean }) {
+function StudentAssignmentGroup({ group, collapsed = false, tz }: { group: StudentGroup; collapsed?: boolean; tz: string }) {
   const studentName = group.student?.name || 'Unassigned'
   const initials = studentName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   
@@ -305,14 +304,15 @@ function StudentAssignmentGroup({ group, collapsed = false }: { group: StudentGr
       {/* Assignments */}
       <div className={`divide-y divide-gray-100 ${collapsed ? 'max-h-60 overflow-auto' : ''}`}>
         {group.assignments.map((assignment) => (
-          <AssignmentRow key={assignment.id} assignment={assignment} />
+          <AssignmentRow key={assignment.id} assignment={assignment} tz={tz} />
         ))}
       </div>
     </div>
   )
 }
 
-function AssignmentRow({ assignment }: { assignment: AssignmentWithChildren }) {
+function AssignmentRow({ assignment, tz }: { assignment: AssignmentWithChildren; tz: string }) {
+  const { fmt } = zoned(tz)
   const hasChildren = assignment.children && assignment.children.length > 0
   const totalQuestions = hasChildren 
     ? assignment.children.reduce((sum, c) => sum + (c.assignment_items?.length || 0), 0)
@@ -334,7 +334,7 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithChildren }) {
               {assignment.due_at && (
                 <>
                   <span>•</span>
-                  <span>Due {format(new Date(assignment.due_at), 'MMM d')}</span>
+                  <span>Due {fmt(new Date(assignment.due_at), 'd MMM')}</span>
                 </>
               )}
             </div>
@@ -384,7 +384,7 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithChildren }) {
           {assignment.due_at && (
             <>
               <span>•</span>
-              <span>Due {format(new Date(assignment.due_at), 'MMM d')}</span>
+              <span>Due {fmt(new Date(assignment.due_at), 'd MMM')}</span>
             </>
           )}
         </div>
@@ -396,7 +396,8 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithChildren }) {
   )
 }
 
-function AssignmentCard({ assignment }: { assignment: Assignment }) {
+function AssignmentCard({ assignment, tz }: { assignment: Assignment; tz: string }) {
+  const { fmt } = zoned(tz)
   const statusColors = {
     draft: 'bg-gray-100 text-gray-700',
     active: 'bg-green-100 text-green-700',
@@ -428,7 +429,7 @@ function AssignmentCard({ assignment }: { assignment: Assignment }) {
             {assignment.due_at && (
               <>
                 <span>•</span>
-                <span>Due {format(new Date(assignment.due_at), 'MMM d, yyyy')}</span>
+                <span>Due {fmt(new Date(assignment.due_at), 'd MMM yyyy')}</span>
               </>
             )}
           </div>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/identity/client'
 import { AuthShell } from '@/components/ui/auth-shell'
+import { formatDate } from '@/lib/dates'
 
 interface InviteInfo {
   workspaceName: string
@@ -415,7 +416,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           ) : null}
 
           <p className="mt-6 text-xs text-gray-400">
-            Invite expires {inviteInfo?.expiresAt ? new Date(inviteInfo.expiresAt).toLocaleDateString('en-GB') : 'soon'}
+            Invite expires {inviteInfo?.expiresAt ? formatDate(inviteInfo.expiresAt, { withYear: true }) : 'soon'}
           </p>
         </div>
       </div>

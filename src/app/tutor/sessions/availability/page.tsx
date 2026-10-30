@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Icons } from '@/components/ui/icons'
 import { InfoTip } from '@/components/ui/info-tip'
 import { CalendarFeedCard } from '@/components/calendar-feed-card'
+import { formatDay, formatTime } from '@/lib/dates'
 
 interface Window { weekday: number; startMinute: number; endMinute: number }
 interface Settings {
@@ -142,7 +143,7 @@ export default function AvailabilityPage() {
           <h2 className="card-title">What students see</h2>
           <p className="mt-1 text-sm text-gray-500">{preview.length ? `${preview.length} free times in the next ${s.max_days_ahead} days. The first few:` : 'No free times with these hours. Add hours or loosen the rules.'}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {preview.slice(0, 8).map(iso => <span key={iso} className="chip tnum">{new Intl.DateTimeFormat(undefined, { timeZone: s.timezone, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))}</span>)}
+            {preview.slice(0, 8).map(iso => <span key={iso} className="chip tnum">{`${formatDay(iso, { tz: s.timezone })}, ${formatTime(iso, { tz: s.timezone })}`}</span>)}
           </div>
         </section>
       )}

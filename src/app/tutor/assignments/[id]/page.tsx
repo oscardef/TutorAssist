@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LatexRenderer } from '@/components/latex-renderer'
+import { formatDate } from '@/lib/dates'
 
 interface Question {
   id: string
@@ -265,7 +266,7 @@ export default function TutorAssignmentDetailPage() {
               )}
               {assignment.due_at && (
                 <span className="text-sm text-gray-500">
-                  Due: {new Date(assignment.due_at).toLocaleDateString('en-GB')}
+                  Due {formatDate(assignment.due_at)}
                 </span>
               )}
             </div>

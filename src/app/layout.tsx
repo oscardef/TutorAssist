@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { headers } from "next/headers";
+import { TimezoneCookie } from "@/components/timezone-cookie";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={manrope.variable}>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased" suppressHydrationWarning>
+        <TimezoneCookie />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-lg"

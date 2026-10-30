@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { CancelSessionButton } from '@/components/cancel-session-button'
 import { Icons } from '@/components/ui/icons'
 import Link from 'next/link'
+import { formatDate, formatDay, formatTime } from '@/lib/dates'
 
 interface Student {
   id: string
@@ -291,12 +292,12 @@ export default function SessionsPage() {
             const endTime = new Date(date.getTime() + session.duration_minutes * 60 * 1000)
             const cancelled = session.status === 'cancelled'
             const fromCalendar = session.source === 'calendar'
-            const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+            const time = (d: Date) => formatTime(d)
 
             return (
               <li key={session.id} className={`card flex flex-wrap items-center gap-4 p-4 sm:p-5 ${cancelled ? 'opacity-60' : ''}`}>
                 <div className={`flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-2xl ${cancelled ? 'bg-paper text-gray-500' : 'bg-brand-50 text-brand-700'}`} aria-hidden>
-                  <span className="text-[11px] font-bold uppercase">{date.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                  <span className="text-[11px] font-bold uppercase">{formatDay(date).split(' ')[0]}</span>
                   <span className="text-xl font-extrabold leading-none tnum">{date.getDate()}</span>
                 </div>
                 <div className="min-w-0 flex-1">
@@ -307,7 +308,7 @@ export default function SessionsPage() {
                     {fromCalendar && <span className="chip chip-spark !py-0" title="From your Google calendar">{session.student ? 'Calendar' : 'Calendar · not linked'}</span>}
                   </div>
                   <p className={`text-sm text-gray-500 tnum ${cancelled ? 'line-through' : ''}`}>
-                    {date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })} · {time(date)} – {time(endTime)}
+                    {formatDate(date)} · {time(date)} – {time(endTime)}
                   </p>
                   {session.attendees && session.attendees.length > 0 && !session.student && (
                     <p className="mt-0.5 truncate text-xs text-gray-400">{session.attendees.join(', ')}</p>

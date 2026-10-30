@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
 import { ExpandableTopics } from '@/components/expandable-topics'
+import { formatDate } from '@/lib/dates'
 
 interface Assignment {
   id: string
@@ -287,7 +288,7 @@ function dueLabel(due: Date | null) {
   if (days < 0) return { text: 'Overdue', cls: 'chip-bad' }
   if (days === 0) return { text: 'Due today', cls: 'chip-spark' }
   if (days === 1) return { text: 'Due tomorrow', cls: 'chip-spark' }
-  return { text: `Due ${due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`, cls: 'chip' }
+  return { text: `Due ${formatDate(due)}`, cls: 'chip' }
 }
 
 function Ring({ value, size = 56, done }: { value: number; size?: number; done?: boolean }) {
@@ -367,7 +368,7 @@ function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithPro
   const hasChildren = assignment.children && assignment.children.length > 0
   const { totalQuestions, correctQuestions, mostRecentScore } = assignment
   const score = mostRecentScore ?? (totalQuestions > 0 ? Math.round((correctQuestions / totalQuestions) * 100) : 0)
-  const when = assignment.completed_at ? new Date(assignment.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null
+  const when = assignment.completed_at ? formatDate(assignment.completed_at) : null
   const Redo = Icons.clock
 
   return (

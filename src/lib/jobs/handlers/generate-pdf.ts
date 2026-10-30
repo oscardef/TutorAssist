@@ -2,6 +2,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Job } from '@/lib/types'
 import { completeJob, failJob } from '../queue'
+import { formatDate } from '@/lib/dates'
 
 interface GeneratePdfPayload {
   workspaceId: string
@@ -120,8 +121,8 @@ export async function handleGeneratePdf(job: Job): Promise<void> {
     })
     yPosition -= 40
     
-    // Draw date in DD/MM/YYYY format
-    const dateStr = new Date().toLocaleDateString('en-GB')
+    // Same date style as the app: "2 Nov 2026"
+    const dateStr = formatDate(new Date(), { tz: process.env.TZ, withYear: true })
     currentPage.drawText(dateStr, {
       x: MARGIN,
       y: yPosition,

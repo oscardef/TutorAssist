@@ -5,7 +5,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getUserById } from '@/lib/users'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { format, formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
+import { userTimeZone, zoned } from '@/lib/tz'
 
 export default async function StudentDetailPage({
   params,
@@ -15,6 +16,7 @@ export default async function StudentDetailPage({
   const { id } = await params
   const context = await requireTutor()
   const supabase = await createServerClient()
+  const { fmt } = zoned(await userTimeZone())
 
   // Get student profile with program and grade info
   const { data: student } = await supabase
@@ -348,7 +350,7 @@ export default async function StudentDetailPage({
                         <span>{assignment.totalQuestions} questions</span>
                         {assignment.due_at && (
                           <span className={isDue && !assignment.isComplete ? 'text-red-600 font-medium' : ''}>
-                            Due {format(new Date(assignment.due_at), 'MMM d, yyyy')}
+                            Due {fmt(new Date(assignment.due_at), 'd MMM yyyy')}
                           </span>
                         )}
                         {assignment.lastAttempt && (
@@ -500,7 +502,7 @@ export default async function StudentDetailPage({
                       {attempt.questions?.prompt_text}
                     </div>
                     <div className="mt-1 text-xs text-gray-500">
-                      {attempt.questions?.topics?.name || 'Uncategorized'} • {format(new Date(attempt.created_at), 'MMM d, h:mm a')}
+                      {attempt.questions?.topics?.name || 'Uncategorized'} • {fmt(new Date(attempt.created_at), 'd MMM, HH:mm')}
                     </div>
                     <div className="mt-2 flex items-center gap-4 text-sm">
                       <div className="flex items-center gap-1">

@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getUsersByIds } from '@/lib/users'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
+import { formatDate } from '@/lib/dates'
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString)
@@ -17,7 +18,7 @@ function formatRelativeTime(dateString: string): string {
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-  return date.toLocaleDateString()
+  return formatDate(date)
 }
 
 export default async function StudentsPage() {

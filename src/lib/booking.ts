@@ -4,6 +4,7 @@ import { getBusyIntervals, syncSessionToCalendar, deleteCalendarEvent } from '@/
 import { getUserById, getUsersByIds } from '@/lib/users'
 import { sendEmail } from '@/lib/email'
 import { sessionEmail } from '@/lib/email-templates'
+import { formatLongDay, formatTime } from '@/lib/dates'
 
 /**
  * Self-service booking on top of booking_settings (migration 0009). All
@@ -62,7 +63,7 @@ export async function freeSlots(row: BookingRow, nowMs: number): Promise<number[
 }
 
 function formatWhen(iso: string, timeZone: string) {
-  return new Intl.DateTimeFormat('en-GB', { timeZone, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }).format(new Date(iso))
+  return `${formatLongDay(iso, { tz: timeZone })} at ${formatTime(iso, { tz: timeZone })} (${timeZone.replace(/_/g, ' ')})`
 }
 
 async function notify(kind: 'booked' | 'cancelled', tutorId: string, studentId: string, iso: string, timeZone: string) {
