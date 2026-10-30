@@ -224,7 +224,7 @@ export default function NewQuestionPage() {
         <Link href="/tutor/questions" className="text-gray-600 hover:text-gray-900 text-sm">
           ← Back to Question Bank
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">Add Question</h1>
+        <h1 className="page-title mt-2">Add Question</h1>
         <p className="text-gray-600 mt-1">
           Create a new practice question manually
         </p>
@@ -238,7 +238,7 @@ export default function NewQuestionPage() {
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Topic Selection */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Topic *</h2>
             <button
@@ -279,7 +279,7 @@ export default function NewQuestionPage() {
         </div>
         
         {/* Question Content */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Question Content</h2>
           
           <div>
@@ -314,7 +314,7 @@ export default function NewQuestionPage() {
         </div>
         
         {/* Answer Configuration */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Answer</h2>
           
           <div>
@@ -406,7 +406,7 @@ export default function NewQuestionPage() {
         </div>
         
         {/* Difficulty & Grade Level */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="card p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Difficulty */}
             <div>
@@ -470,7 +470,7 @@ export default function NewQuestionPage() {
         </div>
         
         {/* Hints */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Hints (optional)</h2>
             <button
@@ -507,7 +507,7 @@ export default function NewQuestionPage() {
         </div>
         
         {/* Solution Steps */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Solution Steps (optional)</h2>
             <button
@@ -547,7 +547,7 @@ export default function NewQuestionPage() {
         </div>
         
         {/* Tags */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="card p-6">
           <h2 className="font-semibold text-gray-900 mb-2">Tags (optional)</h2>
           <input
             type="text"
@@ -562,7 +562,7 @@ export default function NewQuestionPage() {
         <div className="flex justify-end gap-3">
           <Link
             href="/tutor/questions"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="btn btn-secondary btn-sm"
           >
             Cancel
           </Link>
@@ -617,7 +617,7 @@ export default function NewQuestionPage() {
                   setNewTopicName('')
                   setNewTopicDescription('')
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="btn btn-secondary btn-sm"
               >
                 Cancel
               </button>

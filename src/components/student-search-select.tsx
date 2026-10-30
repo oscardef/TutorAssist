@@ -229,7 +229,7 @@ export function StudentSearchSelect({
       {isOpen && (
         <div
           ref={listRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-auto"
+          className="card absolute z-50 w-full mt-1 max-h-80 overflow-auto"
         >
           {/* Select all option */}
           {allowSelectAll && multiple && students.length > 0 && (

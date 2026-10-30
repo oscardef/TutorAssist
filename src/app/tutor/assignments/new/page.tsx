@@ -255,7 +255,7 @@ export default function NewAssignmentPage() {
         <Link href="/tutor/assignments" className="text-gray-600 hover:text-gray-900 text-sm">
           ← Back to Assignments
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">Create Assignment</h1>
+        <h1 className="page-title mt-2">Create Assignment</h1>
         <p className="text-gray-600 mt-1">
           Create a practice assignment for your students
         </p>
@@ -269,7 +269,7 @@ export default function NewAssignmentPage() {
       
       <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
         {/* Basic Info */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-gray-900">Assignment Details</h2>
           
           <div>
@@ -329,7 +329,7 @@ export default function NewAssignmentPage() {
         </div>
         
         {/* Question Selection */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">
               Select Questions ({selectedQuestions.length} selected)
@@ -510,7 +510,7 @@ export default function NewAssignmentPage() {
         </div>
         
         {/* Actions */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="card p-6">
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -527,7 +527,7 @@ export default function NewAssignmentPage() {
             <div className="flex gap-3">
               <Link
                 href="/tutor/assignments"
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="btn btn-secondary btn-sm"
               >
                 Cancel
               </Link>
@@ -535,7 +535,7 @@ export default function NewAssignmentPage() {
                 type="button"
                 onClick={(e) => handleSubmit(e, true)}
                 disabled={saving}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                className="btn btn-secondary btn-sm"
               >
                 Save as Draft
               </button>

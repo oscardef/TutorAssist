@@ -40,7 +40,7 @@ function ResetPasswordForm() {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Choose a new password</h1>
+        <h1 className="page-title">Choose a new password</h1>
         <p className="mt-2 text-sm text-gray-500">For your Mathium account</p>
       </div>
       <div className="card p-8">

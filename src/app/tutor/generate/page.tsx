@@ -543,7 +543,7 @@ export default function GeneratePage() {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">AI Generation Studio</h1>
+        <h1 className="page-title">AI Generation Studio</h1>
         <p className="text-gray-600 mt-1">
           Generate questions, topics, syllabi, and assignments with AI
         </p>

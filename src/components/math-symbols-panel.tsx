@@ -256,7 +256,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
       {isOpen && (
         <div 
           ref={panelRef}
-          className="fixed bg-white rounded-xl shadow-2xl border border-gray-200 w-[320px]"
+          className="card fixed w-[320px]"
           style={{ 
             zIndex: 9999,
             top: panelPosition.top,
@@ -287,7 +287,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
                 <button
                   key={`freq-${idx}`}
                   onClick={() => handleSymbolClick(symbol)}
-                  className="w-8 h-8 flex items-center justify-center text-sm rounded-md hover:bg-blue-100 hover:text-blue-600 transition-colors bg-white border border-gray-200 hover:border-blue-300 shadow-sm"
+                  className="card w-8 h-8 flex items-center justify-center text-sm hover:bg-blue-100 hover:text-blue-600 transition-colors hover:border-blue-300"
                   title={symbol.latex || symbol.value}
                 >
                   {symbol.display}

@@ -457,7 +457,7 @@ export default function AIAssignmentPage() {
         <Link href="/tutor/assignments" className="text-gray-600 hover:text-gray-900 text-sm">
           ← Back to Assignments
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2 flex items-center gap-2">
+        <h1 className="page-title mt-2 flex items-center gap-2">
           <span className="bg-purple-600 bg-clip-text text-transparent">
             AI Assignment Generator
           </span>
@@ -481,7 +481,7 @@ export default function AIAssignmentPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <form onSubmit={handleGenerate} className="space-y-6">
-              <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+              <div className="card p-6 space-y-4">
                 <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                   <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
@@ -753,7 +753,7 @@ export default function AIAssignmentPage() {
           )}
 
           {/* Assignment Header */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="card p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1 space-y-3">
                 <input
@@ -811,7 +811,7 @@ export default function AIAssignmentPage() {
           </div>
 
           {/* Questions List */}
-          <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
+          <div className="card divide-y divide-gray-200">
             <div className="p-4 bg-gray-50">
               <h3 className="font-medium text-gray-900">Questions</h3>
             </div>
@@ -919,7 +919,7 @@ export default function AIAssignmentPage() {
           </div>
 
           {/* Refinement Section */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="card p-6">
             <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
               <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
@@ -952,7 +952,7 @@ export default function AIAssignmentPage() {
           </div>
 
           {/* Actions */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="card p-6">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
@@ -968,7 +968,7 @@ export default function AIAssignmentPage() {
                 <button
                   onClick={() => handleSaveAssignment(true)}
                   disabled={saving}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  className="btn btn-secondary btn-sm"
                 >
                   Save as Draft
                 </button>

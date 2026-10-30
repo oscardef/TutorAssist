@@ -256,7 +256,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         >
           ← Back to Question Bank
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">Edit Question</h1>
+        <h1 className="page-title mt-2">Edit Question</h1>
       </div>
       
       {error && (
@@ -665,7 +665,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           <div className="flex gap-3">
             <Link
               href="/tutor/questions"
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="btn btn-secondary btn-sm"
             >
               Cancel
             </Link>

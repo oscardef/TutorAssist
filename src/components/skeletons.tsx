@@ -23,7 +23,7 @@ export function StatCardSkeleton() {
 // Assignment card skeleton
 export function AssignmentCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <div className="card p-6">
       <div className="flex items-center gap-4">
         <Pulse className="w-12 h-12 rounded-xl" />
         <div className="flex-1 space-y-2">
@@ -90,7 +90,7 @@ export function StudentDashboardSkeleton() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Assignments section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="card overflow-hidden">
             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
               <Pulse className="h-6 w-36" />
               <Pulse className="h-4 w-20" />
@@ -105,7 +105,7 @@ export function StudentDashboardSkeleton() {
           </div>
           
           {/* Activity section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="card overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
               <Pulse className="h-6 w-32" />
             </div>
@@ -117,7 +117,7 @@ export function StudentDashboardSkeleton() {
         
         {/* Sidebar */}
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="card p-6">
             <Pulse className="h-5 w-24 mb-4" />
             <div className="flex items-end justify-between gap-2 h-28">
               {[42, 68, 35, 80, 55, 62, 48].map((h, i) => (
@@ -162,7 +162,7 @@ export function TutorDashboardSkeleton() {
       {/* Main grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Schedule card */}
-        <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="card">
           <div className="border-b border-gray-100 px-5 py-4">
             <Pulse className="h-5 w-36" />
           </div>
@@ -180,7 +180,7 @@ export function TutorDashboardSkeleton() {
         </div>
         
         {/* Assignments card */}
-        <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="card">
           <div className="border-b border-gray-100 px-5 py-4">
             <Pulse className="h-5 w-40" />
           </div>
@@ -199,7 +199,7 @@ export function TutorDashboardSkeleton() {
       </div>
       
       {/* Students overview */}
-      <div className="rounded-xl border border-gray-200 bg-white">
+      <div className="card">
         <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
           <Pulse className="h-5 w-28" />
           <Pulse className="h-4 w-24" />

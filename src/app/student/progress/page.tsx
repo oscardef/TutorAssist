@@ -100,7 +100,7 @@ export default async function StudentProgressPage() {
     <div className="max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Progress</h1>
+        <h1 className="page-title">My Progress</h1>
         <p className="text-gray-600 mt-1">
           Track your learning journey
         </p>
@@ -108,51 +108,51 @@ export default async function StudentProgressPage() {
       
       {/* Overall Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <div className="card p-5">
           <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-3">
             <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <div className="text-3xl font-bold text-gray-900">{totalAttempts}</div>
+          <div className="page-title">{totalAttempts}</div>
           <div className="text-sm text-gray-500">Questions Practiced</div>
         </div>
         
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <div className="card p-5">
           <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mb-3">
             <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div className="text-3xl font-bold text-gray-900">{overallAccuracy}%</div>
+          <div className="page-title">{overallAccuracy}%</div>
           <div className="text-sm text-gray-500">Overall Accuracy</div>
         </div>
         
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <div className="card p-5">
           <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-3">
             <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
             </svg>
           </div>
-          <div className="text-3xl font-bold text-gray-900">{topicStats.size}</div>
+          <div className="page-title">{topicStats.size}</div>
           <div className="text-sm text-gray-500">Topics Studied</div>
         </div>
         
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <div className="card p-5">
           <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mb-3">
             <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
             </svg>
           </div>
-          <div className="text-3xl font-bold text-gray-900">{currentStreak}</div>
+          <div className="page-title">{currentStreak}</div>
           <div className="text-sm text-gray-500">Day Streak</div>
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Topic Breakdown */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance by Topic</h2>
           
           {topicStats.size > 0 ? (
@@ -196,7 +196,7 @@ export default async function StudentProgressPage() {
         </div>
         
         {/* Difficulty Breakdown */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance by Difficulty</h2>
           
           <div className="space-y-5">
@@ -276,7 +276,7 @@ export default async function StudentProgressPage() {
       </div>
       
       {/* Weekly Activity */}
-      <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+      <div className="card mt-6 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Last 7 Days</h2>
         
         <div className="flex items-end gap-3 h-40">

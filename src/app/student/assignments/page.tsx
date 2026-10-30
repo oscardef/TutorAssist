@@ -231,7 +231,7 @@ export default async function StudentAssignmentsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Assignments</h1>
+        <h1 className="page-title">My Assignments</h1>
         <p className="text-gray-600 mt-1">
           Complete your assignments to track your progress.
         </p>

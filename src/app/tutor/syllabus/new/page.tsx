@@ -135,7 +135,7 @@ export default function NewSyllabusPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Generate Course Syllabus</h1>
+        <h1 className="page-title">Generate Course Syllabus</h1>
         <p className="mt-1 text-sm text-gray-500">
           Create a complete syllabus with topics and questions using AI
         </p>

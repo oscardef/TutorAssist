@@ -237,7 +237,7 @@ export default function TutorAssignmentDetailPage() {
         <div className="flex items-start justify-between mt-2">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">{assignment.title}</h1>
+              <h1 className="page-title">{assignment.title}</h1>
               {isParent && (
                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
                   Parent Assignment
@@ -302,14 +302,14 @@ export default function TutorAssignmentDetailPage() {
       {/* Progress Summary */}
       {assignment.student_profiles && (
         <div className="grid gap-4 sm:grid-cols-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="card p-4">
             <div className="text-sm font-medium text-gray-500">Questions</div>
             <div className="mt-1 text-2xl font-semibold text-gray-900">
               {answeredCount}/{items.length}
             </div>
             <div className="text-xs text-gray-500">answered</div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="card p-4">
             <div className="text-sm font-medium text-gray-500">Correct</div>
             <div className="mt-1 text-2xl font-semibold text-green-600">
               {correctCount}/{answeredCount || 1}
@@ -318,14 +318,14 @@ export default function TutorAssignmentDetailPage() {
               {answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0}% accuracy
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="card p-4">
             <div className="text-sm font-medium text-gray-500">Time Spent</div>
             <div className="mt-1 text-2xl font-semibold text-gray-900">
               {Math.round(totalTimeSpent / 60)}
             </div>
             <div className="text-xs text-gray-500">minutes</div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="card p-4">
             <div className="text-sm font-medium text-gray-500">Hints Used</div>
             <div className="mt-1 text-2xl font-semibold text-yellow-600">{hintsUsed}</div>
             <div className="text-xs text-gray-500">total hints</div>
@@ -335,7 +335,7 @@ export default function TutorAssignmentDetailPage() {
 
       {/* Progress Bar */}
       {assignment.student_profiles && answeredCount > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div className="card p-4 mb-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-700">Progress</span>
             <span className="text-sm text-gray-600">
@@ -352,7 +352,7 @@ export default function TutorAssignmentDetailPage() {
       )}
 
       {/* Questions List */}
-      <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
+      <div className="card divide-y divide-gray-200">
         <div className="p-4 bg-gray-50 flex justify-between items-center">
           <h3 className="font-medium text-gray-900">Questions ({items.length})</h3>
           <button

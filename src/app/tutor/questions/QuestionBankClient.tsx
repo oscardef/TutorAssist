@@ -335,7 +335,7 @@ export default function QuestionBankClient({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Question Bank</h1>
+          <h1 className="page-title">Question Bank</h1>
           <p className="mt-1 text-sm text-gray-500">
             {stats.total} questions
           </p>
@@ -789,7 +789,7 @@ export default function QuestionBankClient({
             <div className="mt-6 flex justify-center gap-3">
               <Link
                 href="/tutor/questions/new"
-                className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="btn btn-secondary btn-sm inline-flex"
               >
                 Add Manually
               </Link>

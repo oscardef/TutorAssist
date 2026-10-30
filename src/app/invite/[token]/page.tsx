@@ -176,7 +176,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
               </svg>
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-gray-900">Invalid Invite</h1>
+            <h1 className="page-title mt-4">Invalid Invite</h1>
             <p className="mt-2 text-gray-600">{error || 'This invite link is not valid.'}</p>
             <Link
               href="/login"
@@ -201,7 +201,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-gray-900">
+            <h1 className="page-title mt-4">
               {inviteInfo.isUsed ? 'Invite Already Used' : 'Invite Expired'}
             </h1>
             <p className="mt-2 text-gray-600">
@@ -232,7 +232,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-gray-900">Account Already Set Up</h1>
+            <h1 className="page-title mt-4">Account Already Set Up</h1>
             <p className="mt-2 text-gray-600">
               Your account is ready! Please log in to continue.
             </p>
@@ -265,7 +265,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </svg>
           </div>
 
-          <h1 className="mt-4 text-2xl font-bold text-gray-900">You&apos;re Invited!</h1>
+          <h1 className="page-title mt-4">You&apos;re Invited!</h1>
           
           <div className="mt-6 rounded-lg bg-gray-50 p-4">
             <p className="text-sm text-gray-600">

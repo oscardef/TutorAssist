@@ -283,7 +283,7 @@ export default function NewStudentPage() {
   if (inviteLink) {
     return (
       <div className="mx-auto max-w-lg">
-        <div className="rounded-lg border border-gray-200 bg-white p-8">
+        <div className="card p-8">
           <div className="text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -370,7 +370,7 @@ export default function NewStudentPage() {
           <div className="mt-6 flex gap-3">
             <button
               onClick={() => router.push('/tutor/students')}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="btn btn-secondary btn-sm flex-1"
             >
               Back to Students
             </button>
@@ -408,13 +408,13 @@ export default function NewStudentPage() {
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Add Student</h1>
+        <h1 className="page-title">Add Student</h1>
         <p className="mt-1 text-sm text-gray-500">
           Create a student profile and generate an invite link.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border border-gray-200 bg-white p-6">
+      <form onSubmit={handleSubmit} className="card space-y-6 p-6">
         {error && (
           <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
             {error}
@@ -739,7 +739,7 @@ export default function NewStudentPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            className="btn btn-secondary btn-sm flex-1"
           >
             Cancel
           </button>

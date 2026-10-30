@@ -135,7 +135,7 @@ export default function MaterialsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Materials</h1>
+          <h1 className="page-title">Materials</h1>
           <p className="mt-1 text-sm text-gray-500">
             Upload and manage source materials for question generation
           </p>
@@ -171,7 +171,7 @@ export default function MaterialsPage() {
           {materials.map((material) => (
             <div
               key={material.id}
-              className="rounded-lg border border-gray-200 bg-white p-4 hover:shadow-sm transition-shadow"
+              className="card p-4 hover:shadow-sm transition-shadow"
             >
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0">

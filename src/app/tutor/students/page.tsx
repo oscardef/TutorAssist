@@ -126,7 +126,7 @@ export default async function StudentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Students</h1>
+          <h1 className="page-title">Students</h1>
           <p className="mt-1 text-sm text-gray-500">
             Manage your students and track their progress
           </p>
@@ -140,7 +140,7 @@ export default async function StudentsPage() {
       </div>
 
       {students && students.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="card overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

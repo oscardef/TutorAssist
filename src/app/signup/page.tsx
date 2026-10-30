@@ -161,7 +161,7 @@ function SignupForm() {
     return (
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
+          <h1 className="page-title">Check your email</h1>
           <p className="mt-2 text-sm text-gray-500">
             We&apos;ve sent a password reset link to your email
           </p>
@@ -213,7 +213,7 @@ function SignupForm() {
     return (
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
+          <h1 className="page-title">Check your email</h1>
           <p className="mt-2 text-sm text-gray-500">
             We&apos;ve sent a confirmation link to your email
           </p>
@@ -274,7 +274,7 @@ function SignupForm() {
     <div className="w-full max-w-md">
       {/* Logo/Brand */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="page-title">
           {studentName ? `Welcome, ${studentName}!` : 'Create your account'}
         </h1>
         <p className="mt-2 text-sm text-gray-500">

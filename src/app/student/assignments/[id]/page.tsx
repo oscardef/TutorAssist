@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Icons } from '@/components/ui/icons'
+import { IconButton, DifficultyDots, ProgressTrail, ProgressBar, ChoiceList, FeedbackBanner, HintsPanel, SolutionPanel, YourAnswerCard, FlagModal, CompletionModal } from '@/components/question-player'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
 import { AnswerDisplay } from '@/components/answer-display'
@@ -401,486 +403,150 @@ export default function StudentAssignmentDetailPage() {
     )
   }
 
+  const Back = Icons.chevronLeft
+  const Flame = Icons.flame
+  const Flag = Icons.flag
+  const Arrow = Icons.arrowRight
+  const Check = Icons.check
+  const results = items.map(item => attempts[item.question_id] ? attempts[item.question_id].isCorrect : undefined)
+  const answered = Object.keys(attempts).length
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="mx-auto max-w-3xl">
       {/* Header */}
-      <div className="mb-6">
-        <Link href="/student/assignments" className="text-gray-500 hover:text-gray-700 text-sm font-medium inline-flex items-center gap-1">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-          </svg>
-          Back to Assignments
+      <div className="mb-5 flex items-start gap-3">
+        <Link href="/student/assignments" className="btn btn-secondary btn-sm mt-0.5 !h-10 !w-10 !px-0" aria-label="Back to assignments" title="Back to assignments">
+          <Back className="h-5 w-5" />
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">{assignment.title}</h1>
-        {assignment.description && (
-          <p className="text-gray-600 mt-1">{assignment.description}</p>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-2xl font-extrabold text-ink">{assignment.title}</h1>
+          {assignment.description && <p className="mt-1 text-gray-600">{assignment.description}</p>}
+        </div>
+        {streak > 1 && (
+          <span className="chip chip-spark"><Flame className="h-3.5 w-3.5" /> {streak}</span>
         )}
       </div>
 
-      {/* Progress Bar */}
-      <div className="mb-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-semibold text-gray-700">Progress</span>
-          <div className="flex items-center gap-4">
-            {streak > 1 && (
-              <span className="text-sm font-semibold text-orange-600 flex items-center gap-1">
-                🔥 {streak} streak
-              </span>
-            )}
-            <span className="text-sm text-gray-600">
-              {correctCount}/{items.length} correct
-            </span>
-          </div>
+      {/* Progress */}
+      <div className="card mb-5 p-5">
+        <div className="mb-3 flex items-center justify-between text-sm">
+          <span className="font-bold text-ink tnum">Question {currentIndex + 1} of {items.length}</span>
+          <span className="text-gray-600 tnum">{correctCount} correct · {answered} answered</span>
         </div>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-blue-500 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+        <ProgressBar value={progress} tone={progress >= 100 ? 'good' : 'brand'} />
+        <div className="mt-4">
+          <ProgressTrail total={items.length} current={currentIndex} results={results} />
         </div>
-        
-        {/* Question dots - READ ONLY, no clicking */}
-        <div className="flex gap-1.5 mt-4 flex-wrap">
-          {items.map((item, idx) => {
-            const attempt = attempts[item.question_id]
-            const isCurrent = idx === currentIndex
-            const isAccessible = idx <= currentIndex || attempt
-            
-            return (
-              <div
-                key={item.id}
-                className={`w-9 h-9 rounded-full text-xs font-bold flex items-center justify-center transition-all ${
-                  isCurrent ? 'ring-2 ring-blue-500 ring-offset-2 scale-110' : ''
-                } ${
-                  attempt
-                    ? attempt.isCorrect
-                      ? 'bg-green-500 text-white'
-                      : 'bg-red-500 text-white'
-                    : isAccessible
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-gray-100 text-gray-400'
-                }`}
-              >
-                {attempt ? (attempt.isCorrect ? '✓' : '✗') : idx + 1}
-              </div>
-            )
-          })}
-        </div>
-        <p className="text-xs text-gray-500 mt-2">Complete each question in order to proceed.</p>
       </div>
 
-      {/* Question Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        {/* Question Header */}
-        <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-bold text-gray-900">
-              Question {currentIndex + 1}
-            </span>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-              currentQuestion?.difficulty <= 2 ? 'bg-green-100 text-green-700' :
-              currentQuestion?.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
-              'bg-red-100 text-red-700'
-            }`}>
-              {currentQuestion?.difficulty <= 2 ? 'Easy' : 
-               currentQuestion?.difficulty <= 3 ? 'Medium' : 'Hard'}
-            </span>
-            {currentQuestion?.topics?.name && (
-              <span className="text-xs px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">
-                {currentQuestion.topics.name}
-              </span>
-            )}
+      {/* Question */}
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-line bg-paper px-5 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <DifficultyDots level={currentQuestion?.difficulty} />
+            {currentQuestion?.topics?.name && <span className="chip chip-brand">{currentQuestion.topics.name}</span>}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {currentAttempt && (
-              <span className={`text-sm font-semibold ${
-                currentAttempt.isCorrect ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {currentAttempt.isCorrect ? '✓ Correct' : '✗ Incorrect'}
-              </span>
+              <span className={`chip ${currentAttempt.isCorrect ? 'chip-good' : 'chip-bad'}`}>{currentAttempt.isCorrect ? 'Correct' : 'Incorrect'}</span>
             )}
-            <button
-              onClick={() => setShowFlagModal(true)}
-              disabled={flagSubmitted}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                flagSubmitted 
-                  ? 'bg-orange-50 border-orange-200 text-orange-600'
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
-              </svg>
-              {flagSubmitted ? 'Flagged' : 'Flag'}
-            </button>
+            <IconButton label={flagSubmitted ? 'Reported' : 'Report a problem with this question'} onClick={() => setShowFlagModal(true)} active={flagSubmitted} disabled={flagSubmitted}>
+              <Flag className="h-5 w-5" />
+            </IconButton>
           </div>
         </div>
 
-        {/* Question Content */}
-        <div className="p-6">
-          <div className="prose max-w-none mb-8">
-            <div className="text-xl text-gray-800 leading-relaxed">
-              <LatexRenderer content={currentQuestion?.prompt_latex || currentQuestion?.prompt_text || ''} />
-            </div>
+        <div className="p-5 sm:p-6">
+          <div className="mb-6 text-xl leading-relaxed text-ink">
+            <LatexRenderer content={currentQuestion?.prompt_latex || currentQuestion?.prompt_text || ''} />
           </div>
 
-          {/* Answer Input */}
           {currentQuestion?.answer_type === 'multiple_choice' && currentQuestion.correct_answer_json.choices ? (
-            <div className="space-y-3">
-              {currentQuestion.correct_answer_json.choices.map((rawChoice, idx) => {
-                // Handle both string and object choice formats
-                const choice = typeof rawChoice === 'string' ? { text: rawChoice } : rawChoice
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => !currentAttempt && setSelectedChoice(idx)}
-                    disabled={!!currentAttempt}
-                    className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
-                      selectedChoice === idx
-                        ? 'border-blue-500 bg-blue-50 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    } ${currentAttempt ? 'cursor-default' : 'cursor-pointer'} ${
-                      currentAttempt && idx === currentQuestion.correct_answer_json.correct
-                        ? 'border-green-500 bg-green-50'
-                        : currentAttempt && idx === parseInt(currentAttempt.answer) && !currentAttempt.isCorrect
-                        ? 'border-red-500 bg-red-50'
-                        : ''
-                    }`}
-                  >
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-bold mr-4">
-                      {String.fromCharCode(65 + idx)}
-                    </span>
-                    <span className="text-gray-800">
-                      <LatexRenderer content={choice.latex || choice.text} />
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+            <ChoiceList
+              choices={currentQuestion.correct_answer_json.choices}
+              selected={selectedChoice}
+              onSelect={setSelectedChoice}
+              disabled={!!currentAttempt}
+              correctIndex={currentQuestion.correct_answer_json.correct}
+              answeredIndex={currentAttempt ? parseInt(currentAttempt.answer) : null}
+            />
           ) : (
             <div>
               <MathInput
                 value={answer}
                 onChange={setAnswer}
                 disabled={!!currentAttempt}
-                placeholder={currentQuestion?.answer_type === 'numeric' ? 'Enter a number' : 'Type your answer'}
-                onSubmit={() => {
-                  if (!currentAttempt) handleSubmit()
-                }}
+                placeholder={currentQuestion?.answer_type === 'numeric' ? 'Enter a number…' : 'Type your answer…'}
+                onSubmit={() => { if (!currentAttempt) handleSubmit() }}
                 status={currentAttempt ? (currentAttempt.isCorrect ? 'correct' : 'incorrect') : undefined}
               />
               {currentAttempt && (
-                <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <p className="text-sm text-gray-600">
-                    Your answer: <span className="font-semibold text-gray-900"><LatexRenderer content={formatMathForDisplay(currentAttempt.answer)} /></span>
-                  </p>
-                  {!currentAttempt.isCorrect && currentQuestion?.correct_answer_json.value && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      Correct answer: <span className="font-semibold text-green-600">
-                        <LatexRenderer content={formatMathForDisplay(String(currentQuestion.correct_answer_json.value))} />
-                      </span>
-                    </p>
-                  )}
-                </div>
+                <YourAnswerCard
+                  answer={<LatexRenderer content={formatMathForDisplay(currentAttempt.answer)} />}
+                  correct={currentAttempt.isCorrect}
+                  correctAnswer={currentQuestion?.correct_answer_json.value ? <LatexRenderer content={formatMathForDisplay(String(currentQuestion.correct_answer_json.value))} /> : undefined}
+                />
               )}
             </div>
           )}
 
-          {/* Feedback */}
           {feedback && (
-            <div className={`mt-6 p-5 rounded-xl ${
-              feedback.correct || claimedCorrect ? 'bg-green-50 border-2 border-green-200' : 'bg-red-50 border-2 border-red-200'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {feedback.correct || claimedCorrect ? (
-                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                  )}
-                  <span className={`text-lg font-bold ${feedback.correct || claimedCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                    {claimedCorrect ? 'Marked correct!' : feedback.message}
-                  </span>
-                </div>
-                
-                {!feedback.correct && !claimedCorrect && (
-                  <button
-                    onClick={handleClaimCorrect}
-                    disabled={flagSubmitting}
-                    className="text-sm px-4 py-2 border-2 border-gray-300 rounded-xl hover:bg-white text-gray-700 hover:text-gray-900 disabled:opacity-50 font-medium"
-                  >
-                    {flagSubmitting ? 'Submitting...' : 'I was right'}
-                  </button>
-                )}
-              </div>
-              
-              {/* Always show correct answer when wrong */}
-              {!feedback.correct && !claimedCorrect && currentQuestion && (
-                <div className="mt-4 pt-4 border-t border-red-200">
-                  <p className="text-sm font-medium text-red-800 mb-2">Correct answer:</p>
-                  <div className="text-red-900 bg-red-100/50 px-3 py-2 rounded-lg inline-block">
-                    <AnswerDisplay 
-                      answerType={currentQuestion.answer_type}
-                      correctAnswer={currentQuestion.correct_answer_json}
-                      className="font-medium"
-                    />
-                  </div>
-                </div>
-              )}
-              
-              {claimedCorrect && (
-                <p className="mt-3 text-sm text-green-700">
-                  ✓ This question has been marked correct. Your tutor will review the answer.
-                </p>
-              )}
-            </div>
+            <FeedbackBanner
+              correct={feedback.correct}
+              message={feedback.message}
+              claimed={claimedCorrect}
+              claiming={flagSubmitting}
+              onClaim={handleClaimCorrect}
+              correctAnswer={currentQuestion ? <AnswerDisplay answerType={currentQuestion.answer_type} correctAnswer={currentQuestion.correct_answer_json} /> : undefined}
+            />
           )}
 
-          {/* Hints */}
-          {currentQuestion?.hints_json && currentQuestion.hints_json.length > 0 && 
-           assignment.settings_json.showHints !== false && (
-            <div className="mt-6">
-              {!showHints ? (
-                <button
-                  onClick={() => { setShowHints(true); setVisibleHintCount(1) }}
-                  className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                  </svg>
-                  Show Hint ({currentQuestion.hints_json.length} available)
-                </button>
-              ) : (
-                <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-5">
-                  <p className="text-sm font-semibold text-amber-800 mb-3">
-                    💡 Hints ({visibleHintCount} of {currentQuestion.hints_json.length})
-                  </p>
-                  {currentQuestion.hints_json.slice(0, visibleHintCount).map((hint, idx) => (
-                    <div key={idx} className="pl-4 border-l-4 border-amber-400 mb-3">
-                      <p className="text-xs text-amber-600 mb-1 font-medium">Hint {idx + 1}</p>
-                      <p className="text-amber-900"><LatexRenderer content={hint} /></p>
-                    </div>
-                  ))}
-                  {visibleHintCount < currentQuestion.hints_json.length && (
-                    <button
-                      onClick={() => setVisibleHintCount(prev => prev + 1)}
-                      className="text-amber-700 hover:text-amber-900 text-sm font-medium flex items-center gap-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      Show next hint
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+          {currentQuestion?.hints_json && assignment.settings_json.showHints !== false && (
+            <HintsPanel
+              hints={currentQuestion.hints_json}
+              visible={showHints ? visibleHintCount : 0}
+              onReveal={() => { setShowHints(true); setVisibleHintCount(1) }}
+              onShowNext={() => setVisibleHintCount(prev => prev + 1)}
+            />
           )}
 
-          {/* Solution */}
-          {currentAttempt && currentQuestion?.solution_steps_json && 
-           currentQuestion.solution_steps_json.length > 0 &&
-           assignment.settings_json.showSolutions !== false && (
-            <div className="mt-6">
-              {!showSolution ? (
-                <button
-                  onClick={() => setShowSolution(true)}
-                  className="text-purple-600 hover:text-purple-800 font-medium"
-                >
-                  View Solution
-                </button>
-              ) : (
-                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-5">
-                  <p className="text-sm font-semibold text-purple-800 mb-3">📝 Solution Steps</p>
-                  <ol className="list-decimal list-inside space-y-2">
-                    {currentQuestion.solution_steps_json.map((step, idx) => (
-                      <li key={idx} className="text-purple-900">
-                        <span className="font-medium"><LatexRenderer content={step.step} /></span>
-                        {step.result && (
-                          <span className="ml-2 text-purple-600">→ <LatexRenderer content={step.result} /></span>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-            </div>
+          {currentAttempt && currentQuestion?.solution_steps_json && assignment.settings_json.showSolutions !== false && (
+            <SolutionPanel steps={currentQuestion.solution_steps_json} open={showSolution} onOpen={() => setShowSolution(true)} />
           )}
         </div>
 
-        {/* Actions */}
-        <div className="border-t border-gray-100 px-6 py-4 bg-gray-50 flex justify-end">
+        <div className="flex items-center justify-end gap-2 border-t border-line bg-paper px-5 py-4">
           {!currentAttempt ? (
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting || (currentQuestion?.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())}
-              className="btn btn-primary"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                  Checking...
-                </>
-              ) : (
-                <>
-                  Check Answer
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                </>
-              )}
+            <button type="button" onClick={handleSubmit} disabled={isSubmitting || (currentQuestion?.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())} className="btn btn-primary btn-lg">
+              {isSubmitting ? 'Checking…' : <>Check answer <Check className="h-5 w-5" /></>}
             </button>
           ) : currentIndex < items.length - 1 ? (
-            <button
-              onClick={nextQuestion}
-              className="btn btn-primary"
-            >
-              Next Question
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
-            </button>
+            <button type="button" onClick={nextQuestion} className="btn btn-primary btn-lg">Next <Arrow className="h-5 w-5" /></button>
           ) : (
-            <button
-              onClick={handleCompleteAssignment}
-              className="px-8 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 flex items-center gap-2 transition-all hover:scale-105"
-            >
-              Complete Assignment
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+            <button type="button" onClick={handleCompleteAssignment} className="btn btn-spark btn-lg">Finish assignment <Check className="h-5 w-5" /></button>
           )}
         </div>
       </div>
 
-      {/* Completion Modal */}
-      {showCompletionModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full mx-4 p-8 animate-in zoom-in-95">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Assignment Complete! 🎉
-              </h3>
-              <p className="text-gray-600 mb-6">
-                You scored {correctCount} out of {items.length} ({Math.round((correctCount / items.length) * 100)}%)
-              </p>
-              
-              <div className="bg-gray-50 rounded-2xl p-5 mb-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-green-600">{correctCount}</p>
-                    <p className="text-sm text-gray-500">Correct</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-3xl font-bold text-red-500">{items.length - correctCount}</p>
-                    <p className="text-sm text-gray-500">Incorrect</p>
-                  </div>
-                </div>
-              </div>
+      <CompletionModal
+        open={showCompletionModal}
+        correct={correctCount}
+        total={items.length}
+        onBack={() => { setShowCompletionModal(false); router.push('/student/assignments') }}
+        onRedo={handleRedoAssignment}
+        onReview={() => setShowCompletionModal(false)}
+      />
 
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => { setShowCompletionModal(false); router.push('/student/assignments') }}
-                  className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
-                >
-                  Back to Assignments
-                </button>
-                <button
-                  onClick={handleRedoAssignment}
-                  className="w-full px-6 py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Redo Assignment
-                </button>
-                <button
-                  onClick={() => setShowCompletionModal(false)}
-                  className="w-full px-6 py-3 text-gray-500 hover:text-gray-700 font-medium"
-                >
-                  Review Answers
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Flag Modal */}
-      {showFlagModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Report an Issue</h3>
-              <button onClick={() => setShowFlagModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="space-y-2 mb-4">
-              <label className="block text-sm font-medium text-gray-700">What&apos;s the issue?</label>
-              <div className="grid gap-2">
-                {[
-                  { type: 'incorrect_answer', label: 'The correct answer is wrong' },
-                  { type: 'unclear', label: 'The question is confusing' },
-                  { type: 'typo', label: 'There is a typo' },
-                  { type: 'too_hard', label: 'Too difficult for this level' },
-                  { type: 'other', label: 'Other issue' },
-                ].map(({ type, label }) => (
-                  <button
-                    key={type}
-                    onClick={() => setFlagType(type)}
-                    className={`text-left px-4 py-3 rounded-xl border-2 text-sm transition-colors ${
-                      flagType === type
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Additional details (optional)</label>
-              <textarea
-                value={flagComment}
-                onChange={(e) => setFlagComment(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500"
-                placeholder="Describe the issue..."
-              />
-            </div>
-            
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowFlagModal(false)} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitFlag}
-                disabled={!flagType || flagSubmitting}
-                className="px-6 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 disabled:opacity-50 font-medium"
-              >
-                {flagSubmitting ? 'Submitting...' : 'Submit Report'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <FlagModal
+        open={showFlagModal}
+        onClose={() => setShowFlagModal(false)}
+        flagType={flagType}
+        setFlagType={setFlagType}
+        comment={flagComment}
+        setComment={setFlagComment}
+        onSubmit={handleSubmitFlag}
+        submitting={flagSubmitting}
+      />
     </div>
   )
 }

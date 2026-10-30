@@ -81,10 +81,7 @@ function LoginForm() {
         </div>
 
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <label htmlFor="password" className="label mb-0">Password</label>
-            <Link href="/forgot-password" className="text-sm font-semibold text-brand-700 hover:text-brand-800">Forgot password?</Link>
-          </div>
+          <label htmlFor="password" className="label">Password</label>
           <input
             id="password"
             name="password"
@@ -96,6 +93,9 @@ function LoginForm() {
             className="input"
             placeholder="Your password"
           />
+          <div className="mt-2 text-right">
+            <Link href="/forgot-password" className="text-sm font-semibold text-brand-700 hover:text-brand-800">Forgot password?</Link>
+          </div>
         </div>
 
         <button type="submit" disabled={loading} className="btn btn-primary btn-lg w-full">

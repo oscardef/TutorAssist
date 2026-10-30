@@ -343,7 +343,7 @@ export default function EditStudentPage({
           </svg>
           Back to Student
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-gray-900">Edit Student</h1>
+        <h1 className="page-title mt-2">Edit Student</h1>
         <p className="mt-1 text-sm text-gray-500">
           Update student information and settings
         </p>
@@ -360,7 +360,7 @@ export default function EditStudentPage({
         )}
 
         {/* Basic Info Card */}
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="font-semibold text-gray-900">Basic Information</h2>
           </div>
@@ -412,7 +412,7 @@ export default function EditStudentPage({
         </div>
 
         {/* Academic Info Card */}
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="font-semibold text-gray-900">Academic Information</h2>
             <p className="text-xs text-gray-500 mt-0.5">Set the student&apos;s curriculum and grade level</p>
@@ -495,7 +495,7 @@ export default function EditStudentPage({
         </div>
 
         {/* Assigned Tutor Card */}
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="font-semibold text-gray-900">Assigned Tutor</h2>
             <p className="text-xs text-gray-500 mt-0.5">Select the primary tutor for this student</p>
@@ -520,7 +520,7 @@ export default function EditStudentPage({
         </div>
 
         {/* Contact Info Card */}
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="font-semibold text-gray-900">Contact Information</h2>
           </div>
@@ -594,7 +594,7 @@ export default function EditStudentPage({
         </div>
 
         {/* Notes Card */}
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="font-semibold text-gray-900">Private Notes</h2>
             <p className="text-xs text-gray-500 mt-0.5">Only visible to tutors</p>
@@ -670,7 +670,7 @@ export default function EditStudentPage({
           <div className="flex gap-3">
             <Link
               href={`/tutor/students/${resolvedParams.id}`}
-              className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              className="btn btn-secondary btn-sm"
             >
               Cancel
             </Link>
@@ -719,7 +719,7 @@ export default function EditStudentPage({
               <button
                 type="button"
                 onClick={() => setShowNewProgramModal(false)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="btn btn-secondary btn-sm"
               >
                 Cancel
               </button>
@@ -770,7 +770,7 @@ export default function EditStudentPage({
               <button
                 type="button"
                 onClick={() => setShowNewGradeModal(false)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="btn btn-secondary btn-sm"
               >
                 Cancel
               </button>
@@ -809,7 +809,7 @@ export default function EditStudentPage({
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    className="btn btn-secondary btn-sm flex-1"
                   >
                     Cancel
                   </button>

@@ -164,7 +164,7 @@ export default async function StudentDetailPage({
             </svg>
             Back to Students
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">{student.name}</h1>
+          <h1 className="page-title mt-2">{student.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
             {student.study_programs && (
               <span 
@@ -193,7 +193,7 @@ export default async function StudentDetailPage({
         <div className="flex gap-2">
           <Link
             href={`/tutor/students/${id}/edit`}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="btn btn-secondary btn-sm"
           >
             Edit
           </Link>
@@ -224,7 +224,7 @@ export default async function StudentDetailPage({
 
       {/* Contact Information */}
       {(student.email || student.parent_email || (student.additional_emails && student.additional_emails.length > 0)) && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="card p-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Contact Information</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {student.email && (
@@ -284,26 +284,26 @@ export default async function StudentDetailPage({
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="card p-6">
           <div className="text-sm font-medium text-gray-500">Total Attempts</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{totalAttempts}</div>
+          <div className="page-title mt-2">{totalAttempts}</div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="card p-6">
           <div className="text-sm font-medium text-gray-500">Accuracy</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{accuracy}%</div>
+          <div className="page-title mt-2">{accuracy}%</div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="card p-6">
           <div className="text-sm font-medium text-gray-500">Items Due</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{dueItems}</div>
+          <div className="page-title mt-2">{dueItems}</div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="card p-6">
           <div className="text-sm font-medium text-gray-500">Assignments</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{assignmentProgress.length}</div>
+          <div className="page-title mt-2">{assignmentProgress.length}</div>
         </div>
       </div>
 
       {/* Assignments Progress */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">Assignments</h2>
@@ -404,7 +404,7 @@ export default async function StudentDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Topic Breakdown */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="card">
           <div className="border-b border-gray-200 px-6 py-4">
             <h2 className="font-semibold text-gray-900">Performance by Topic</h2>
           </div>
@@ -436,7 +436,7 @@ export default async function StudentDetailPage({
         </div>
 
         {/* Private Notes */}
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="card">
           <div className="border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -462,7 +462,7 @@ export default async function StudentDetailPage({
       </div>
 
       {/* Recent Attempts */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="border-b border-gray-200 px-6 py-4">
           <h2 className="font-semibold text-gray-900">Recent Practice Attempts</h2>
           <p className="text-xs text-gray-500 mt-0.5">Review what the student got right and wrong</p>

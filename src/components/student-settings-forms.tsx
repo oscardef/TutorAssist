@@ -118,7 +118,7 @@ export function StudentSettingsForms({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profile Card */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Profile</h2>
             <p className="text-sm text-gray-500">Your personal information</p>
@@ -180,7 +180,7 @@ export function StudentSettingsForms({
         </div>
 
         {/* Workspace Card */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Workspace</h2>
             <p className="text-sm text-gray-500">Your tutoring workspace</p>
@@ -210,7 +210,7 @@ export function StudentSettingsForms({
         </div>
 
         {/* Google Calendar Card */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Google Calendar</h2>
             <p className="text-sm text-gray-500">Sync sessions with your calendar</p>
@@ -275,7 +275,7 @@ export function StudentSettingsForms({
         </div>
 
         {/* Account Card */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Account</h2>
             <p className="text-sm text-gray-500">Manage your account</p>

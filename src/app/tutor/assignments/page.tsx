@@ -132,7 +132,7 @@ export default async function AssignmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
+          <h1 className="page-title">Assignments</h1>
           <p className="mt-1 text-sm text-gray-500">
             Create and manage practice assignments for your students
           </p>
@@ -140,7 +140,7 @@ export default async function AssignmentsPage() {
         <div className="flex gap-3">
           <Link
             href="/tutor/assignments/new"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="btn btn-secondary btn-sm"
           >
             Manual Create
           </Link>
@@ -158,19 +158,19 @@ export default async function AssignmentsPage() {
 
       {/* Quick Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="card p-4">
           <div className="text-sm font-medium text-gray-500">Students</div>
           <div className="mt-1 text-2xl font-semibold text-gray-900">{students?.length || 0}</div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="card p-4">
           <div className="text-sm font-medium text-gray-500">Active</div>
           <div className="mt-1 text-2xl font-semibold text-green-600">{topLevelActive.length}</div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="card p-4">
           <div className="text-sm font-medium text-gray-500">Drafts</div>
           <div className="mt-1 text-2xl font-semibold text-gray-600">{topLevelDraft.length}</div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="card p-4">
           <div className="text-sm font-medium text-gray-500">Completed</div>
           <div className="mt-1 text-2xl font-semibold text-blue-600">{topLevelCompleted.length}</div>
         </div>
@@ -264,7 +264,7 @@ export default async function AssignmentsPage() {
               <>
                 <Link
                   href="/tutor/questions/new"
-                  className="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="btn btn-secondary btn-sm inline-flex"
                 >
                   Add Questions
                 </Link>
@@ -288,7 +288,7 @@ function StudentAssignmentGroup({ group, collapsed = false }: { group: StudentGr
   const initials = studentName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="card overflow-hidden">
       {/* Student Header */}
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
@@ -411,7 +411,7 @@ function AssignmentCard({ assignment }: { assignment: Assignment }) {
   return (
     <Link
       href={`/tutor/assignments/${assignment.id}`}
-      className="block rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="card block p-4 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">

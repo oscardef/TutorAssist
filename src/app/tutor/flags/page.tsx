@@ -352,7 +352,7 @@ export default function FlagsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Question Flags</h1>
+          <h1 className="page-title">Question Flags</h1>
           <p className="mt-1 text-sm text-gray-500">
             Review and resolve student-reported issues with questions
           </p>
@@ -434,19 +434,19 @@ export default function FlagsPage() {
             <>
               {/* Summary Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="card p-4">
                   <p className="text-sm text-gray-500">Total Flags (30d)</p>
-                  <p className="text-2xl font-bold text-gray-900">{insights.summary.totalFlags}</p>
+                  <p className="page-title">{insights.summary.totalFlags}</p>
                 </div>
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="card p-4">
                   <p className="text-sm text-gray-500">Pending</p>
                   <p className="text-2xl font-bold text-yellow-600">{insights.summary.pendingCount}</p>
                 </div>
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="card p-4">
                   <p className="text-sm text-gray-500">Accept Rate</p>
                   <p className="text-2xl font-bold text-emerald-600">{insights.summary.acceptedRate}%</p>
                 </div>
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="card p-4">
                   <p className="text-sm text-gray-500">Problem Questions</p>
                   <p className="text-2xl font-bold text-red-600">{insights.summary.problematicQuestionCount}</p>
                 </div>
@@ -454,7 +454,7 @@ export default function FlagsPage() {
               
               {/* Common Flag Types */}
               {insights.summary.commonTypes.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="card p-4">
                   <h3 className="font-semibold text-gray-900 mb-3">Most Common Flag Types</h3>
                   <div className="flex flex-wrap gap-2">
                     {insights.summary.commonTypes.map(({ type, count }) => (
@@ -816,7 +816,7 @@ export default function FlagsPage() {
                     <>
                       <Link
                         href={`/tutor/questions/${flag.questions.id}`}
-                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 text-center"
+                        className="btn btn-secondary btn-sm"
                       >
                         View Question
                       </Link>
@@ -974,7 +974,7 @@ export default function FlagsPage() {
                   setReviewingFlag(null)
                   setAddAsAlternate(false)
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="btn btn-secondary btn-sm"
               >
                 Cancel
               </button>

@@ -339,7 +339,7 @@ export default function TopicsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Topics</h1>
+          <h1 className="page-title">Topics</h1>
           <p className="mt-1 text-sm text-gray-500">
             Organize questions by study program and grade level
           </p>
@@ -537,7 +537,7 @@ export default function TopicsPage() {
             </button>
             <Link
               href="/tutor/generate"
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+              className="btn btn-secondary btn-sm inline-flex"
             >
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
