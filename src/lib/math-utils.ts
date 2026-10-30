@@ -49,10 +49,31 @@
  * - Sets: ∈ ∉ ⊂ ⊃ ⊆ ∪ ∩ ∅ ℝ ℤ ℕ ℂ
  * - And corresponding LaTeX commands
  */
+/**
+ * MathLive and hand-typed TeX often use brace-less shorthand: \frac23,
+ * \frac x2, \sqrt2. Expand to the braced form the rest of the normaliser
+ * understands. Applied repeatedly so simple nesting also expands.
+ */
+export function expandTexShorthand(input: string): string {
+  let s = input
+  const arg = String.raw`(\{[^{}]*\}|[^\s{}\\])`
+  const frac = new RegExp(String.raw`\\[dt]?frac\s*` + arg + String.raw`\s*` + arg, 'g')
+  const sqrt = new RegExp(String.raw`\\sqrt\s*([^\s{}\\\[])`, 'g')
+  const strip = (a: string) => (a.startsWith('{') ? a.slice(1, -1) : a)
+  for (let i = 0; i < 4; i++) {
+    const next = s
+      .replace(frac, (_m, a: string, b: string) => `\\frac{${strip(a)}}{${strip(b)}}`)
+      .replace(sqrt, (_m, a: string) => `\\sqrt{${a}}`)
+    if (next === s) break
+    s = next
+  }
+  return s
+}
+
 export function normalizeMathAnswer(answer: string): string {
   if (!answer || typeof answer !== 'string') return ''
   
-  let normalized = answer.trim()
+  let normalized = expandTexShorthand(answer.trim())
   
   // Step 1: Remove all whitespace
   normalized = normalized.replace(/\s+/g, '')
@@ -303,6 +324,12 @@ export function normalizeMathAnswer(answer: string): string {
   // Step 8: Normalize decimal representation
   normalized = normalized.replace(/\.0+$/g, '') // Remove trailing zeros after decimal
   
+  // Drop redundant parentheses around a single-token numerator or denominator
+  // produced by \frac{x}{2} -> (x)/2, so it matches a plain x/2.
+  normalized = normalized
+    .replace(/(^|[+\-*/=(,^])\(([a-z0-9.]+)\)\//g, '$1$2/')
+    .replace(/\/\(([a-z0-9.]+)\)(?=$|[+\-*/=),^])/g, '/$1')
+
   return normalized
 }
 
@@ -414,15 +441,16 @@ export function compareNumericAnswers(
   
   const normalized = normalizeMathAnswer(userAnswer)
   
-  // Try direct parse
-  let userNum = parseFloat(normalized)
-  
-  // If direct parse fails, try fraction on normalized form
-  if (isNaN(userNum)) {
-    const fraction = parseFraction(normalized)
-    if (fraction !== null) {
-      userNum = fraction
-    }
+  // Fractions first (\frac{2}{3} -> 2/3); parseFloat would read "2/3" as 2
+  let userNum: number
+  const fraction = parseFraction(normalized)
+  if (fraction !== null) {
+    userNum = fraction
+  } else {
+    // Whole string must be a number, optionally followed by a unit
+    // ("0.67", "5m", "12cm^2", "3m/s", "45°", "20%"); "2/x" or "2+x" are not numbers
+    const m = normalized.match(/^(-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?)(?:[a-z°%]+(?:\/[a-z]+)?(?:\^\d)?)?$/)
+    userNum = m ? Number(m[1]) : NaN
   }
   
   if (isNaN(userNum)) {

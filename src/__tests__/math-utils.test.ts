@@ -512,3 +512,23 @@ describe('math symbol panel symbol normalization', () => {
     })
   })
 })
+
+describe('MathLive TeX shorthand and fractions', () => {
+  it('expands brace-less fractions', () => {
+    expect(compareMathAnswers('\\frac23', '2/3')).toBe(true)
+    expect(compareMathAnswers('\\frac x2', 'x/2')).toBe(true)
+  })
+  it('treats a braced single-token numerator like plain division', () => {
+    expect(compareMathAnswers('\\frac{x}{2}', 'x/2')).toBe(true)
+  })
+  it('grades LaTeX fractions numerically', () => {
+    expect(compareNumericAnswers('\\frac23', 0.6667)).toBe(true)
+    expect(compareNumericAnswers('\\frac{2}{3}', 0.6667)).toBe(true)
+    expect(compareNumericAnswers('\\frac{2}{3}', 2)).toBe(false)
+  })
+  it('still accepts a number with a unit and rejects expressions', () => {
+    expect(compareNumericAnswers('5 m', 5)).toBe(true)
+    expect(compareNumericAnswers('3m/s', 3)).toBe(true)
+    expect(compareNumericAnswers('2+x', 2)).toBe(false)
+  })
+})
