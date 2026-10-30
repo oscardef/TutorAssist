@@ -43,6 +43,7 @@ export default function SessionRoom(props: {
   initialNotes: string
   startedAt: string | null
   backHref: string
+  studentProfileId: string | null
 }) {
   const { sessionId, isTutor } = props
   const [initial, setInitial] = useState<ExcalidrawInitialDataState | null>(null)
@@ -52,6 +53,10 @@ export default function SessionRoom(props: {
   const [connected, setConnected] = useState(false)
   const [startedAt, setStartedAt] = useState(props.startedAt)
   const [ended, setEnded] = useState(false)
+  const [ending, setEnding] = useState(false)
+  const [followUp, setFollowUp] = useState(true)
+  const [endNote, setEndNote] = useState<string | null>(null)
+  const [reviewed, setReviewed] = useState<string[]>([])
   const [panel, setPanel] = useState<'notes' | 'question' | null>(isTutor ? 'question' : null)
   const clock = useClock(startedAt)
 
@@ -85,7 +90,7 @@ export default function SessionRoom(props: {
     const load = async () => {
       const res = await fetch(`/api/sessions/${sessionId}/board`)
       const data = await res.json()
-      return data as { elements: Remote[]; question: ShownQuestion | null; online: number }
+      return data as { elements: Remote[]; question: ShownQuestion | null; online: number; reviewed?: string[] }
     }
 
     load().then(data => {
@@ -93,6 +98,7 @@ export default function SessionRoom(props: {
       for (const el of data.elements) known.current.set(el.id, el.version)
       setInitial({ elements: data.elements as never, appState: { viewBackgroundColor: '#fbfaf6', currentItemStrokeColor: '#17202f', currentItemRoughness: 0, currentItemFontFamily: 2 }, scrollToContent: true })
       setQuestion(data.question)
+      setReviewed(data.reviewed ?? [])
       es = new EventSource(`/api/sessions/${sessionId}/board/stream?client=${clientId.current}`)
       let first = true
       es.onopen = () => {
@@ -152,7 +158,15 @@ export default function SessionRoom(props: {
 
   async function endSession() {
     const res = await fetch(`/api/sessions/${sessionId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'end' }) })
-    if (res.ok) setEnded(true)
+    if (!res.ok) { setEndNote('Could not end the session'); return }
+    setEnded(true)
+    setEnding(false)
+    if (followUp && reviewed.length > 0 && props.studentProfileId) {
+      const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(new Date())
+      const due = new Date(Date.now() + 7 * 86_400_000).toISOString()
+      const a = await fetch('/api/assignments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `Follow-up from ${day}`, description: 'Questions from our session. Try them again on your own.', studentProfileId: props.studentProfileId, questionIds: reviewed, dueAt: due }) })
+      setEndNote(a.ok ? `Follow-up with ${reviewed.length} question${reviewed.length === 1 ? '' : 's'} assigned` : 'Session ended, but the follow-up could not be assigned')
+    } else setEndNote('Session ended')
   }
 
   const Back = Icons.chevronLeft
@@ -161,7 +175,7 @@ export default function SessionRoom(props: {
   const Board = Icons.board
 
   return (
-    <div className="flex h-dvh flex-col bg-paper">
+    <div className="relative flex h-dvh flex-col bg-paper">
       <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-line bg-white px-3 sm:px-4">
         <Link href={props.backHref} className="rounded-lg p-1.5 text-gray-500 hover:bg-paper hover:text-ink" aria-label="Leave the room"><Back className="h-5 w-5" /></Link>
         <div className="min-w-0 flex-1">
@@ -169,8 +183,8 @@ export default function SessionRoom(props: {
           <p className="flex items-center gap-2 text-xs text-gray-500">
             <span className={`inline-block h-2 w-2 rounded-full ${connected ? 'bg-[#2f855a]' : 'bg-gray-300'}`} aria-hidden />
             <span>{connected ? (online > 1 ? `${online} here` : 'Only you so far') : 'Connecting…'}</span>
-            {clock && <span className="tnum">· {clock}</span>}
-            {ended && <span className="chip chip-good !py-0">Ended</span>}
+            {clock && !ended && <span className="tnum">· {clock}</span>}
+            {ended && <span className="chip chip-good !py-0">{endNote || 'Ended'}</span>}
           </p>
         </div>
         {props.meetLink && (
@@ -180,10 +194,27 @@ export default function SessionRoom(props: {
           <>
             <button type="button" onClick={() => setPanel(p => (p === 'question' ? null : 'question'))} aria-pressed={panel === 'question'} className={`btn btn-sm ${panel === 'question' ? 'btn-primary' : 'btn-secondary'}`}><Board className="h-4 w-4" /><span className="hidden sm:inline">Questions</span></button>
             <button type="button" onClick={() => setPanel(p => (p === 'notes' ? null : 'notes'))} aria-pressed={panel === 'notes'} className={`btn btn-sm ${panel === 'notes' ? 'btn-primary' : 'btn-secondary'}`}><Notes className="h-4 w-4" /><span className="hidden sm:inline">Notes</span></button>
-            {!ended && <button type="button" onClick={endSession} className="btn btn-ghost btn-sm hidden sm:inline-flex">End</button>}
+            {!ended && <button type="button" onClick={() => setEnding(e => !e)} aria-expanded={ending} className="btn btn-ghost btn-sm">End</button>}
           </>
         )}
       </header>
+
+      {ending && !ended && (
+        <div className="absolute right-3 top-16 z-30 w-[min(22rem,calc(100vw-1.5rem))] rounded-2xl border border-line bg-white p-4 shadow-xl" role="dialog" aria-label="End the session">
+          <p className="font-extrabold text-ink">End this session?</p>
+          <p className="mt-1 text-sm text-gray-500">The board and your notes stay saved with the session.</p>
+          {reviewed.length > 0 && props.studentProfileId && (
+            <label className="mt-3 flex items-start gap-2 rounded-xl bg-paper p-3 text-sm text-gray-700">
+              <input type="checkbox" checked={followUp} onChange={e => setFollowUp(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand-600" />
+              <span>Assign the {reviewed.length} question{reviewed.length === 1 ? '' : 's'} we looked at as follow-up practice, due in a week</span>
+            </label>
+          )}
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setEnding(false)} className="btn btn-ghost btn-sm">Not yet</button>
+            <button type="button" onClick={endSession} className="btn btn-primary btn-sm">End session</button>
+          </div>
+        </div>
+      )}
 
       <div className="relative flex min-h-0 flex-1">
         <main className="relative min-w-0 flex-1">
@@ -227,7 +258,7 @@ export default function SessionRoom(props: {
           <aside className="absolute inset-y-0 right-0 z-20 flex w-full max-w-sm flex-col border-l border-line bg-white shadow-xl sm:static sm:w-80 sm:shadow-none">
             {panel === 'notes'
               ? <NotesPanel sessionId={sessionId} initial={props.initialNotes} onClose={() => setPanel(null)} />
-              : <QuestionPanel sessionId={sessionId} shownId={question?.id ?? null} onShow={async id => { const res = await post({ type: 'question', questionId: id }); const d = await res.json(); setQuestion(d.question); setQuestionOpen(true) }} onClose={() => setPanel(null)} />}
+              : <QuestionPanel sessionId={sessionId} shownId={question?.id ?? null} onShow={async id => { const res = await post({ type: 'question', questionId: id }); const d = await res.json(); setQuestion(d.question); setQuestionOpen(true); if (Array.isArray(d.reviewed)) setReviewed(d.reviewed) }} onClose={() => setPanel(null)} />}
           </aside>
         )}
       </div>

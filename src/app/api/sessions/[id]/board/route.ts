@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { authorizeRoom, getBoard, mergeElements, sceneElements, setShownQuestion, type BoardElement } from '@/lib/session-board'
+import { authorizeRoom, getBoard, mergeElements, sceneElements, setShownQuestion, reviewedQuestionIds, type BoardElement } from '@/lib/session-board'
 import { publish, listenerCount } from '@/lib/live-bus'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -32,6 +32,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({
     elements: sceneElements(board).filter(e => !e.isDeleted),
     question: board.question,
+    reviewed: access.isTutor ? await reviewedQuestionIds(id) : [],
     me: { name: access.name, isTutor: access.isTutor },
     online: listenerCount(`board:${id}`),
   })
@@ -62,7 +63,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!access.isTutor) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const question = await setShownQuestion(board, body.questionId ?? null)
     publish(room, { type: 'question', from: body.clientId, question })
-    return NextResponse.json({ ok: true, question })
+    return NextResponse.json({ ok: true, question, reviewed: await reviewedQuestionIds(id) })
   }
   return NextResponse.json({ error: 'Unknown update' }, { status: 400 })
 }

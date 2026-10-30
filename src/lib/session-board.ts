@@ -32,7 +32,7 @@ export interface RoomAccess {
   userId: string
   name: string
   isTutor: boolean
-  session: { id: string; workspace_id: string; student_id: string | null; status: string | null; actual_start: string | null; meet_link: string | null; scheduled_at: string | null; duration_minutes: number | null; session_notes: string | null }
+  session: { id: string; workspace_id: string; student_id: string | null; student_profile_id: string | null; status: string | null; actual_start: string | null; meet_link: string | null; scheduled_at: string | null; duration_minutes: number | null; session_notes: string | null }
 }
 
 // Pointer updates arrive many times a second; cache who may use a room briefly
@@ -49,7 +49,7 @@ export async function authorizeRoom(sessionId: string, cookie: string | null): P
   // RLS: visible to the workspace's tutors and to the session's student
   const { data: session } = await supabase
     .from('sessions')
-    .select('id, workspace_id, student_id, status, actual_start, meet_link, scheduled_at, duration_minutes, session_notes')
+    .select('id, workspace_id, student_id, student_profile_id, status, actual_start, meet_link, scheduled_at, duration_minutes, session_notes')
     .eq('id', sessionId)
     .maybeSingle()
   if (!session) return null
@@ -108,7 +108,22 @@ export function mergeElements(board: BoardState, incoming: BoardElement[]): Boar
 export async function setShownQuestion(board: BoardState, questionId: string | null) {
   board.question = questionId ? await fetchQuestion(questionId, board.workspaceId) : null
   scheduleSave(board)
+  if (board.question) await recordReviewed(board.sessionId, board.question.id)
   return board.question
+}
+
+/** Questions shown in a session, in order (sessions.questions_reviewed). */
+export async function reviewedQuestionIds(sessionId: string): Promise<string[]> {
+  const admin = await createAdminClient()
+  const { data } = await admin.from('sessions').select('questions_reviewed').eq('id', sessionId).maybeSingle()
+  return (data?.questions_reviewed as string[] | null) ?? []
+}
+
+async function recordReviewed(sessionId: string, questionId: string) {
+  const ids = await reviewedQuestionIds(sessionId)
+  if (ids.includes(questionId)) return
+  const admin = await createAdminClient()
+  await admin.from('sessions').update({ questions_reviewed: [...ids, questionId] }).eq('id', sessionId)
 }
 
 function scheduleSave(board: BoardState) {
