@@ -226,6 +226,18 @@ The current model is "one prompt, one answer". IB-style assessment needs more.
 - Legal: Terms, Privacy, DPA template; Swiss nFADP + GDPR (EU students); minors (parental consent flows where required; schools act as controller); data export and deletion per user; audit log (table exists).
 - Operational readiness before the first paid seat: off-site backups with a tested restore, status page, on-call alert to the phone, documented incident process.
 
+### WS8 (idea, to do): "Learn maths" self-directed path, Duolingo style
+
+**Requested by Oscar 2026-10-30.** For people who want to learn or refresh maths on their own, for example adults filling gaps.
+
+- **Onboarding quiz** (5 minutes): what they want (everyday maths, help a child, return to study, a specific exam), then a short adaptive placement test that walks a prerequisite graph up and down to estimate their level per skill.
+- **Skill graph**, not a syllabus: small skills (fractions → ratios → percentages → …) with prerequisite edges, mapped onto the existing curriculum nodes where they overlap so the question bank is shared.
+- **Dynamic lesson plan**: daily 5–10 minute lessons (short explanation, worked example, practice) chosen from skills whose prerequisites are mastered, with spaced review of earlier skills; the plan re-plans after every session from mastery estimates.
+- **Motivation**: streaks, daily goal, progress map of the skill graph; no ads, no dark patterns; friendly to older learners (large type, plain language, no timer by default).
+- **Reuses** what exists: question engine, symbolic grading, figures, spaced repetition, student dashboard patterns. New: skill graph, placement algorithm (start with a simple Elo/IRT-lite estimate per skill), explanation content per skill, solo sign-up without a tutor.
+
+**Separate product or not (recommendation):** build it inside Mathium first as a "Learn" mode with its own landing page, because it shares almost all of the machinery and its learners can later book a tutor through the same platform. Keep the skill graph and learner model subject-agnostic (the data model already is). A broader "Duolingo for everything" is a separate brand and a much bigger bet: the engine generalises, but each subject needs its own answer types, grading and, above all, reviewed content. Decide after the maths version shows retention (for example, a share of learners still active after four weeks).
+
 ---
 
 ## 5. Sequencing and effort
