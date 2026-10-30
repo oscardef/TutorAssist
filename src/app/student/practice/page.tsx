@@ -171,6 +171,7 @@ export default function PracticePage() {
   const [answer, setAnswer] = useState('')
   const [partAnswers, setPartAnswers] = useState<string[]>([])
   const [partResults, setPartResults] = useState<PartResult[] | null>(null)
+  const [checking, setChecking] = useState(false)
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null)
   const [showHints, setShowHints] = useState(false)
   const [visibleHintCount, setVisibleHintCount] = useState(0)
@@ -576,14 +577,11 @@ export default function PracticePage() {
       )
     }
 
-    setIsCorrect(correct)
-    setSubmitted(true)
-    setSessionStats(prev => ({
-      total: prev.total + 1,
-      correct: prev.correct + (correct ? 1 : 0)
-    }))
-
-    // Record attempt
+    // The server's verdict is authoritative (it also recognises equivalent
+    // forms like -4+6x for 6x-4); the local check is the fallback if the
+    // request fails.
+    setChecking(true)
+    let data: { attempt?: { id?: string; is_correct?: boolean; context_json?: { validation?: { parts?: PartResult[] } } } } = {}
     try {
       const timeSpent = Math.round((Date.now() - startTime) / 1000)
       const response = await fetch('/api/attempts', {
@@ -598,34 +596,36 @@ export default function PracticePage() {
           hintsUsed: visibleHintCount,
         }),
       })
-      const data = await response.json()
-      if (data.attempt?.id) {
-        setCurrentAttemptId(data.attempt.id)
-      }
-      
-      // Play sound effects and confetti after state is updated
-      if (correct) {
-        sounds.playCorrect()
-        confetti.fireCorrect()
-        const newStreak = streak + 1
-        setStreak(newStreak)
-        if (newStreak >= 3) {
-          confetti.fireStreak(newStreak)
-          sounds.playStreak(newStreak)
-        }
-      } else {
-        sounds.playIncorrect()
-        setStreak(0)
-      }
+      data = await response.json()
     } catch (error) {
       console.error('Failed to record attempt:', error)
-      // Still play sounds even if API fails
-      if (correct) {
-        sounds.playCorrect()
-        confetti.fireCorrect()
-      } else {
-        sounds.playIncorrect()
+    }
+    setChecking(false)
+
+    if (typeof data.attempt?.is_correct === 'boolean') correct = data.attempt.is_correct
+    const serverParts = data.attempt?.context_json?.validation?.parts
+    if (qParts && Array.isArray(serverParts)) setPartResults(serverParts)
+    if (data.attempt?.id) setCurrentAttemptId(data.attempt.id)
+
+    setIsCorrect(correct)
+    setSubmitted(true)
+    setSessionStats(prev => ({
+      total: prev.total + 1,
+      correct: prev.correct + (correct ? 1 : 0)
+    }))
+
+    if (correct) {
+      sounds.playCorrect()
+      confetti.fireCorrect()
+      const newStreak = streak + 1
+      setStreak(newStreak)
+      if (newStreak >= 3) {
+        confetti.fireStreak(newStreak)
+        sounds.playStreak(newStreak)
       }
+    } else {
+      sounds.playIncorrect()
+      setStreak(0)
     }
   }
   
@@ -1201,7 +1201,7 @@ export default function PracticePage() {
         <div className="flex items-center justify-between gap-2 border-t border-line bg-paper px-5 py-4">
           <button type="button" onClick={backToSelection} className="btn btn-ghost">End session</button>
           {!submitted ? (
-            <button type="button" onClick={handleSubmit} disabled={questionParts ? !partAnswers.some(a => a && a.trim()) : question.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim()} className="btn btn-primary btn-lg">
+            <button type="button" onClick={handleSubmit} disabled={checking || (questionParts ? !partAnswers.some(a => a && a.trim()) : question.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())} className="btn btn-primary btn-lg">
               Check answer <Check className="h-5 w-5" />
             </button>
           ) : (

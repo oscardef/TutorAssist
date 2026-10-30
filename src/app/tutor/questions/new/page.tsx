@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AnswerOptions, type AnswerFormChoice } from '@/components/answer-options'
 import { PartsEditor } from '@/components/parts-editor'
 import { parseParts, type QuestionPart } from '@/lib/parts'
 import { FigureEditor } from '@/components/figure-editor'
@@ -38,6 +39,8 @@ export default function NewQuestionPage() {
   const [tags, setTags] = useState('')
   const [figure, setFigure] = useState<FigureSpec | null>(null)
   const [parts, setParts] = useState<QuestionPart[] | null>(null)
+  const [answerForm, setAnswerForm] = useState<AnswerFormChoice>('any')
+  const [acceptSf, setAcceptSf] = useState(false)
   const [imageKey, setImageKey] = useState<string | null>(null)
   
   // Create topic modal state
@@ -179,10 +182,12 @@ export default function NewQuestionPage() {
         correctAnswerJson = {
           value: parseFloat(answer),
           tolerance: answerTolerance ? parseFloat(answerTolerance) : undefined,
+          sigfigs: acceptSf ? 3 : undefined,
         }
       } else {
         correctAnswerJson = {
           value: answer.trim(),
+          form: answerForm === 'any' ? undefined : answerForm,
         }
       }
       
@@ -412,6 +417,8 @@ export default function NewQuestionPage() {
                   </p>
                 </div>
               )}
+
+              <AnswerOptions answerType={answerType} form={answerForm} onForm={setAnswerForm} acceptSf={acceptSf} onAcceptSf={setAcceptSf} />
             </div>
           )}
         </div>

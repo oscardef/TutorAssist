@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, use, useCallback } from 'react'
+import { AnswerOptions, type AnswerFormChoice } from '@/components/answer-options'
 import { PartsEditor } from '@/components/parts-editor'
 import { parseParts, type QuestionPart } from '@/lib/parts'
 import { FigureEditor } from '@/components/figure-editor'
@@ -77,6 +78,8 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   const [answerValue, setAnswerValue] = useState('')
   const [alternateAnswers, setAlternateAnswers] = useState<string[]>([])
   const [tolerance, setTolerance] = useState(0)
+  const [answerForm, setAnswerForm] = useState<AnswerFormChoice>('any')
+  const [acceptSf, setAcceptSf] = useState(false)
   const [options, setOptions] = useState<string[]>(['', '', '', ''])
   const [correctOption, setCorrectOption] = useState(0)
   const [difficulty, setDifficulty] = useState(3)
@@ -137,13 +140,17 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         // Parse answer based on type
         const answer = q.correct_answer_json
         if (q.answer_type === 'multiple_choice') {
-          setOptions(answer.options || ['', '', '', ''])
-          setCorrectOption(typeof answer.value === 'number' ? answer.value : 0)
+          // Stored as { choices, correct }; older rows used { options, value }
+          const stored = (answer.choices ?? answer.options ?? ['', '', '', '']) as (string | { text: string })[]
+          setOptions(stored.map(c => (typeof c === 'string' ? c : c.text)))
+          setCorrectOption(typeof answer.correct === 'number' ? answer.correct : typeof answer.value === 'number' ? answer.value : 0)
         } else if (q.answer_type === 'numeric') {
           setAnswerValue(String(answer.value || ''))
           setTolerance(answer.tolerance || 0)
+          setAcceptSf(!!answer.sigfigs)
         } else {
           setAnswerValue(String(answer.value || ''))
+          setAnswerForm((answer.form as AnswerFormChoice) || 'any')
         }
         
         // Load alternate answers if present
@@ -171,18 +178,20 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
     let correctAnswerJson
     if (answerType === 'multiple_choice') {
       correctAnswerJson = {
-        value: correctOption,
-        options: options.filter(o => o.trim())
+        choices: options.filter(o => o.trim()).map(o => ({ text: o.trim() })),
+        correct: correctOption
       }
     } else if (answerType === 'numeric') {
       correctAnswerJson = {
         value: parseFloat(answerValue) || 0,
         tolerance,
+        sigfigs: acceptSf ? 3 : undefined,
         alternates: alternateAnswers.filter(a => a.trim())
       }
     } else {
       correctAnswerJson = { 
         value: answerValue,
+        form: answerForm === 'any' ? undefined : answerForm,
         alternates: alternateAnswers.filter(a => a.trim())
       }
     }
@@ -416,6 +425,8 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
               
+              <AnswerOptions answerType={answerType} form={answerForm} onForm={setAnswerForm} acceptSf={acceptSf} onAcceptSf={setAcceptSf} />
+
               {/* Alternate Correct Answers */}
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between mb-2">

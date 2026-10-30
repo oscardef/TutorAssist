@@ -14,7 +14,7 @@
 /coverage
 
 # next.js
-/.next/
+/.next
 /out/
 
 # production
@@ -46,3 +46,6 @@ ADMIN_README.md
 # Local file storage and dev data
 .data/
 AGENTS.md
+
+# iCloud Drive skips *.nosync; .next is a local symlink to it
+*.nosync

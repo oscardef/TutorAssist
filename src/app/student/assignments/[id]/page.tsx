@@ -62,6 +62,7 @@ interface AttemptResult {
   answer: string
   usedHints?: boolean
   attemptId?: string
+  partResults?: PartResult[]
 }
 
 export default function StudentAssignmentDetailPage() {
@@ -134,6 +135,8 @@ export default function StudentAssignmentDetailPage() {
                 questionId: item.question_id,
                 isCorrect: latest.is_correct,
                 answer: latest.answer_raw || '',
+                attemptId: latest.id,
+                partResults: latest.context_json?.validation?.parts,
               }
             }
           }
@@ -282,10 +285,9 @@ export default function StudentAssignmentDetailPage() {
     }
 
     const usedHints = showHints && visibleHintCount > 0
-    const finalIsCorrect = usedHints ? false : isCorrect
 
     try {
-      await fetch('/api/attempts', {
+      const response = await fetch('/api/attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -293,10 +295,14 @@ export default function StudentAssignmentDetailPage() {
           assignmentId,
           answerLatex: userAnswer,
           partAnswers: qParts ? partAnswers : undefined,
-          isCorrect: finalIsCorrect,
+          isCorrect: usedHints ? false : isCorrect,
           hintsUsed: usedHints ? visibleHintCount : 0,
         }),
       })
+      // The server's verdict is authoritative (it also recognises equivalent forms)
+      const data: { attempt?: { id?: string; is_correct?: boolean; context_json?: { validation?: { parts?: PartResult[] } } } } = await response.json().catch(() => ({}))
+      if (typeof data.attempt?.is_correct === 'boolean') isCorrect = data.attempt.is_correct
+      const finalIsCorrect = usedHints ? false : isCorrect
 
       setAttempts(prev => ({
         ...prev,
@@ -305,6 +311,8 @@ export default function StudentAssignmentDetailPage() {
           isCorrect: finalIsCorrect,
           answer: userAnswer,
           usedHints,
+          attemptId: data.attempt?.id,
+          partResults: data.attempt?.context_json?.validation?.parts,
         },
       }))
 
@@ -426,7 +434,7 @@ export default function StudentAssignmentDetailPage() {
     if (!currentAttempt) return partAnswers
     try { const v = JSON.parse(currentAttempt.answer); return Array.isArray(v) ? v.map(x => (x == null ? '' : String(x))) : [] } catch { return [] }
   })()
-  const shownPartResults = currentAttempt && questionParts ? gradeParts(questionParts, shownPartAnswers).results : null
+  const shownPartResults = currentAttempt && questionParts ? (currentAttempt.partResults ?? gradeParts(questionParts, shownPartAnswers).results) : null
   const answered = Object.keys(attempts).length
 
   return (

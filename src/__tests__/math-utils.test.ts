@@ -9,6 +9,7 @@
  */
 
 import {
+  countSignificantFigures,
   normalizeMathAnswer,
   compareMathAnswers,
   compareNumericAnswers,
@@ -530,5 +531,36 @@ describe('MathLive TeX shorthand and fractions', () => {
     expect(compareNumericAnswers('5 m', 5)).toBe(true)
     expect(compareNumericAnswers('3m/s', 3)).toBe(true)
     expect(compareNumericAnswers('2+x', 2)).toBe(false)
+  })
+})
+
+describe('significant figures (opt-in IB 3 s.f. rule)', () => {
+  const sf3 = { sigFigs: 3 }
+  it('accepts a 3 s.f. answer when the question allows rounding', () => {
+    expect(compareNumericAnswers('0.667', 0.6667, sf3)).toBe(true)
+    expect(compareNumericAnswers('3.14', 3.14159, sf3)).toBe(true)
+    expect(compareNumericAnswers('0.66667', 0.6667, sf3)).toBe(true)
+    expect(compareNumericAnswers('0.333', 1 / 3, sf3)).toBe(true)
+  })
+  it('stays strict without the option', () => {
+    expect(compareNumericAnswers('0.667', 0.6667)).toBe(false)
+  })
+  it('rejects too few significant figures or a wrong rounding', () => {
+    expect(compareNumericAnswers('0.67', 0.6667, sf3)).toBe(false)
+    expect(compareNumericAnswers('0.666', 0.6667, sf3)).toBe(false)
+    expect(compareNumericAnswers('12.04', 12, sf3)).toBe(false)
+    expect(compareNumericAnswers('120.4', 120, sf3)).toBe(false)
+  })
+  it('counts significant figures', () => {
+    expect(countSignificantFigures('0.0670')).toBe(3)
+    expect(countSignificantFigures('120')).toBe(2)
+    expect(countSignificantFigures('1.20e3')).toBe(3)
+  })
+})
+
+describe('author tolerance', () => {
+  it('accepts answers within the ± tolerance', () => {
+    expect(compareNumericAnswers('9.8', 9.81, { tolerance: 0.05 })).toBe(true)
+    expect(compareNumericAnswers('9.7', 9.81, { tolerance: 0.05 })).toBe(false)
   })
 })

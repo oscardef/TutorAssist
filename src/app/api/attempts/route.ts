@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { parseParts, gradeParts, type PartResult } from '@/lib/parts'
+import { casMatchesAny, type AnswerForm } from '@/lib/grading/cas'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { 
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
     const isMultiPart = !!parts && Array.isArray(partAnswers)
     
     if (isMultiPart && parts) {
-      const graded = gradeParts(parts, (partAnswers as unknown[]).map(a => (a === null || a === undefined ? '' : String(a))))
+      const graded = gradeParts(parts, (partAnswers as unknown[]).map(a => (a === null || a === undefined ? '' : String(a))), casMatchesAny)
       isCorrect = graded.allCorrect
       partialCredit = Math.round(graded.credit * 1000) / 1000
       validationDetails.matchType = 'parts'
@@ -96,6 +97,8 @@ export async function POST(request: Request) {
         alternates?: string[]
         tolerance?: number
         latex?: string
+        form?: AnswerForm
+        sigfigs?: number
         blanks?: { position?: number; value: string; latex?: string; alternates?: string[] }[]
         pairs?: { left: string; right: string; leftLatex?: string; rightLatex?: string }[]
         correctMatches?: number[]
@@ -139,8 +142,14 @@ export async function POST(request: Request) {
           if (!isNaN(correctValue)) {
             isCorrect = compareNumericAnswers(
               sanitizedAnswer,
-              correctValue
+              correctValue,
+              { sigFigs: correctAnswerData.sigfigs, tolerance: correctAnswerData.tolerance }
             )
+            // Exact forms of the same number: \sqrt{4} for 2, \frac{6}{4} for 1.5
+            if (!isCorrect && casMatchesAny(sanitizedAnswer, [String(correctAnswerData.value), ...(correctAnswerData.alternates || [])])) {
+              isCorrect = true
+              validationDetails.matchType = 'symbolic'
+            }
           }
         } else if (question.answer_type === 'long_answer') {
           // Long answer: requires manual grading - always mark as needs_review
@@ -196,6 +205,12 @@ export async function POST(request: Request) {
             )
             isCorrect = validation.isCorrect
             validationDetails.matchType = validation.matchType
+            // Mathematically equivalent forms: -4+6x for 6x-4, (x+1)^2 for x^2+2x+1
+            const form = correctAnswerData.form || 'any'
+            if (!isCorrect && casMatchesAny(sanitizedAnswer, [correctStr, ...(correctAnswerData.alternates || [])], form)) {
+              isCorrect = true
+              validationDetails.matchType = 'symbolic'
+            }
           } else {
             // No correct answer data available
             isCorrect = false

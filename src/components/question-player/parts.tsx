@@ -72,6 +72,22 @@ export function PartsAnswerBlock({ parts, answers, onAnswer, submitted, results,
                   )}
                 </div>
               )}
+              {submitted && part.markscheme && (
+                <details className="mt-2 text-sm">
+                  <summary className="cursor-pointer select-none font-semibold text-gray-600 hover:text-ink">Markscheme</summary>
+                  <ul className="mt-2 space-y-1 rounded-xl bg-paper px-3 py-2">
+                    {part.markscheme.split('\n').filter(l => l.trim()).map((line, li) => {
+                      const m = line.trim().match(/^((?:[MARN]|AG)\d*)\s+(.*)$/)
+                      return (
+                        <li key={li} className="flex gap-2">
+                          {m && <span className="w-8 flex-shrink-0 font-bold text-brand-700 tnum">{m[1]}</span>}
+                          <span className="text-gray-700"><LatexRenderer content={m ? m[2] : line.trim()} /></span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </details>
+              )}
             </li>
           )
         })}

@@ -429,9 +429,40 @@ export function compareMathAnswers(
  * Compare a user's numeric answer against an expected number.
  * Simple exact comparison after normalization.
  */
+/**
+ * Significant figures written in a numeric string ("0.667" -> 3, "120" -> 2,
+ * "1.20e3" -> 3). Trailing zeros of a whole number don't count.
+ */
+export function countSignificantFigures(raw: string): number {
+  let t = raw.trim().replace(/^[-+]/, '').toLowerCase()
+  t = t.split('e')[0]
+  if (!/^\d*\.?\d*$/.test(t) || !/\d/.test(t)) return 0
+  const hasPoint = t.includes('.')
+  let digits = t.replace('.', '').replace(/^0+/, '')
+  if (!hasPoint) digits = digits.replace(/0+$/, '')
+  return digits.length
+}
+
+/**
+ * Rounded answers, for questions that opt in (IB convention: exact or to 3
+ * significant figures). Accept a value that rounds to the stored answer, or a
+ * stored answer that rounds to the value, as long as the rounded side keeps
+ * at least `minSf` significant figures.
+ */
+function matchesToSignificantFigures(userRaw: string, userNum: number, correct: number, minSf: number): boolean {
+  if (correct === 0 || userNum === 0) return false
+  const same = (x: number, y: number) => Math.abs(x - y) <= 1e-9 * Math.max(1, Math.abs(x), Math.abs(y))
+  const userSf = countSignificantFigures(userRaw)
+  if (userSf >= minSf && same(Number(correct.toPrecision(userSf)), userNum)) return true
+  const correctSf = countSignificantFigures(String(correct))
+  if (correctSf >= minSf && same(Number(userNum.toPrecision(correctSf)), correct)) return true
+  return false
+}
+
 export function compareNumericAnswers(
   userAnswer: string, 
-  correctAnswer: number
+  correctAnswer: number,
+  options: { sigFigs?: number; tolerance?: number } = {}
 ): boolean {
   // Try fraction on ORIGINAL input first (before normalization)
   const originalFraction = parseFraction(userAnswer.trim())
@@ -457,8 +488,15 @@ export function compareNumericAnswers(
     return false
   }
   
-  // Exact comparison (allow tiny floating point tolerance)
-  return Math.abs(userNum - correctAnswer) < 0.0001
+  // Exact comparison (allow tiny floating point tolerance), or within the
+  // author's ± tolerance when one is set
+  if (Math.abs(userNum - correctAnswer) < 0.0001) return true
+  if (options.tolerance && options.tolerance > 0 && Math.abs(userNum - correctAnswer) <= options.tolerance + 1e-12) return true
+
+  // Rounded answers (opt-in per question): 0.667 for 2/3, 3.14 for 3.14159…
+  if (!options.sigFigs || options.sigFigs < 1) return false
+  const numericPart = normalized.match(/^-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/)
+  return numericPart ? matchesToSignificantFigures(numericPart[0], userNum, correctAnswer, options.sigFigs) : false
 }
 
 /**

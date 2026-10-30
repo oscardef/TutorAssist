@@ -1,4 +1,6 @@
 import { compareMathAnswers, compareNumericAnswers } from '@/lib/math-utils'
+import type { AnswerForm } from '@/lib/grading/cas'
+import { COMMAND_TERMS } from '@/lib/command-terms'
 
 /**
  * Multi-part questions. Each part is graded on its own and carries marks; the
@@ -13,10 +15,26 @@ export interface QuestionPart {
   label: string
   prompt: string
   answer_type: PartAnswerType
-  correct_answer_json: { value?: string | number; alternates?: string[]; choices?: (string | { text: string; latex?: string })[]; correct?: number }
+  correct_answer_json: {
+    value?: string | number
+    alternates?: string[]
+    choices?: (string | { text: string; latex?: string })[]
+    correct?: number
+    /** Required answer form for expressions (from the command term or set by the author) */
+    form?: AnswerForm
+    /** Accept numeric answers rounded to at least this many significant figures */
+    sigfigs?: number
+  }
   marks: number
   hints?: string[]
+  /** IB command term the part starts with: Find, Hence, Show that, … */
+  command_term?: string
+  /** Markscheme lines shown after checking, e.g. "M1 sets f'(x) = 0" */
+  markscheme?: string
 }
+
+/** Optional symbolic check; the server passes the Compute Engine one in. */
+export type Equivalence = (user: string, accepted: string[], form: AnswerForm) => boolean
 
 export interface PartResult {
   label: string
@@ -35,7 +53,18 @@ export function parseParts(input: unknown): QuestionPart[] | null {
     .map((p, i): QuestionPart | null => {
       const prompt = typeof p.prompt === 'string' ? p.prompt.trim() : ''
       const type = TYPES.includes(p.answer_type as PartAnswerType) ? (p.answer_type as PartAnswerType) : 'short_answer'
-      const answer = (p.correct_answer_json && typeof p.correct_answer_json === 'object' ? p.correct_answer_json : {}) as QuestionPart['correct_answer_json']
+      const answer = { ...((p.correct_answer_json && typeof p.correct_answer_json === 'object' ? p.correct_answer_json : {}) as QuestionPart['correct_answer_json']) }
+      if (answer.form && !['any', 'factorised', 'expanded', 'exact'].includes(answer.form)) delete answer.form
+      if (Array.isArray(answer.alternates)) {
+        const alts = answer.alternates.map(x => String(x).trim()).filter(Boolean)
+        if (alts.length) answer.alternates = alts
+        else delete answer.alternates
+      }
+      if (answer.sigfigs !== undefined) {
+        const sf = Math.round(Number(answer.sigfigs))
+        if (sf >= 1 && sf <= 6) answer.sigfigs = sf
+        else delete answer.sigfigs
+      }
       const marks = Math.max(1, Math.min(20, Math.round(Number(p.marks) || 1)))
       if (!prompt) return null
       if (type === 'multiple_choice' ? !Array.isArray(answer.choices) || typeof answer.correct !== 'number' : answer.value === undefined || answer.value === '') return null
@@ -46,6 +75,8 @@ export function parseParts(input: unknown): QuestionPart[] | null {
         correct_answer_json: answer,
         marks,
         hints: Array.isArray(p.hints) ? (p.hints as unknown[]).filter((h): h is string => typeof h === 'string' && !!h.trim()).slice(0, 5) : undefined,
+        command_term: typeof p.command_term === 'string' && COMMAND_TERMS.some(c => c.term === p.command_term) ? p.command_term : undefined,
+        markscheme: typeof p.markscheme === 'string' && p.markscheme.trim() ? p.markscheme.trim().slice(0, 2000) : undefined,
       }
     })
     .filter((p): p is QuestionPart => p !== null)
@@ -53,7 +84,7 @@ export function parseParts(input: unknown): QuestionPart[] | null {
   return parts.length > 0 ? parts : null
 }
 
-export function gradePart(part: QuestionPart, answer: string | null | undefined): boolean {
+export function gradePart(part: QuestionPart, answer: string | null | undefined, equivalent?: Equivalence): boolean {
   const a = (answer ?? '').toString()
   if (!a.trim()) return false
   const c = part.correct_answer_json
@@ -63,17 +94,24 @@ export function gradePart(part: QuestionPart, answer: string | null | undefined)
     case 'numeric': {
       const v = typeof c.value === 'number' ? c.value : parseFloat(String(c.value))
       if (Number.isNaN(v)) return false
-      if (compareNumericAnswers(a, v)) return true
-      return (c.alternates || []).some(alt => compareMathAnswers(a, alt))
+      if (compareNumericAnswers(a, v, { sigFigs: c.sigfigs })) return true
+      if ((c.alternates || []).some(alt => compareMathAnswers(a, alt))) return true
+      return !!equivalent && equivalent(a, [String(c.value), ...(c.alternates || [])], 'any')
     }
-    default:
-      return compareMathAnswers(a, String(c.value ?? ''), c.alternates)
+    default: {
+      const accepted = [String(c.value ?? ''), ...(c.alternates || [])]
+      const form = c.form || 'any'
+      // A plain string match only counts when no particular form is required,
+      // or when it matches the stored answer exactly (which has that form)
+      if (compareMathAnswers(a, String(c.value ?? ''), form === 'any' ? c.alternates : undefined)) return true
+      return !!equivalent && equivalent(a, accepted, form)
+    }
   }
 }
 
-export function gradeParts(parts: QuestionPart[], answers: (string | null | undefined)[]) {
+export function gradeParts(parts: QuestionPart[], answers: (string | null | undefined)[], equivalent?: Equivalence) {
   const results: PartResult[] = parts.map((p, i) => {
-    const correct = gradePart(p, answers[i])
+    const correct = gradePart(p, answers[i], equivalent)
     return { label: p.label, correct, marks: p.marks, earned: correct ? p.marks : 0 }
   })
   const total = results.reduce((n, r) => n + r.marks, 0)
@@ -94,4 +132,8 @@ Use parts when the question naturally builds in steps. The main "questionLatex" 
   {"label": "b", "prompt": "Hence find the x-coordinate of the turning point.", "answer_type": "numeric", "correct_answer_json": {"value": 0.667, "alternates": ["2/3"]}, "marks": 2}
 ]
 answer_type is one of: numeric, expression, short_answer, multiple_choice (multiple_choice uses {"choices": [...], "correct": index}).
+Each part may also carry:
+- "command_term": the IB command term it starts with (Find, Hence, Show that, Write down, Solve, Factorise, Expand, Sketch, Determine, Calculate, …)
+- "markscheme": short markscheme lines in IB style, one per line, e.g. "M1 sets f'(x) = 0\nA1 x = 2/3"
+- in correct_answer_json, "form": "factorised" | "expanded" | "exact" when the command requires it, and "sigfigs": 3 for numeric answers that may be rounded (the IB default for inexact answers).
 When parts are present, the question-level "correctAnswer" should repeat the final part's answer.`
