@@ -57,3 +57,32 @@ Running several web replicas would need the bus moved to Redis or Postgres
 `/api/sessions/*/board/stream` (Caddy streams by default).
 
 Server-rendered times use `APP_TIMEZONE` (default `Europe/Zurich`).
+
+## Going live on mathium.app
+
+Prerequisites: the security review (`docs/SECURITY_REVIEW.md`) and an
+explicit go. Steps, in order:
+
+1. **DNS (Name.com, Oscar):** `A` record `mathium.app` → `89.253.81.145`,
+   and `CNAME` `www` → `mathium.app`. Remove the parking records.
+2. **Caddy (needs sudo on m70q):**
+
+   ```sh
+   sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak.$(date -u +%Y%m%dT%H%M%SZ)
+   sudo tee -a /etc/caddy/Caddyfile < /srv/appdata/mathium/build/deploy/Caddyfile.mathium > /dev/null
+   sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+   ```
+3. **Switch the app:** `bash /srv/appdata/mathium/build/deploy/go-live.sh`
+   (sets the HTTPS origin, rotates the internal signing secrets, rebuilds,
+   restarts, checks). Afterwards sign-in only works on the HTTPS origin.
+4. **Google Cloud console (Oscar):** add the redirect URIs
+   `https://mathium.app/api/auth/callback/google` (sign-in) and
+   `https://mathium.app/api/auth/google/callback` (calendar).
+5. **Recommended soon after:** rotate the OpenAI key, Google client secret
+   and SMTP password (they lived in `.env.local` on the laptop), configure
+   SMTP so password resets and booking emails go out, then set
+   `AUTH_REQUIRE_EMAIL_VERIFICATION=true`.
+
+Rollback: restore the `.env` copy the script printed, remove the
+`mathium.app` blocks from the Caddyfile (or restore its `.bak`), reload
+Caddy, and run `docker compose up -d --force-recreate postgrest web worker`.

@@ -1,0 +1,25 @@
+# Mathium production site. Append to /etc/caddy/Caddyfile on m70q, then
+# validate and reload (see deploy/README.md, "Going live").
+mathium.app {
+	encode zstd gzip
+	log {
+		output file /var/log/caddy/mathium-access.log {
+			roll_size 10MiB
+			roll_keep 10
+			roll_keep_for 720h
+		}
+		format json
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy 127.0.0.1:3110 {
+		# Session rooms stream board updates (Server-Sent Events)
+		flush_interval -1
+	}
+}
+
+www.mathium.app {
+	redir https://mathium.app{uri} permanent
+}
