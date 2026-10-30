@@ -58,12 +58,15 @@ export async function getUserContext(): Promise<UserContext | null> {
     .limit(1)
     .maybeSingle()
 
+  // Platform owners: the dedicated role, or an address listed in PLATFORM_OWNER_EMAILS
+  const ownerEmails = (process.env.PLATFORM_OWNER_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+
   return {
     userId: user.id,
     email: user.email,
     workspaceId: membership.workspace_id || '',
     role: membership.role as UserRole,
-    isPlatformOwner: !!platformOwner,
+    isPlatformOwner: !!platformOwner || ownerEmails.includes(user.email.toLowerCase()),
   }
 }
 

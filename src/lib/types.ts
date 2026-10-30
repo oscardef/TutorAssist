@@ -186,6 +186,13 @@ export interface Question {
   // Program/Grade fields
   primary_program_id: string | null
   primary_grade_level_id: string | null
+  // Shared library (migration 0002)
+  library: 'workspace' | 'global'
+  review_status: 'none' | 'submitted' | 'approved' | 'rejected'
+  review_notes: string | null
+  source_question_id: string | null
+  license: string
+  attribution: string | null
   // AI Generation tracking (Migration 013)
   generation_metadata: QuestionGenerationMetadata
   batch_id: string | null

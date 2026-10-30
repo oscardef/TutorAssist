@@ -29,6 +29,9 @@ interface Topic {
 }
 
 interface Question {
+  library?: 'workspace' | 'global'
+  review_status?: 'none' | 'submitted' | 'approved' | 'rejected'
+  review_notes?: string | null
   id: string
   topic_id: string | null
   prompt_text: string
@@ -708,10 +711,11 @@ export default function QuestionBankClient({
                     <div className="flex flex-col gap-1.5">
                       <Link
                         href={`/tutor/questions/${question.id}`}
-                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-center font-medium"
+                        className="btn btn-secondary btn-sm"
                       >
                         Edit
                       </Link>
+                      <LibraryAction question={question} onChange={status => setQuestions(prev => prev.map(q => q.id === question.id ? { ...q, review_status: status } : q))} />
                       
                       {/* Variant dropdown */}
                       <div className="relative group">
@@ -804,5 +808,36 @@ export default function QuestionBankClient({
         </div>
       )}
     </div>
+  )
+}
+
+
+/** Propose a question for the shared library, or show where it is in review. */
+function LibraryAction({ question, onChange }: { question: Question; onChange: (status: Question['review_status']) => void }) {
+  const [busy, setBusy] = useState(false)
+  const status = question.review_status || 'none'
+  async function call(action: 'submit' | 'withdraw') {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/library/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionId: question.id, action }) })
+      const data = await res.json()
+      if (res.ok) onChange(data.review_status)
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (question.library === 'global') return <span className="chip chip-brand justify-center">Library</span>
+  if (status === 'approved') return <span className="chip chip-good justify-center" title="A copy is in the shared library">In library</span>
+  if (status === 'submitted') {
+    return (
+      <button type="button" onClick={() => call('withdraw')} disabled={busy} className="chip chip-spark justify-center" title="Awaiting review. Click to withdraw.">
+        {busy ? '…' : 'In review'}
+      </button>
+    )
+  }
+  return (
+    <button type="button" onClick={() => call('submit')} disabled={busy} className="btn btn-ghost btn-sm" title={status === 'rejected' ? `Not accepted${question.review_notes ? `: ${question.review_notes}` : ''}. Propose again?` : 'Propose for the shared library'}>
+      {busy ? '…' : status === 'rejected' ? 'Propose again' : 'Propose'}
+    </button>
   )
 }

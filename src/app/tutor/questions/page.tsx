@@ -11,6 +11,7 @@ export default async function QuestionsPage() {
     .from('questions')
     .select('*, topics(name)')
     .eq('workspace_id', context.workspaceId)
+    .eq('library', 'workspace')
     .order('created_at', { ascending: false })
     .limit(500)
 

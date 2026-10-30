@@ -7,6 +7,7 @@ const items: NavItem[] = [
   { href: '/tutor/students', label: 'Students', icon: 'students', primary: true },
   { href: '/tutor/assignments', label: 'Assignments', icon: 'assignments', primary: true },
   { href: '/tutor/questions', label: 'Question bank', icon: 'questions', primary: true },
+  { href: '/tutor/library', label: 'Library', icon: 'book' },
   { href: '/tutor/topics', label: 'Topics', icon: 'topics' },
   { href: '/tutor/generate', label: 'Generate', icon: 'sparkles' },
   { href: '/tutor/sessions', label: 'Sessions', icon: 'calendar' },

@@ -30,6 +30,7 @@ export async function GET(request: Request) {
       `)
       .eq('id', id)
       .eq('workspace_id', context.workspaceId)
+      .eq('library', 'workspace')
       .single()
     
     if (error) {
@@ -69,6 +70,7 @@ export async function GET(request: Request) {
       .select('*, topics(id, name)')
       .in('id', questionIds)
       .eq('workspace_id', context.workspaceId)
+      .eq('library', 'workspace')
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -134,6 +136,7 @@ export async function GET(request: Request) {
       .select('*, topics(id, name)')
       .in('topic_id', weakTopicIds)
       .eq('workspace_id', context.workspaceId)
+      .eq('library', 'workspace')
       .eq('status', 'active')
     
     if (programId) {
@@ -182,6 +185,7 @@ export async function GET(request: Request) {
       primary_grade_level:grade_levels!questions_primary_grade_level_id_fkey(id, code, name, year_number)
     `, { count: 'exact' })
     .eq('workspace_id', context.workspaceId)
+    .eq('library', 'workspace')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -423,6 +427,7 @@ export async function PATCH(request: Request) {
       .select('id')
       .eq('id', id)
       .eq('workspace_id', context.workspaceId)
+      .eq('library', 'workspace')
       .single()
     
     if (!existing) {
@@ -531,6 +536,7 @@ export async function DELETE(request: Request) {
       .delete()
       .eq('id', id)
       .eq('workspace_id', context.workspaceId)
+      .eq('library', 'workspace')
     
     if (error) {
       console.error('Delete question error:', error)
