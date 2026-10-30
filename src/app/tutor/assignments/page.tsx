@@ -256,7 +256,7 @@ export default async function AssignmentsPage() {
             {questionCount && questionCount > 0 ? (
               <Link
                 href="/tutor/assignments/new"
-                className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+                className="btn btn-primary btn-sm inline-flex"
               >
                 Create Assignment
               </Link>
@@ -270,7 +270,7 @@ export default async function AssignmentsPage() {
                 </Link>
                 <Link
                   href="/tutor/generate"
-                  className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+                  className="btn btn-primary btn-sm inline-flex"
                 >
                   Generate with AI
                 </Link>

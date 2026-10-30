@@ -254,7 +254,7 @@ export default function NewSyllabusPage() {
             <button
               onClick={generateSyllabus}
               disabled={generating}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="btn btn-primary"
             >
               {generating ? (
                 <>
@@ -362,7 +362,7 @@ export default function NewSyllabusPage() {
             <button
               onClick={createSyllabusAndQuestions}
               disabled={selectedTopics.size === 0 || generatingQuestions}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="btn btn-primary"
             >
               Create Syllabus & Generate {selectedTopics.size * questionsPerTopic} Questions
             </button>

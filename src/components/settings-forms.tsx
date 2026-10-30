@@ -187,7 +187,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                 <button
                   onClick={handleSaveProfile}
                   disabled={savingProfile || !hasProfileChanges}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="btn btn-primary btn-sm"
                 >
                   {savingProfile ? 'Saving...' : 'Save'}
                 </button>
@@ -231,7 +231,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                 <button
                   onClick={handleSaveWorkspace}
                   disabled={savingWorkspace || !hasWorkspaceChanges}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="btn btn-primary btn-sm"
                 >
                   {savingWorkspace ? 'Saving...' : 'Save'}
                 </button>
@@ -273,7 +273,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                 <button
                   onClick={handleGenerateInvite}
                   disabled={generatingInvite}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 disabled:opacity-50 transition-colors"
+                  className="btn btn-primary btn-sm"
                 >
                   {generatingInvite ? 'Generating...' : 'Generate Invite Link'}
                 </button>
@@ -338,7 +338,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
               ) : (
                 <a
                   href="/api/auth/google"
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-500 transition-colors"
+                  className="btn btn-primary btn-sm"
                 >
                   Connect
                 </a>

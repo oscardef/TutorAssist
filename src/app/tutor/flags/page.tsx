@@ -849,7 +849,7 @@ export default function FlagsPage() {
                           setReviewNotes('')
                           setAddAsAlternate(false)
                         }}
-                        className="w-full rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                        className="btn btn-primary btn-sm w-full"
                       >
                         Review
                       </button>
@@ -981,7 +981,7 @@ export default function FlagsPage() {
               <button
                 onClick={handleReviewSubmit}
                 disabled={submitting}
-                className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-500 disabled:opacity-50"
+                className="btn btn-primary btn-sm"
               >
                 {submitting ? 'Saving...' : 'Save Review'}
               </button>

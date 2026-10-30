@@ -1397,7 +1397,7 @@ Or add specific requirements like:
           <button
             type="submit"
             disabled={generating}
-            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg transition-colors"
+            className="btn btn-primary flex-1"
           >
             {generating ? (
               <span className="flex items-center justify-center gap-2">

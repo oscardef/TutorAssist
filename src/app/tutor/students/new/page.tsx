@@ -342,7 +342,7 @@ export default function NewStudentPage() {
                       type="button"
                       onClick={handleSendEmail}
                       disabled={sendingEmail}
-                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                      className="btn btn-primary btn-sm mt-3 inline-flex"
                     >
                       {sendingEmail ? (
                         <>
@@ -395,7 +395,7 @@ export default function NewStudentPage() {
                   private_notes: '',
                 })
               }}
-              className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+              className="btn btn-primary btn-sm flex-1"
             >
               Add Another
             </button>
@@ -431,7 +431,7 @@ export default function NewStudentPage() {
             required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="input mt-1"
           />
         </div>
 
@@ -444,7 +444,7 @@ export default function NewStudentPage() {
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="input mt-1"
             placeholder="student@example.com"
           />
         </div>
@@ -458,7 +458,7 @@ export default function NewStudentPage() {
             type="email"
             value={formData.parent_email}
             onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="input mt-1"
             placeholder="parent@example.com"
           />
           <p className="mt-1 text-xs text-gray-500">Used for calendar invites and session notifications</p>
@@ -531,7 +531,7 @@ export default function NewStudentPage() {
                       type="button"
                       onClick={createProgram}
                       disabled={creatingProgram || !newProgramName.trim() || !newProgramCode.trim()}
-                      className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                      className="btn btn-primary btn-sm flex-1"
                     >
                       {creatingProgram ? 'Creating...' : 'Create Program'}
                     </button>
@@ -604,7 +604,7 @@ export default function NewStudentPage() {
                         type="button"
                         onClick={createGradeLevel}
                         disabled={creatingGrade || !newGradeName.trim() || !newGradeCode.trim()}
-                        className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                        className="btn btn-primary btn-sm flex-1"
                       >
                         {creatingGrade ? 'Creating...' : 'Create Grade'}
                       </button>
@@ -704,7 +704,7 @@ export default function NewStudentPage() {
             max="99"
             value={formData.age}
             onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="input mt-1"
           />
         </div>
 
@@ -717,7 +717,7 @@ export default function NewStudentPage() {
             type="text"
             value={formData.school}
             onChange={(e) => setFormData({ ...formData, school: e.target.value })}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="input mt-1"
           />
         </div>
 
@@ -731,7 +731,7 @@ export default function NewStudentPage() {
             rows={3}
             value={formData.private_notes}
             onChange={(e) => setFormData({ ...formData, private_notes: e.target.value })}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="input mt-1"
           />
         </div>
 
@@ -746,7 +746,7 @@ export default function NewStudentPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn btn-primary btn-sm flex-1"
           >
             {loading ? 'Creating...' : 'Create & Get Invite Link'}
           </button>

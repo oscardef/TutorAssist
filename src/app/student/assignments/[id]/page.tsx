@@ -722,7 +722,7 @@ export default function StudentAssignmentDetailPage() {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || (currentQuestion?.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())}
-              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all hover:scale-105"
+              className="btn btn-primary"
             >
               {isSubmitting ? (
                 <>
@@ -741,7 +741,7 @@ export default function StudentAssignmentDetailPage() {
           ) : currentIndex < items.length - 1 ? (
             <button
               onClick={nextQuestion}
-              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 flex items-center gap-2 transition-all hover:scale-105"
+              className="btn btn-primary"
             >
               Next Question
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

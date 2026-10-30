@@ -343,7 +343,7 @@ export default function QuestionBankClient({
         <div className="flex gap-2">
           <Link
             href="/tutor/questions/new"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+            className="btn btn-primary btn-sm"
           >
             + Add Question
           </Link>
@@ -409,7 +409,7 @@ export default function QuestionBankClient({
           </svg>
           Filters
           {activeFilterCount > 0 && (
-            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+            <span className="btn btn-primary btn-sm">
               {activeFilterCount}
             </span>
           )}
@@ -514,7 +514,7 @@ export default function QuestionBankClient({
           <div className="flex gap-2">
             <button
               onClick={() => handleBulkAction('assign')}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center gap-1"
+              className="btn btn-primary btn-sm"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -795,7 +795,7 @@ export default function QuestionBankClient({
               </Link>
               <Link
                 href="/tutor/generate"
-                className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+                className="btn btn-primary btn-sm inline-flex"
               >
                 Generate with AI
               </Link>

@@ -233,7 +233,7 @@ export default function SessionsPage() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="btn btn-primary btn-sm"
         >
           + Schedule Session
         </button>
@@ -400,7 +400,7 @@ export default function SessionsPage() {
           </p>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            className="btn btn-primary btn-sm"
           >
             Schedule Session
           </button>
@@ -501,7 +501,7 @@ export default function SessionsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="btn btn-primary btn-sm flex-1"
                 >
                   Schedule
                 </button>

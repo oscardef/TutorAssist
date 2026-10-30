@@ -133,7 +133,7 @@ export default async function StudentsPage() {
         </div>
         <Link
           href="/tutor/students/new"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+          className="btn btn-primary btn-sm"
         >
           Add Student
         </Link>
@@ -306,7 +306,7 @@ export default async function StudentsPage() {
           <div className="mt-6">
             <Link
               href="/tutor/students/new"
-              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+              className="btn btn-primary btn-sm inline-flex"
             >
               <svg className="-ml-0.5 mr-1.5 h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

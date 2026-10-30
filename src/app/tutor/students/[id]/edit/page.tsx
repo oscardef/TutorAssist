@@ -375,7 +375,7 @@ export default function EditStudentPage({
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="input mt-1"
               />
             </div>
 
@@ -391,7 +391,7 @@ export default function EditStudentPage({
                   max="150"
                   value={formData.age}
                   onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-1"
                 />
               </div>
 
@@ -404,7 +404,7 @@ export default function EditStudentPage({
                   type="text"
                   value={formData.school}
                   onChange={(e) => setFormData({ ...formData, school: e.target.value })}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-1"
                 />
               </div>
             </div>
@@ -481,7 +481,7 @@ export default function EditStudentPage({
                 <select
                   value={formData.grade_rollover_month}
                   onChange={(e) => setFormData({ ...formData, grade_rollover_month: e.target.value })}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-1"
                 >
                   {months.map(month => (
                     <option key={month.value} value={month.value}>{month.label}</option>
@@ -504,7 +504,7 @@ export default function EditStudentPage({
             <select
               value={formData.assigned_tutor_id}
               onChange={(e) => setFormData({ ...formData, assigned_tutor_id: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="input"
             >
               <option value="">No assigned tutor</option>
               {tutors.map(tutor => (
@@ -534,7 +534,7 @@ export default function EditStudentPage({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="input mt-1"
               />
               <p className="mt-1 text-xs text-gray-500">
                 Used for login and notifications
@@ -550,7 +550,7 @@ export default function EditStudentPage({
                 type="email"
                 value={formData.parent_email}
                 onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="input mt-1"
               />
             </div>
 
@@ -566,7 +566,7 @@ export default function EditStudentPage({
                       value={email}
                       onChange={(e) => updateAdditionalEmail(index, e.target.value)}
                       placeholder="additional@email.com"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="input"
                     />
                     {formData.additional_emails.length > 1 && (
                       <button
@@ -605,7 +605,7 @@ export default function EditStudentPage({
               rows={4}
               value={formData.private_notes}
               onChange={(e) => setFormData({ ...formData, private_notes: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="input"
               placeholder="Notes about learning style, goals, areas needing focus..."
             />
           </div>
@@ -635,7 +635,7 @@ export default function EditStudentPage({
                 type="button"
                 onClick={handleResendInvite}
                 disabled={resendingInvite}
-                className="ml-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
+                className="btn btn-primary btn-sm inline-flex"
               >
                 {resendingInvite ? (
                   <>
@@ -677,7 +677,7 @@ export default function EditStudentPage({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              className="btn btn-primary"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -700,7 +700,7 @@ export default function EditStudentPage({
                   value={newProgramCode}
                   onChange={(e) => setNewProgramCode(e.target.value.toUpperCase())}
                   placeholder="e.g., IB, GCSE"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-1"
                 />
               </div>
               <div>
@@ -710,7 +710,7 @@ export default function EditStudentPage({
                   value={newProgramName}
                   onChange={(e) => setNewProgramName(e.target.value)}
                   placeholder="e.g., International Baccalaureate"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-1"
                 />
               </div>
             </div>
@@ -727,7 +727,7 @@ export default function EditStudentPage({
                 type="button"
                 onClick={handleCreateProgram}
                 disabled={creatingProgram || !newProgramCode.trim() || !newProgramName.trim()}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                className="btn btn-primary btn-sm"
               >
                 {creatingProgram ? 'Creating...' : 'Create Program'}
               </button>
@@ -751,7 +751,7 @@ export default function EditStudentPage({
                   value={newGradeCode}
                   onChange={(e) => setNewGradeCode(e.target.value)}
                   placeholder="e.g., Y10, Grade 9"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-1"
                 />
               </div>
               <div>
@@ -761,7 +761,7 @@ export default function EditStudentPage({
                   value={newGradeName}
                   onChange={(e) => setNewGradeName(e.target.value)}
                   placeholder="e.g., Year 10, Ninth Grade"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input mt-1"
                 />
               </div>
             </div>
@@ -778,7 +778,7 @@ export default function EditStudentPage({
                 type="button"
                 onClick={handleCreateGrade}
                 disabled={creatingGrade || !newGradeCode.trim() || !newGradeName.trim()}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                className="btn btn-primary btn-sm"
               >
                 {creatingGrade ? 'Creating...' : 'Create Grade Level'}
               </button>

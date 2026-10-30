@@ -672,7 +672,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-500 disabled:opacity-50"
+              className="btn btn-primary btn-sm"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>

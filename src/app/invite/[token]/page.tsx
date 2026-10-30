@@ -180,7 +180,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             <p className="mt-2 text-gray-600">{error || 'This invite link is not valid.'}</p>
             <Link
               href="/login"
-              className="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500"
+              className="btn btn-primary mt-6"
             >
               Go to Login
             </Link>
@@ -211,7 +211,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </p>
             <Link
               href="/login"
-              className="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500"
+              className="btn btn-primary mt-6"
             >
               Go to Login
             </Link>
@@ -238,7 +238,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </p>
             <Link
               href="/login"
-              className="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500"
+              className="btn btn-primary mt-6"
             >
               Go to Login
             </Link>
@@ -316,7 +316,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               <button
                 onClick={handleJoin}
                 disabled={joining}
-                className="w-full rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                className="btn btn-primary w-full"
               >
                 {joining ? (
                   <span className="flex items-center justify-center gap-2">
@@ -347,7 +347,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                     type="email"
                     value={inviteInfo.expectedEmail}
                     disabled
-                    className="block w-full rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-gray-600 cursor-not-allowed"
+                    className="input"
                   />
                   <p className="mt-1 text-xs text-gray-500">
                     This email was set by your tutor
@@ -366,7 +366,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="block w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="input"
                   placeholder="At least 8 characters"
                 />
               </div>
@@ -382,7 +382,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="block w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="input"
                   placeholder="Repeat your password"
                 />
               </div>
@@ -390,7 +390,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                className="btn btn-primary w-full"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">

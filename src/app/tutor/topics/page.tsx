@@ -366,7 +366,7 @@ export default function TopicsPage() {
           </button>
           <button
             onClick={openCreateModal}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+            className="btn btn-primary btn-sm"
           >
             Create Topic
           </button>
@@ -528,7 +528,7 @@ export default function TopicsPage() {
           <div className="mt-6 flex gap-3 justify-center">
             <button
               onClick={openCreateModal}
-              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+              className="btn btn-primary btn-sm inline-flex"
             >
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -684,7 +684,7 @@ export default function TopicsPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:w-auto disabled:opacity-50"
+                    className="btn btn-primary btn-sm inline-flex w-full sm:w-auto"
                   >
                     {saving ? 'Saving...' : editingTopic ? 'Save Changes' : 'Create Topic'}
                   </button>

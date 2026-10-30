@@ -199,7 +199,7 @@ export default async function StudentDetailPage({
           </Link>
           <Link
             href={`/tutor/assignments/new?student=${id}`}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+            className="btn btn-primary btn-sm"
           >
             Create Assignment
           </Link>
@@ -210,7 +210,7 @@ export default async function StudentDetailPage({
       {assignedTutor && (
         <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
+            <div className="btn btn-primary">
               {assignedTutor.name?.charAt(0).toUpperCase() || 'T'}
             </div>
             <div>

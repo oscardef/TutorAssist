@@ -569,7 +569,7 @@ export default function NewQuestionPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-500 disabled:opacity-50"
+            className="btn btn-primary btn-sm"
           >
             {saving ? 'Creating...' : 'Create Question'}
           </button>
@@ -624,7 +624,7 @@ export default function NewQuestionPage() {
               <button
                 onClick={handleCreateTopic}
                 disabled={creatingTopic}
-                className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-500 disabled:opacity-50"
+                className="btn btn-primary btn-sm"
               >
                 {creatingTopic ? 'Creating...' : 'Create Topic'}
               </button>
