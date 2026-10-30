@@ -1,9 +1,9 @@
 /**
  * IB Diploma Programme mathematics, guides for first assessment 2021.
  * Topic numbering and scope follow the guides; titles are our own short
- * wording (never guide prose). Entered from memory on 2026-10-30. Math AA was
- * then checked against the official guide (83 points, same numbering) and is
- * 'verified'; Math AI stays 'draft' until its guide is checked. SL lines
+ * wording (never guide prose). Entered from memory on 2026-10-30, then
+ * checked against the official guides: Math AA (83 points) on 2026-10-30 and
+ * Math AI (78 points) on 2026-10-31, same numbering; both 'verified'. SL lines
  * apply to SL and HL; AHL lines are HL only.
  */
 import type { CurriculumSeed } from './types'
@@ -159,7 +159,7 @@ SL4.11 | Hypothesis tests: χ² independence, χ² goodness of fit, t-test
 AHL4.12 | Designing data collection; validity and reliability
 AHL4.13 | Non-linear regression and the coefficient of determination
 AHL4.14 | Linear combinations of random variables; unbiased estimators
-AHL4.15 | The central limit theorem
+AHL4.15 | Linear combinations of normal variables; the central limit theorem
 AHL4.16 | Confidence intervals for a mean
 AHL4.17 | The Poisson distribution
 AHL4.18 | Critical values and regions; tests for a mean; Type I and II errors
@@ -186,9 +186,83 @@ AHL5.18 | Second-order differential equations as coupled systems
 `
 
 const AA_NOTE = 'Structure and numbering checked against the IB DP Mathematics: analysis and approaches guide (first assessment 2021, ibo.org) on 2026-10-30; titles are our own short wording.'
-const NOTE = 'Structure and numbering from the IB DP mathematics guide (first assessment 2021); titles are our own wording. Entered from memory 2026-10-30, not yet checked against the guide.'
+const AI_NOTE = 'Structure and numbering checked against the IB DP Mathematics: applications and interpretation guide (first assessment 2021, ibo.org) on 2026-10-31; titles are our own short wording.'
 
 export const IB_DP_MATH: CurriculumSeed[] = [
   { code: 'IBDP-AA-2021', framework: 'IB DP', name: 'Mathematics: analysis and approaches', shortName: 'Math AA', version: 'First assessment 2021', levels: ['SL', 'HL'], sourceNote: AA_NOTE, orderIndex: 10, outline: AA, status: 'verified' },
-  { code: 'IBDP-AI-2021', framework: 'IB DP', name: 'Mathematics: applications and interpretation', shortName: 'Math AI', version: 'First assessment 2021', levels: ['SL', 'HL'], sourceNote: NOTE, orderIndex: 20, outline: AI },
+  { code: 'IBDP-AI-2021', framework: 'IB DP', name: 'Mathematics: applications and interpretation', shortName: 'Math AI', version: 'First assessment 2021', levels: ['SL', 'HL'], sourceNote: AI_NOTE, orderIndex: 20, outline: AI, status: 'verified' },
 ]
+
+// Revised courses (first teaching August 2027, first assessment May 2029).
+// Unit-level structure from the IB subject briefs (ibo.org, checked
+// 2026-10-31); detailed syllabus points follow when the guides are public.
+const AA_2029 = `
+# A | Number and algebra
+A1 | Sequences
+A2 | Exponents and logarithms
+A3 | Combinatorics
+A4 | Complex numbers (HL only)
+A5 | Proof and algebraic manipulation
+# B | Functions
+B1 | Representation of functions
+B2 | Polynomial functions
+B3 | Functions with asymptotes
+B4 | Trigonometric functions
+B5 | Transformations of graphs and functions
+# C | Geometry
+C1 | Surface areas, volumes and measurement in circles
+C2 | Trigonometry and its applications
+C3 | Vectors (HL only)
+# D | Probability and statistics
+D1 | Univariate data
+D2 | Probability
+D3 | Probability distributions
+# E | Calculus
+E1 | Principles of differential calculus
+E2 | Techniques of differential calculus
+E3 | Techniques of integral calculus
+E4 | Problem-solving using calculus
+E5 | Differential equations (HL only)
+E6 | Maclaurin series (HL only)
+`
+
+const AI_2029 = `
+# A | Functions
+A1 | Representation of functions
+A2 | Polynomial functions
+A3 | Functions with asymptotes
+A4 | Trigonometric functions
+A5 | Piecewise functions
+A6 | Transformations of graphs and functions (HL only)
+# B | Number and algebra
+B1 | Approximation and error
+B2 | Sequences
+B3 | Use of technology applications
+B4 | Exponentials
+B5 | Matrices (HL only)
+# C | Geometry
+C1 | Straight line geometry
+C2 | Surface areas, volumes and measurement in circles
+C3 | Trigonometry and its applications
+C4 | Vectors (HL only)
+C5 | Graph theory (HL only)
+# D | Probability and statistics
+D1 | Univariate data
+D2 | Bivariate data
+D3 | Probability
+D4 | Probability distributions
+D5 | Inferential statistics
+# E | Calculus
+E1 | Principles of differential calculus
+E2 | Techniques of differential calculus
+E3 | Techniques of integral calculus
+E4 | Problem-solving using calculus
+E5 | Differential equations (HL only)
+`
+
+const NOTE_2029 = 'Units from the IB subject brief for first assessment 2029 (ibo.org, checked 2026-10-31). Detailed syllabus points will be added from the full guide.'
+
+IB_DP_MATH.push(
+  { code: 'IBDP-AA-2029', framework: 'IB DP', name: 'Mathematics: analysis and approaches (revised)', shortName: 'Math AA 2029', version: 'First assessment 2029', levels: ['SL', 'HL'], sourceNote: NOTE_2029, orderIndex: 30, outline: AA_2029, status: 'verified' },
+  { code: 'IBDP-AI-2029', framework: 'IB DP', name: 'Mathematics: applications and interpretation (revised)', shortName: 'Math AI 2029', version: 'First assessment 2029', levels: ['SL', 'HL'], sourceNote: NOTE_2029, orderIndex: 40, outline: AI_2029, status: 'verified' },
+)

@@ -42,8 +42,11 @@ export function parseOutline(outline: string): NodeSeed[] {
       heading = code
       nodes.push({ code, title, level: null, depth: 0, orderIndex: order, parentCode: null })
     } else {
-      const level = code.startsWith('AHL') ? 'AHL' : code.startsWith('SL') ? 'SL' : null
-      nodes.push({ code, title, level, depth: 1, orderIndex: order, parentCode: heading })
+      // SL…/AHL… codes carry their level; other codes are SL unless the
+      // title ends in "(HL only)"
+      const hlOnly = /\(HL only\)$/.test(title)
+      const level = code.startsWith('AHL') || hlOnly ? 'AHL' : 'SL'
+      nodes.push({ code, title: title.replace(/\s*\(HL only\)$/, ''), level, depth: 1, orderIndex: order, parentCode: heading })
     }
   }
   return nodes
