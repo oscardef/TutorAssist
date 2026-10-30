@@ -861,7 +861,7 @@ export default function GeneratePage() {
                 <div>
                   <div className="font-medium text-gray-900">
                     Use Batch API
-                    <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">50% cheaper</span>
+                    <span className="chip chip-good ml-2">50% cheaper</span>
                   </div>
                   <p className="text-sm text-gray-500">
                     Questions will be generated within 24 hours instead of immediately. Best for large batches.

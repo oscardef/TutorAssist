@@ -239,7 +239,7 @@ export default function TutorAssignmentDetailPage() {
             <div className="flex items-center gap-2">
               <h1 className="page-title">{assignment.title}</h1>
               {isParent && (
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                <span className="chip chip-brand">
                   Parent Assignment
                 </span>
               )}
@@ -275,7 +275,7 @@ export default function TutorAssignmentDetailPage() {
               <button
                 onClick={() => updateStatus('active')}
                 disabled={updating}
-                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="btn btn-primary btn-sm"
               >
                 Activate
               </button>
@@ -291,7 +291,7 @@ export default function TutorAssignmentDetailPage() {
             )}
             <button
               onClick={deleteAssignment}
-              className="px-4 py-2 border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50"
+              className="btn btn-secondary btn-sm !text-[#9b2c2c] hover:!border-[#f3c7c7]"
             >
               Delete
             </button>

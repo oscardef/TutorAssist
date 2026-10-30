@@ -1066,7 +1066,7 @@ export default function PracticePage() {
         
         <button
           onClick={backToSelection}
-          className="px-6 py-3 bg-indigo-500 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="btn btn-primary"
         >
           Choose Another Practice Mode
         </button>

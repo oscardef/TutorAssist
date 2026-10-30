@@ -532,7 +532,7 @@ export default function QuestionBankClient({
             </button>
             <button
               onClick={() => handleBulkAction('delete')}
-              className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
+              className="btn btn-danger btn-sm"
             >
               Delete
             </button>

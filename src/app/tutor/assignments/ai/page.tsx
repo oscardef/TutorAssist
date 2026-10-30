@@ -461,7 +461,7 @@ export default function AIAssignmentPage() {
           <span className="bg-purple-600 bg-clip-text text-transparent">
             AI Assignment Generator
           </span>
-          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+          <span className="chip chip-brand">
             Beta
           </span>
         </h1>
@@ -675,7 +675,7 @@ export default function AIAssignmentPage() {
               <button
                 type="submit"
                 disabled={generating || !prompt.trim()}
-                className="w-full py-3 px-4 bg-purple-600 text-white font-semibold rounded-lg shadow-sm hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="btn btn-primary w-full"
               >
                 {generating ? (
                   <>
@@ -803,7 +803,7 @@ export default function AIAssignmentPage() {
 
             <div className="mt-4 flex flex-wrap gap-2">
               {assignment.topicsCovered.map((topic) => (
-                <span key={topic} className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                <span key={topic} className="chip chip-brand">
                   {topic}
                 </span>
               ))}
@@ -937,7 +937,7 @@ export default function AIAssignmentPage() {
               <button
                 onClick={handleRefine}
                 disabled={refining || !refinementPrompt.trim()}
-                className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="btn btn-primary btn-sm"
               >
                 {refining ? (
                   <>
@@ -975,7 +975,7 @@ export default function AIAssignmentPage() {
                 <button
                   onClick={() => handleSaveAssignment(false)}
                   disabled={saving || assignment.questions.length === 0}
-                  className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="btn btn-primary btn-sm"
                 >
                   {saving ? (
                     <>

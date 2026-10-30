@@ -663,7 +663,7 @@ export default function EditStudentPage({
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-lg border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+            className="btn btn-secondary btn-sm !text-[#9b2c2c] hover:!border-[#f3c7c7]"
           >
             Delete Student
           </button>
@@ -817,7 +817,7 @@ export default function EditStudentPage({
                     type="button"
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+                    className="btn btn-danger btn-sm flex-1"
                   >
                     {deleting ? 'Deleting...' : 'Delete Student'}
                   </button>

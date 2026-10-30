@@ -146,7 +146,7 @@ export default async function AssignmentsPage() {
           </Link>
           <Link
             href="/tutor/assignments/ai"
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-purple-700 hover:to-blue-700 flex items-center gap-2"
+            className="btn btn-primary btn-sm"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
@@ -325,7 +325,7 @@ function AssignmentRow({ assignment }: { assignment: AssignmentWithChildren }) {
           <div className="flex-1 min-w-0">
             <div className="font-medium text-gray-900 truncate flex items-center gap-2">
               {assignment.title}
-              <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+              <span className="chip chip-brand">
                 {assignment.children.length} parts
               </span>
             </div>

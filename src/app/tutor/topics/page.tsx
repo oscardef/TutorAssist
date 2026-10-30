@@ -740,7 +740,7 @@ export default function TopicsPage() {
                             <button
                               onClick={() => mergeDuplicates(group)}
                               disabled={merging}
-                              className="px-3 py-1 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                              className="btn btn-primary btn-sm"
                             >
                               {merging ? 'Merging...' : 'Merge All'}
                             </button>

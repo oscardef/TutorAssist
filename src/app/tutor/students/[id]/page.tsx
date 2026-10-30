@@ -178,7 +178,7 @@ export default async function StudentDetailPage({
               </span>
             )}
             {student.grade_levels && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <span className="chip chip-brand">
                 {student.grade_levels.name}
               </span>
             )}
@@ -350,7 +350,7 @@ export default async function StudentDetailPage({
                     </div>
                     <div className="ml-4 flex items-center gap-4">
                       {assignment.isComplete ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="chip chip-good">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                           </svg>
