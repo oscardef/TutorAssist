@@ -238,3 +238,6 @@
     border-color: #f0e442;
     padding: 1px 7px 1px 7px;
 }
+
+/* Mathium: the board sits inside our own rounded card */
+.jxgbox { border: none !important; border-radius: 0 !important; }

@@ -22,7 +22,7 @@ export interface FigureSpec {
   yRange: [number, number]
   grid?: boolean
   axes?: boolean
-  /** Equal scaling on both axes (geometry); default true */
+  /** Equal scaling on both axes (geometry); default false so function plots use the full box */
   keepAspect?: boolean
   elements: FigureElement[]
 }
@@ -30,7 +30,7 @@ export interface FigureSpec {
 export const FIGURE_COLORS = ['#0f7a77', '#e38d1f', '#d64545', '#2e8b57', '#4b5563']
 
 export function emptyFigure(): FigureSpec {
-  return { type: 'graph', xRange: [-5, 5], yRange: [-5, 5], grid: true, axes: true, keepAspect: true, elements: [] }
+  return { type: 'graph', xRange: [-5, 5], yRange: [-5, 5], grid: true, axes: true, keepAspect: false, elements: [] }
 }
 
 /** Light validation so bad specs from the AI or a tutor never break the renderer. */
@@ -47,7 +47,7 @@ export function parseFigure(input: unknown): FigureSpec | null {
     yRange: range(f.yRange, [-5, 5]),
     grid: f.grid !== false,
     axes: f.axes !== false,
-    keepAspect: f.keepAspect !== false,
+    keepAspect: f.keepAspect === true,
     elements,
   }
 }
@@ -58,7 +58,7 @@ export const FIGURE_SCHEMA_FOR_PROMPT = `
 {
   "type": "graph",
   "xRange": [-5, 5], "yRange": [-5, 5],
-  "grid": true, "axes": true, "keepAspect": true,
+  "grid": true, "axes": true, "keepAspect": false,   // set keepAspect true for geometry (circles, triangles)
   "elements": [
     {"kind": "function", "expr": "x^2 - 2*x - 3", "label": "f"},      // JavaScript-style expression in x: use ^ for powers, sin(x), sqrt(x), abs(x), exp(x), log(x)
     {"kind": "point", "x": 1, "y": -4, "label": "A"},

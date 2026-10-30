@@ -102,7 +102,7 @@ export function FigureEditor({ value, onChange }: { value: FigureSpec | null; on
             </span>
           ))}
           <label className="inline-flex items-center gap-2 text-gray-600"><input type="checkbox" checked={spec.grid !== false} onChange={e => update({ grid: e.target.checked })} className="h-4 w-4 accent-brand-600" /> grid</label>
-          <label className="inline-flex items-center gap-2 text-gray-600"><input type="checkbox" checked={spec.keepAspect !== false} onChange={e => update({ keepAspect: e.target.checked })} className="h-4 w-4 accent-brand-600" /> equal scale</label>
+          <label className="inline-flex items-center gap-2 text-gray-600"><input type="checkbox" checked={spec.keepAspect === true} onChange={e => update({ keepAspect: e.target.checked })} className="h-4 w-4 accent-brand-600" /> equal scale</label>
           <button type="button" onClick={() => onChange(null)} className="btn btn-ghost btn-sm ml-auto !text-[#9b2c2c]">Remove figure</button>
         </div>
       </div>

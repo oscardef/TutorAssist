@@ -27,7 +27,7 @@ export function Figure({ spec, className = '', height = 280, interactive = false
         boundingbox: [x0, y1, x1, y0],
         axis: spec.axes !== false,
         grid: spec.grid !== false,
-        keepaspectratio: spec.keepAspect !== false,
+        keepaspectratio: spec.keepAspect === true,
         showCopyright: false,
         showNavigation: false,
         pan: { enabled: interactive },
