@@ -1,4 +1,5 @@
 import { parseFigure } from '@/lib/figures'
+import { syllabusContext, syllabusPrompt } from '@/lib/curriculum'
 import { parseParts } from '@/lib/parts'
 import OpenAI from 'openai'
 import { openai } from '@/lib/openai'
@@ -87,10 +88,12 @@ export async function handleBatchGenerate(job: Job): Promise<void> {
     const topicIds = [...new Set(requests.map((r) => r.topicId))]
     const { data: topics } = await supabase
       .from('topics')
-      .select('id, name, description')
+      .select('id, name, description, curriculum_node_id')
       .in('id', topicIds)
     
     const topicMap = new Map(topics?.map((t) => [t.id, t]) || [])
+    const syllabusByTopic = new Map<string, Awaited<ReturnType<typeof syllabusContext>>>()
+    for (const t of topics || []) syllabusByTopic.set(t.id, await syllabusContext(supabase, t.curriculum_node_id))
     
     // Build batch requests
     const batchRequests: BatchRequest[] = requests.map((req, index) => {
@@ -112,7 +115,7 @@ export async function handleBatchGenerate(job: Job): Promise<void> {
               content: `Generate ${req.count} questions for "${topic?.name || 'Math'}".
               
 Description: ${topic?.description || 'Practice questions'}
-
+${syllabusPrompt(syllabusByTopic.get(req.topicId) ?? null)}
 ${difficultyPrompt}
 
 Return JSON with "questions" array of exactly ${req.count} questions.`,
@@ -243,6 +246,7 @@ export async function checkBatchStatus(jobId: string): Promise<boolean> {
           }
           
           // Insert questions with proper field mapping
+          const { data: topicRow } = await supabase.from('topics').select('curriculum_node_id').eq('id', request.topicId).maybeSingle()
           const questionsToInsert = questions.map((q: {
             questionLatex: string
             answerLatex?: string
@@ -255,6 +259,7 @@ export async function checkBatchStatus(jobId: string): Promise<boolean> {
           }) => ({
             workspace_id: request.workspaceId,
             topic_id: request.topicId,
+            curriculum_node_id: topicRow?.curriculum_node_id ?? null,
             origin: 'ai_generated' as const,
             status: 'active' as const,
             prompt_text: stripLatex(q.questionLatex),

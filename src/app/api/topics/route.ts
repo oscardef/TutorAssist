@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   
   try {
     const body = await request.json()
-    const { name, description, parentId, programId, gradeLevelId, isCore, curriculumCode } = body
+    const { name, description, parentId, programId, gradeLevelId, isCore, curriculumCode, curriculumNodeId } = body
     
     if (!name) {
       return NextResponse.json({ error: 'Topic name required' }, { status: 400 })
@@ -120,6 +120,7 @@ export async function POST(request: Request) {
         parent_id: parentId || null,
         program_id: programId || null,
         grade_level_id: gradeLevelId || null,
+        curriculum_node_id: body.curriculumNodeId || null,
         is_core: isCore || false,
         curriculum_code: curriculumCode || null,
         order_index: orderIndex,
@@ -189,6 +190,7 @@ export async function PATCH(request: Request) {
     if (gradeLevelId !== undefined) updates.grade_level_id = gradeLevelId || null
     if (isCore !== undefined) updates.is_core = isCore
     if (curriculumCode !== undefined) updates.curriculum_code = curriculumCode || null
+    if (body.curriculumNodeId !== undefined) updates.curriculum_node_id = body.curriculumNodeId || null
     
     const { data: topic, error } = await supabase
       .from('topics')

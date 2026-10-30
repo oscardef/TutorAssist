@@ -6,6 +6,7 @@ import LatexRenderer from '@/components/latex-renderer'
 import { Icons } from '@/components/ui/icons'
 import { InfoTip } from '@/components/ui/info-tip'
 import { DifficultyDots, IconButton } from '@/components/question-player'
+import { useCurricula, type Curriculum } from '@/components/syllabus-picker'
 
 interface LibraryQuestion {
   id: string
@@ -18,6 +19,7 @@ interface LibraryQuestion {
   license: string
   attribution: string | null
   reviewed_at: string | null
+  curriculum_node_id: string | null
 }
 interface MyQuestion {
   id: string
@@ -43,7 +45,10 @@ interface ReviewQuestion {
   topics: { name: string } | null
 }
 
-type Tab = 'browse' | 'mine' | 'review'
+type Tab = 'browse' | 'coverage' | 'mine' | 'review'
+
+/** Reviewed questions we want per syllabus point before calling it covered. */
+const COVERAGE_TARGET = 30
 
 export default function LibraryClient({ isOwner, initialMine }: { isOwner: boolean; initialMine: MyQuestion[] }) {
   const [tab, setTab] = useState<Tab>('browse')
@@ -59,11 +64,20 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const curricula = useCurricula()
+  const [courseId, setCourseId] = useState('')
+  const [nodeId, setNodeId] = useState('')
+  const [coverage, setCoverage] = useState<Record<string, { library: number; workspace: number }> | null>(null)
+  const nodeById = new Map(curricula.flatMap(c => c.nodes.map(n => [n.id, { node: n, course: c }] as const)))
+  const course = curricula.find(c => c.id === courseId)
 
-  const load = useCallback(async (q: string) => {
+  const load = useCallback(async (q: string, filter: { courseId?: string; nodeId?: string } = {}) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/library?search=${encodeURIComponent(q)}&limit=50`)
+      const params = new URLSearchParams({ search: q, limit: '50' })
+      if (filter.nodeId) params.set('nodeId', filter.nodeId)
+      else if (filter.courseId) params.set('curriculumId', filter.courseId)
+      const res = await fetch(`/api/library?${params}`)
       const data = await res.json()
       setItems(data.questions || [])
       setTotal(data.total || 0)
@@ -75,10 +89,13 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
   useEffect(() => { load('') }, [load])
 
   useEffect(() => {
+    if (tab === 'coverage' && !coverage) {
+      fetch('/api/curricula?coverage=1').then(r => r.json()).then(d => setCoverage(d.coverage || {}))
+    }
     if (tab === 'review' && isOwner && !queueLoaded) {
       fetch('/api/library/review').then(r => r.json()).then(d => { setQueue(d.questions || []); setQueueLoaded(true) })
     }
-  }, [tab, isOwner, queueLoaded])
+  }, [tab, isOwner, queueLoaded, coverage])
 
   async function importQuestion(id: string) {
     setImported(p => ({ ...p, [id]: 'busy' }))
@@ -95,7 +112,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
       setQueue(q => q.filter(x => x.id !== id))
       setPicked(p => { const n = new Set(p); n.delete(id); return n })
       setMessage(decision === 'approve' ? 'Added to the library.' : 'Sent back with your note.')
-      if (decision === 'approve') load(search)
+      if (decision === 'approve') load(search, { courseId, nodeId })
     } else {
       setMessage(data.error || 'Review failed')
     }
@@ -113,7 +130,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
       setQueue(q => q.filter(x => !done.has(x.id)))
       setPicked(new Set())
       setMessage(`${done.size} ${decision === 'approve' ? 'added to the library' : 'sent back'}${data.failed ? `, ${data.failed} failed` : ''}.`)
-      if (decision === 'approve') load(search)
+      if (decision === 'approve') load(search, { courseId, nodeId })
     } finally {
       setBulkBusy(false)
       setTimeout(() => setMessage(null), 3000)
@@ -127,6 +144,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'browse', label: 'Browse', count: total },
+    { key: 'coverage', label: 'Coverage' },
     { key: 'mine', label: 'My questions', count: mine.length },
     ...(isOwner ? [{ key: 'review' as Tab, label: 'Review queue', count: queueLoaded ? queue.length : undefined }] : []),
   ]
@@ -153,7 +171,17 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
 
       {tab === 'browse' && (
         <section className="space-y-4">
-          <input type="search" value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }} placeholder="Search the library…" className="input" aria-label="Search the library" />
+          <div className="grid gap-2 sm:grid-cols-[1fr_11rem_minmax(0,16rem)]">
+            <input type="search" value={search} onChange={e => { setSearch(e.target.value); load(e.target.value, { courseId, nodeId }) }} placeholder="Search the library…" className="input" aria-label="Search the library" />
+            <select value={courseId} onChange={e => { setCourseId(e.target.value); setNodeId(''); load(search, { courseId: e.target.value }) }} className="input" aria-label="Course">
+              <option value="">All courses</option>
+              {curricula.map(c => <option key={c.id} value={c.id}>{c.framework} {c.short_name}</option>)}
+            </select>
+            <select value={nodeId} onChange={e => { setNodeId(e.target.value); load(search, { courseId, nodeId: e.target.value }) }} disabled={!course} className="input" aria-label="Syllabus point">
+              <option value="">{course ? 'All syllabus points' : 'Pick a course first'}</option>
+              {course && <SyllabusOptions course={course} />}
+            </select>
+          </div>
           {loading ? (
             <div className="space-y-3"><div className="h-20 skeleton" /><div className="h-20 skeleton" /></div>
           ) : items.length === 0 ? (
@@ -171,6 +199,10 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
                   <li key={q.id} className="card flex items-start gap-4 p-4 sm:p-5">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {q.curriculum_node_id && nodeById.get(q.curriculum_node_id) && (() => {
+                          const { node, course: c } = nodeById.get(q.curriculum_node_id!)!
+                          return <span className="chip chip-spark" title={`${c.short_name}: ${node.title}`}>{c.short_name} {node.code}</span>
+                        })()}
                         {meta.libraryTopic && <span className="chip chip-brand">{meta.libraryTopic}</span>}
                         {meta.libraryProgram && <span className="chip">{meta.libraryProgram}{meta.libraryGrade ? ` · ${meta.libraryGrade}` : ''}</span>}
                         <DifficultyDots level={q.difficulty} />
@@ -188,6 +220,10 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
             </ul>
           )}
         </section>
+      )}
+
+      {tab === 'coverage' && (
+        <CoverageView curricula={curricula} coverage={coverage} onPick={(c, n) => { setCourseId(c); setNodeId(n); setTab('browse'); load(search, { courseId: c, nodeId: n }) }} />
       )}
 
       {tab === 'mine' && (
@@ -271,5 +307,78 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
         </section>
       )}
     </div>
+  )
+}
+
+function SyllabusOptions({ course }: { course: Curriculum }) {
+  const headings = course.nodes.filter(n => n.depth === 0)
+  return (
+    <>
+      {headings.map(h => (
+        <optgroup key={h.id} label={`${h.code} ${h.title}`}>
+          {course.nodes.filter(n => n.parent_id === h.id).map(n => <option key={n.id} value={n.id}>{n.code} {n.title}</option>)}
+        </optgroup>
+      ))}
+    </>
+  )
+}
+
+/**
+ * How many reviewed library questions each syllabus point has against the
+ * target, plus how many this workspace has. Thin points are where generation
+ * (and the monthly credit sweep) should go next.
+ */
+function CoverageView({ curricula, coverage, onPick }: {
+  curricula: Curriculum[]
+  coverage: Record<string, { library: number; workspace: number }> | null
+  onPick: (courseId: string, nodeId: string) => void
+}) {
+  const [courseId, setCourseId] = useState('')
+  const course = curricula.find(c => c.id === courseId) ?? curricula[0]
+  if (!course || !coverage) return <div className="space-y-3"><div className="h-12 skeleton" /><div className="h-64 skeleton" /></div>
+  const points = course.nodes.filter(n => n.depth > 0)
+  const covered = points.filter(n => (coverage[n.id]?.library ?? 0) >= COVERAGE_TARGET).length
+  const started = points.filter(n => (coverage[n.id]?.library ?? 0) > 0).length
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Course">
+          {curricula.map(c => (
+            <button key={c.id} type="button" role="tab" aria-selected={c.id === course.id} onClick={() => setCourseId(c.id)} className={`chip ${c.id === course.id ? 'chip-brand' : ''}`}>{c.framework} {c.short_name}</button>
+          ))}
+        </div>
+        <p className="inline-flex items-center gap-1.5 text-sm text-gray-600">
+          <span className="font-bold text-ink tnum">{covered}</span> of <span className="tnum">{points.length}</span> points covered · <span className="tnum">{started}</span> started
+          <InfoTip text={`A syllabus point counts as covered at ${COVERAGE_TARGET} reviewed library questions. ${course.status === 'draft' ? 'This syllabus outline is still a draft: ' + (course.source_note || '') : ''}`} className="text-gray-500" />
+        </p>
+      </div>
+      <div className="card divide-y divide-line">
+        {course.nodes.filter(n => n.depth === 0).map(h => (
+          <div key={h.id}>
+            <div className="bg-paper px-4 py-2 text-sm font-extrabold text-ink">{h.code} · {h.title}</div>
+            <ul>
+              {course.nodes.filter(n => n.parent_id === h.id).map(n => {
+                const c = coverage[n.id] ?? { library: 0, workspace: 0 }
+                const pct = Math.min(100, Math.round((c.library / COVERAGE_TARGET) * 100))
+                return (
+                  <li key={n.id}>
+                    <button type="button" onClick={() => onPick(course.id, n.id)} className="grid w-full grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-left hover:bg-paper sm:grid-cols-[4.5rem_1fr_9rem_5rem]">
+                      <span className="text-sm font-bold text-ink tnum">{n.code}</span>
+                      <span className="min-w-0 truncate text-sm text-gray-700">{n.title}{n.level === 'AHL' && <span className="chip ml-2 !py-0 text-[11px]">HL</span>}</span>
+                      <span className="hidden items-center gap-2 sm:flex" aria-label={`${c.library} of ${COVERAGE_TARGET} library questions`}>
+                        <span className="h-2 flex-1 overflow-hidden rounded-full bg-line"><span className={`block h-full rounded-full ${pct >= 100 ? 'bg-[#2f855a]' : pct > 0 ? 'bg-brand-500' : ''}`} style={{ width: `${pct}%` }} /></span>
+                        <span className="w-8 text-right text-xs text-gray-500 tnum">{c.library}</span>
+                      </span>
+                      <span className="text-right text-xs text-gray-500 tnum" title="Questions in your bank">{c.workspace > 0 ? `${c.workspace} yours` : ''}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }

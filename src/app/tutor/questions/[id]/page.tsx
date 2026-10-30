@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, use, useCallback } from 'react'
+import { SyllabusPicker } from '@/components/syllabus-picker'
 import { AnswerOptions, type AnswerFormChoice } from '@/components/answer-options'
 import { PartsEditor } from '@/components/parts-editor'
 import { parseParts, type QuestionPart } from '@/lib/parts'
@@ -50,6 +51,7 @@ interface Question {
   difficulty: number
   grade_level: number | null
   primary_program_id: string | null
+  curriculum_node_id?: string | null
   primary_grade_level_id: string | null
   hints_json: string[]
   solution_steps_json: Array<string | { step: string; latex?: string; result?: string }>
@@ -85,6 +87,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   const [difficulty, setDifficulty] = useState(3)
   const [gradeLevel, setGradeLevel] = useState<number | null>(null)
   const [primaryProgramId, setPrimaryProgramId] = useState<string>('')
+  const [curriculumNodeId, setCurriculumNodeId] = useState<string | null>(null)
   const [primaryGradeLevelId, setPrimaryGradeLevelId] = useState<string>('')
   const [hints, setHints] = useState<string[]>([''])
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
@@ -123,6 +126,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         setDifficulty(q.difficulty || 3)
         setGradeLevel(q.grade_level || null)
         setPrimaryProgramId(q.primary_program_id || '')
+        setCurriculumNodeId(q.curriculum_node_id || null)
         setPrimaryGradeLevelId(q.primary_grade_level_id || '')
         // Use correct field names from DB
         setHints(q.hints_json?.length > 0 ? q.hints_json : [''])
@@ -212,6 +216,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           difficulty,
           grade_level: gradeLevel,
           primary_program_id: primaryProgramId || null,
+          curriculum_node_id: curriculumNodeId,
           primary_grade_level_id: primaryGradeLevelId || null,
           hints: hints.filter(h => h.trim()),
           solution_steps: solutionSteps.filter(s => s.trim()),
@@ -535,6 +540,12 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
             </select>
           </div>
           
+          {/* Syllabus point */}
+          <div>
+            <span className="label">Syllabus</span>
+            <SyllabusPicker value={curriculumNodeId} onChange={setCurriculumNodeId} />
+          </div>
+
           {/* Study Program & Grade Level */}
           <div className="grid grid-cols-2 gap-4">
             <div>

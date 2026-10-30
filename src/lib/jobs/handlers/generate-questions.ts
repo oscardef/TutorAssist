@@ -1,4 +1,5 @@
 import { parseFigure } from '@/lib/figures'
+import { syllabusContext, syllabusPrompt } from '@/lib/curriculum'
 import { parseParts } from '@/lib/parts'
 import OpenAI from 'openai'
 import { openai } from '@/lib/openai'
@@ -62,6 +63,7 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
     }
     
     console.log(`[GenerateQuestions] Topic found: "${topic.name}"`)
+    const syllabus = await syllabusContext(supabase, topic.curriculum_node_id)
     
     // Get existing questions to avoid duplicates
     const { data: existingQuestions } = await supabase
@@ -113,7 +115,7 @@ export async function handleGenerateQuestions(job: Job): Promise<void> {
           content: `Generate ${count} practice questions for the topic: "${topic.name}"
           
 Topic description: ${topic.description || 'N/A'}
-
+${syllabusPrompt(syllabus)}
 ${difficultyPrompt}
 ${stylePrompt}
 ${materialContext}
@@ -225,6 +227,7 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
       return {
         workspace_id: workspaceId,
         topic_id: topicId,
+        curriculum_node_id: syllabus?.nodeId ?? null,
         source_material_id: fromMaterialId || null,
         origin: 'ai_generated' as const,
         status: 'active' as const,  // Active by default - flagging handles issues
@@ -482,6 +485,7 @@ Remember: Use \\( \\) for inline math. Include the "latex" field in the answer.`
       .insert({
         workspace_id: original.workspace_id,
         topic_id: original.topic_id,
+        curriculum_node_id: (original as { curriculum_node_id?: string | null }).curriculum_node_id ?? null,
         parent_question_id: original.parent_question_id || original.id,
         origin: 'variant' as const,
         status: 'active' as const,

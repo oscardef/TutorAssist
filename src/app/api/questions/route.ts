@@ -314,7 +314,7 @@ export async function POST(request: Request) {
     // Verify topic belongs to workspace
     const { data: topic, error: topicError } = await supabase
       .from('topics')
-      .select('id')
+      .select('id, curriculum_node_id')
       .eq('id', topicId)
       .eq('workspace_id', context.workspaceId)
       .single()
@@ -348,6 +348,7 @@ export async function POST(request: Request) {
         prompt_latex: questionLatexFinal || null,
         figure_json: body.figure ? parseFigure(body.figure) : null,
         parts_json: body.parts ? parseParts(body.parts) : null,
+        curriculum_node_id: typeof body.curriculumNodeId === 'string' && body.curriculumNodeId ? body.curriculumNodeId : (topic as { curriculum_node_id?: string | null } | null)?.curriculum_node_id ?? null,
         prompt_image_r2_key: typeof body.imageKey === 'string' ? body.imageKey : null,
         answer_type: answerType,
         correct_answer_json: answerJson,
@@ -451,6 +452,7 @@ export async function PATCH(request: Request) {
     if (body.grade_level !== undefined) updateFields.grade_level = body.grade_level
     if (body.primary_program_id !== undefined) updateFields.primary_program_id = body.primary_program_id
     if (body.primary_grade_level_id !== undefined) updateFields.primary_grade_level_id = body.primary_grade_level_id
+    if (body.curriculum_node_id !== undefined) updateFields.curriculum_node_id = body.curriculum_node_id || null
     if (body.hints !== undefined) updateFields.hints_json = body.hints
     if (body.solution_steps !== undefined) updateFields.solution_steps_json = body.solution_steps
 

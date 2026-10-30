@@ -17,7 +17,7 @@ export function isPlatformOwnerEmail(email: string | null | undefined) {
 const COPY_FIELDS = [
   'origin', 'status', 'prompt_text', 'prompt_latex', 'prompt_image_r2_key', 'answer_type', 'correct_answer_json',
   'tolerance', 'solution_steps_json', 'hints_json', 'difficulty', 'calculator_allowed', 'estimated_minutes',
-  'tags_json', 'curriculum_json', 'quality_score', 'generation_metadata', 'primary_program_id', 'primary_grade_level_id', 'figure_json', 'parts_json',
+  'tags_json', 'curriculum_json', 'quality_score', 'generation_metadata', 'primary_program_id', 'primary_grade_level_id', 'figure_json', 'parts_json', 'curriculum_node_id',
 ] as const
 
 type QuestionRow = Record<string, unknown> & { id: string; workspace_id: string; topic_id: string | null }

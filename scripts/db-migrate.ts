@@ -1,10 +1,12 @@
 /**
  * Applies db/migrations/*.sql in filename order, recording each in
- * public.schema_migrations. Usage: DATABASE_URL=... npx tsx scripts/db-migrate.ts
+ * public.schema_migrations, then upserts the platform curriculum trees.
+ * Usage: DATABASE_URL=... npx tsx scripts/db-migrate.ts
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import postgres from 'postgres'
+import { seedCurricula } from './seed-curricula'
 
 async function main() {
   const url = process.env.DATABASE_URL
@@ -23,6 +25,7 @@ async function main() {
       await sql`INSERT INTO public.schema_migrations (name) VALUES (${file})`
     }
     console.log('migrations up to date')
+    await seedCurricula(sql)
   } finally {
     await sql.end()
   }

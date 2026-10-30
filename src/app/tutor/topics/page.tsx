@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { SyllabusPicker } from '@/components/syllabus-picker'
+import { InfoTip } from '@/components/ui/info-tip'
 import Link from 'next/link'
 
 interface StudyProgram {
@@ -30,6 +32,7 @@ interface Topic {
   grade_level_id: string | null
   is_core: boolean
   curriculum_code: string | null
+  curriculum_node_id?: string | null
   order_index: number
   metadata?: {
     difficulty?: number
@@ -88,6 +91,7 @@ export default function TopicsPage() {
   const [formGradeLevelId, setFormGradeLevelId] = useState('')
   const [isCore, setIsCore] = useState(false)
   const [curriculumCode, setCurriculumCode] = useState('')
+  const [curriculumNodeId, setCurriculumNodeId] = useState<string | null>(null)
   const [programsLoaded, setProgramsLoaded] = useState(false)
   
   const fetchPrograms = useCallback(async () => {
@@ -194,6 +198,7 @@ export default function TopicsPage() {
     setFormGradeLevelId(selectedGradeLevel || '')
     setIsCore(false)
     setCurriculumCode('')
+    setCurriculumNodeId(null)
     setShowModal(true)
   }
   
@@ -206,6 +211,7 @@ export default function TopicsPage() {
     setFormGradeLevelId(topic.grade_level_id || '')
     setIsCore(topic.is_core || false)
     setCurriculumCode(topic.curriculum_code || '')
+    setCurriculumNodeId(topic.curriculum_node_id || null)
     setShowModal(true)
   }
   
@@ -229,6 +235,7 @@ export default function TopicsPage() {
           gradeLevelId: formGradeLevelId || null,
           isCore,
           curriculumCode: curriculumCode || null,
+          curriculumNodeId,
         }),
       })
       
@@ -619,17 +626,8 @@ export default function TopicsPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Curriculum Code
-                      </label>
-                      <input
-                        type="text"
-                        value={curriculumCode}
-                        onChange={(e) => setCurriculumCode(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., AA.2.3, SL.5.1"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">Optional curriculum reference code</p>
+                      <span className="label inline-flex items-center gap-1.5">Syllabus point <InfoTip text="Link the topic to the course syllabus. Generated questions follow its scope and level, and new questions in this topic are tagged with it." className="text-gray-500" /></span>
+                      <SyllabusPicker value={curriculumNodeId} onChange={setCurriculumNodeId} />
                     </div>
                     
                     <div>

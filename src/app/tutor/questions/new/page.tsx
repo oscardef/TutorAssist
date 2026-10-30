@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { SyllabusPicker } from '@/components/syllabus-picker'
 import { AnswerOptions, type AnswerFormChoice } from '@/components/answer-options'
 import { PartsEditor } from '@/components/parts-editor'
 import { parseParts, type QuestionPart } from '@/lib/parts'
@@ -40,6 +41,7 @@ export default function NewQuestionPage() {
   const [figure, setFigure] = useState<FigureSpec | null>(null)
   const [parts, setParts] = useState<QuestionPart[] | null>(null)
   const [answerForm, setAnswerForm] = useState<AnswerFormChoice>('any')
+  const [curriculumNodeId, setCurriculumNodeId] = useState<string | null>(null)
   const [acceptSf, setAcceptSf] = useState(false)
   const [imageKey, setImageKey] = useState<string | null>(null)
   
@@ -196,6 +198,7 @@ export default function NewQuestionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topicId: selectedTopic,
+          curriculumNodeId,
           promptText: questionText.trim(),
           promptLatex: questionLatex.trim() || null,
           figure,
@@ -423,6 +426,13 @@ export default function NewQuestionPage() {
           )}
         </div>
         
+        {/* Syllabus point */}
+        <div className="card p-6">
+          <span className="label">Syllabus</span>
+          <p className="hint mb-3">Where this question sits in the course. Used to find gaps and to build practice by syllabus point.</p>
+          <SyllabusPicker value={curriculumNodeId} onChange={setCurriculumNodeId} />
+        </div>
+
         {/* Difficulty & Grade Level */}
         <div className="card p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
