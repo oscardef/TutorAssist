@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ExcalidrawImperativeAPI, ExcalidrawInitialDataState, Collaborator, SocketId } from '@excalidraw/excalidraw/types'
+import type { ExcalidrawImperativeAPI, ExcalidrawInitialDataState, Collaborator, SocketId, BinaryFiles, BinaryFileData } from '@excalidraw/excalidraw/types'
 import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import '@excalidraw/excalidraw/index.css'
 import { Icons } from '@/components/ui/icons'
@@ -68,6 +68,9 @@ export default function SessionRoom(props: {
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastPointer = useRef(0)
   const peers = useRef(new Map<SocketId, Collaborator>())
+  // Image file ids the server already has (uploaded by us or fetched from it)
+  const knownFiles = useRef(new Set<string>())
+  const pointer = useRef<{ x: number; y: number } | null>(null)
 
   const post = useCallback((body: Record<string, unknown>) => fetch(`/api/sessions/${sessionId}/board`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: clientId.current, ...body }), keepalive: true,
@@ -82,6 +85,23 @@ export default function SessionRoom(props: {
     ex.updateScene({ elements: merged, captureUpdate: CaptureUpdateAction.NEVER })
   }, [])
 
+  /** Fetch board images by id and hand them to Excalidraw. */
+  const loadFiles = useCallback(async (list: { id: string; mimeType: string }[]) => {
+    const fresh = list.filter(f => !knownFiles.current.has(f.id))
+    if (fresh.length === 0) return
+    fresh.forEach(f => knownFiles.current.add(f.id))
+    const loaded = await Promise.all(fresh.map(async f => {
+      try {
+        const blob = await (await fetch(`/api/sessions/${sessionId}/board/files/${encodeURIComponent(f.id)}`)).blob()
+        const dataURL = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = reject; r.readAsDataURL(blob) })
+        return { id: f.id, mimeType: f.mimeType, dataURL, created: Date.now() } as unknown as BinaryFileData
+      } catch { knownFiles.current.delete(f.id); return null }
+    }))
+    // Excalidraw may still be mounting on first load
+    for (let i = 0; i < 50 && !api.current; i++) await new Promise(r => setTimeout(r, 100))
+    api.current?.addFiles(loaded.filter((f): f is BinaryFileData => f !== null))
+  }, [sessionId])
+
   // Load the board, then follow it live
   useEffect(() => {
     clientId.current = crypto.randomUUID()
@@ -91,7 +111,7 @@ export default function SessionRoom(props: {
     const load = async () => {
       const res = await fetch(`/api/sessions/${sessionId}/board`)
       const data = await res.json()
-      return data as { elements: Remote[]; question: ShownQuestion | null; online: number; reviewed?: string[] }
+      return data as { elements: Remote[]; files?: { id: string; mimeType: string }[]; question: ShownQuestion | null; online: number; reviewed?: string[] }
     }
 
     load().then(data => {
@@ -100,6 +120,7 @@ export default function SessionRoom(props: {
       setInitial({ elements: data.elements as never, appState: { viewBackgroundColor: '#fbfaf6', currentItemStrokeColor: '#17202f', currentItemRoughness: 0, currentItemFontFamily: 2 }, scrollToContent: true })
       setQuestion(data.question)
       setReviewed(data.reviewed ?? [])
+      void loadFiles(data.files ?? [])
       es = new EventSource(`/api/sessions/${sessionId}/board/stream?client=${clientId.current}`)
       let first = true
       es.onopen = () => {
@@ -112,6 +133,7 @@ export default function SessionRoom(props: {
       es.onmessage = msg => {
         const ev = JSON.parse(msg.data)
         if (ev.type === 'elements') void applyRemote(ev.elements)
+        else if (ev.type === 'file') void loadFiles([{ id: ev.id, mimeType: ev.mimeType }])
         else if (ev.type === 'question') { setQuestion(ev.question); setQuestionOpen(true) }
         else if (ev.type === 'presence') {
           setOnline(ev.online)
@@ -124,7 +146,7 @@ export default function SessionRoom(props: {
       }
     })
     return () => { cancelled = true; es?.close() }
-  }, [sessionId, applyRemote])
+  }, [sessionId, applyRemote, loadFiles])
 
   // Tutor opening the room starts the session clock
   useEffect(() => {
@@ -140,7 +162,17 @@ export default function SessionRoom(props: {
     if (elements.length) void post({ type: 'elements', elements })
   }, [post])
 
-  const onChange = useCallback((elements: readonly OrderedExcalidrawElement[]) => {
+  const onChange = useCallback((elements: readonly OrderedExcalidrawElement[], _appState: unknown, files: BinaryFiles) => {
+    // New images (pasted, dropped or inserted): send each to the server once
+    for (const f of Object.values(files)) {
+      if (knownFiles.current.has(f.id)) continue
+      knownFiles.current.add(f.id)
+      fetch(`/api/sessions/${sessionId}/board/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: clientId.current, id: f.id, mimeType: f.mimeType, dataURL: f.dataURL }),
+      }).then(r => { if (!r.ok) knownFiles.current.delete(f.id) }).catch(() => knownFiles.current.delete(f.id))
+    }
     for (const el of elements) {
       if (known.current.get(el.id) !== el.version) {
         known.current.set(el.id, el.version)
@@ -148,7 +180,43 @@ export default function SessionRoom(props: {
       }
     }
     if (pending.current.size && !flushTimer.current) flushTimer.current = setTimeout(flush, 80)
-  }, [flush])
+  }, [flush, sessionId])
+
+  async function insertImage(file: File) {
+    const ex = api.current
+    if (!ex) return
+    const { dataURL, width, height, mimeType } = await prepareImage(file)
+    const { convertToExcalidrawElements, CaptureUpdateAction } = await import('@excalidraw/excalidraw')
+    const st = ex.getAppState()
+    const zoom = st.zoom.value
+    // Under the pointer if it is over the board, otherwise the middle of the view
+    const px = pointer.current ? pointer.current.x - st.offsetLeft : st.width / 2
+    const py = pointer.current ? pointer.current.y - st.offsetTop : st.height / 2
+    const x = px / zoom - st.scrollX - width / 2
+    const y = py / zoom - st.scrollY - height / 2
+    const fileId = crypto.randomUUID().replace(/-/g, '')
+    ex.addFiles([{ id: fileId, dataURL, mimeType, created: Date.now() } as unknown as BinaryFileData])
+    const [el] = convertToExcalidrawElements([{ type: 'image', fileId: fileId as never, x, y, width, height }])
+    ex.updateScene({ elements: [...ex.getSceneElementsIncludingDeleted(), el], captureUpdate: CaptureUpdateAction.IMMEDIATELY })
+    ex.setActiveTool({ type: 'selection' })
+  }
+
+  // Image paste: handled here rather than by Excalidraw, which ignores a paste
+  // unless keyboard focus is in the canvas and the pointer is over it.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target?.closest?.('input, textarea, [contenteditable="true"]')) return
+      const items = [...(e.clipboardData?.items ?? [])]
+      const file = items.map(i => (i.kind === 'file' ? i.getAsFile() : null)).find((f): f is File => !!f && /^image\/(png|jpeg|gif|webp)$/.test(f.type))
+      if (!file || !api.current) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      void insertImage(file)
+    }
+    window.addEventListener('paste', onPaste, true)
+    return () => window.removeEventListener('paste', onPaste, true)
+  }, [])
 
   const onPointerUpdate = useCallback((payload: { pointer: { x: number; y: number; tool: 'pointer' | 'laser' }; button: 'down' | 'up' }) => {
     const t = Date.now()
@@ -218,7 +286,7 @@ export default function SessionRoom(props: {
       )}
 
       <div className="relative flex min-h-0 flex-1">
-        <main className="relative min-w-0 flex-1">
+        <main className="relative min-w-0 flex-1" onPointerMove={e => { pointer.current = { x: e.clientX, y: e.clientY } }} onPointerLeave={() => { pointer.current = null }}>
           {initial ? (
             <Excalidraw
               excalidrawAPI={a => { api.current = a }}
@@ -228,7 +296,7 @@ export default function SessionRoom(props: {
               isCollaborating
               theme="light"
               name={props.title}
-              UIOptions={{ canvasActions: { loadScene: false, saveToActiveFile: false, toggleTheme: false, export: false, changeViewBackgroundColor: true, clearCanvas: isTutor, saveAsImage: true }, tools: { image: false } }}
+              UIOptions={{ canvasActions: { loadScene: false, saveToActiveFile: false, toggleTheme: false, export: false, changeViewBackgroundColor: true, clearCanvas: isTutor, saveAsImage: true }, tools: { image: true } }}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-gray-500">Opening the board…</div>
@@ -332,4 +400,28 @@ function QuestionPanel({ sessionId, shownId, onShow, onClose }: { sessionId: str
       </ul>
     </>
   )
+}
+
+/**
+ * Read a pasted image, scaled down so its longest side is at most 1600 px
+ * (keeps uploads small), and work out a display size on the board.
+ */
+async function prepareImage(file: File): Promise<{ dataURL: string; width: number; height: number; mimeType: string }> {
+  const original = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = reject; r.readAsDataURL(file) })
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = original })
+  const MAX = 1600
+  let dataURL = original
+  let mimeType = file.type
+  if ((img.naturalWidth > MAX || img.naturalHeight > MAX || file.size > 2_000_000) && file.type !== 'image/gif') {
+    const k = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight))
+    const c = document.createElement('canvas')
+    c.width = Math.round(img.naturalWidth * k)
+    c.height = Math.round(img.naturalHeight * k)
+    c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height)
+    mimeType = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png'
+    dataURL = c.toDataURL(mimeType, 0.88)
+  }
+  // On the board: at most 600 x 450, keeping the shape
+  const k = Math.min(1, 600 / img.naturalWidth, 450 / img.naturalHeight)
+  return { dataURL, width: Math.round(img.naturalWidth * k), height: Math.round(img.naturalHeight * k), mimeType }
 }

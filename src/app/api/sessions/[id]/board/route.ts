@@ -31,6 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const board = await getBoard(id, access.session.workspace_id)
   return NextResponse.json({
     elements: sceneElements(board).filter(e => !e.isDeleted),
+    files: [...board.files.values()].map(f => ({ id: f.id, mimeType: f.mimeType })),
     question: board.question,
     reviewed: access.isTutor ? await reviewedQuestionIds(id) : [],
     me: { name: access.name, isTutor: access.isTutor },

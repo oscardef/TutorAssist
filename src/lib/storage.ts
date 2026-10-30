@@ -11,7 +11,7 @@ import path from 'node:path'
  *  - s3:    any S3-compatible bucket (Cloudflare R2, MinIO, AWS) via STORAGE_S3_* / R2_* vars
  */
 
-export type StorageFolder = 'materials' | 'exports' | 'avatars' | 'questions'
+export type StorageFolder = 'materials' | 'exports' | 'avatars' | 'questions' | 'boards'
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -46,7 +46,7 @@ function generateKey(workspaceId: string, folder: StorageFolder, filename: strin
 
 /** Keys are `<workspaceId>/<folder>/<uuid>.<ext>`; anything else is rejected. */
 export function isValidKey(key: string): boolean {
-  return /^[0-9a-f-]{36}\/(materials|exports|avatars|questions)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/.test(key)
+  return /^[0-9a-f-]{36}\/(materials|exports|avatars|questions|boards)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/.test(key)
 }
 
 export function workspaceIdFromKey(key: string): string | null {

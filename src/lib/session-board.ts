@@ -17,10 +17,14 @@ export interface ShownQuestion {
   prompt_image_r2_key: string | null
 }
 
+/** An image on the board: Excalidraw's file id mapped to our storage key. */
+export interface BoardFile { id: string; key: string; mimeType: string }
+
 interface BoardState {
   sessionId: string
   workspaceId: string
   elements: Map<string, BoardElement>
+  files: Map<string, BoardFile>
   question: ShownQuestion | null
   saveTimer: ReturnType<typeof setTimeout> | null
 }
@@ -71,9 +75,12 @@ async function load(sessionId: string, workspaceId: string): Promise<BoardState>
   const admin = await createAdminClient()
   const { data } = await admin.from('session_boards').select('scene_json, shown_question_id').eq('session_id', sessionId).maybeSingle()
   const elements = new Map<string, BoardElement>()
-  for (const el of ((data?.scene_json as { elements?: BoardElement[] } | null)?.elements ?? [])) elements.set(el.id, el)
+  const scene = (data?.scene_json as { elements?: BoardElement[]; files?: BoardFile[] } | null) ?? {}
+  for (const el of scene.elements ?? []) elements.set(el.id, el)
+  const files = new Map<string, BoardFile>()
+  for (const f of scene.files ?? []) files.set(f.id, f)
   const question = data?.shown_question_id ? await fetchQuestion(data.shown_question_id, workspaceId) : null
-  return { sessionId, workspaceId, elements, question, saveTimer: null }
+  return { sessionId, workspaceId, elements, files, question, saveTimer: null }
 }
 
 export function getBoard(sessionId: string, workspaceId: string): Promise<BoardState> {
@@ -137,7 +144,7 @@ async function save(board: BoardState) {
     await admin.from('session_boards').upsert({
       session_id: board.sessionId,
       workspace_id: board.workspaceId,
-      scene_json: { elements: sceneElements(board).filter(e => !e.isDeleted) },
+      scene_json: { elements: sceneElements(board).filter(e => !e.isDeleted), files: [...board.files.values()] },
       shown_question_id: board.question?.id ?? null,
       updated_at: new Date().toISOString(),
     })
@@ -155,4 +162,13 @@ async function fetchQuestion(id: string, workspaceId: string): Promise<ShownQues
     .eq('workspace_id', workspaceId)
     .maybeSingle()
   return (data as ShownQuestion | null) ?? null
+}
+
+/** Images pasted or dropped onto a board: PNG, JPEG, GIF or WebP, 8 MB max. */
+export const BOARD_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+export const BOARD_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+
+export function addBoardFile(board: BoardState, file: BoardFile) {
+  board.files.set(file.id, file)
+  scheduleSave(board)
 }
