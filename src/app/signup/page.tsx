@@ -405,7 +405,7 @@ function SignupForm() {
 
         {/* Privacy notice */}
         <p className="mt-5 text-center text-xs text-gray-500">
-          Our <Link href="/privacy" className="font-semibold text-gray-700 underline underline-offset-2 hover:text-ink">privacy policy</Link> explains what we store and why.
+          By creating an account you agree to the <Link href="/terms" className="font-semibold text-gray-700 underline underline-offset-2 hover:text-ink">terms of use</Link>. The <Link href="/privacy" className="font-semibold text-gray-700 underline underline-offset-2 hover:text-ink">privacy policy</Link> explains what we store and why.
         </p>
       </div>
 

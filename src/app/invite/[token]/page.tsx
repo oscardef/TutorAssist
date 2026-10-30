@@ -412,6 +412,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                   Sign in
                 </Link>
               </p>
+              <p className="mt-4 text-center text-xs text-gray-500">By creating your account you agree to the <Link href="/terms" className="underline underline-offset-2 hover:text-ink">terms of use</Link>. The <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">privacy policy</Link> explains what we store and why.</p>
             </form>
           ) : null}
 

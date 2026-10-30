@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { LogoMark } from '@/components/ui/brand'
+import { LegalPage, Section, legalContact } from '@/components/legal-page'
 
 export const metadata: Metadata = {
   title: 'Privacy policy · Mathium',
@@ -14,19 +14,9 @@ const UPDATED = '30 Oct 2026'
  * it whenever a new kind of data, cookie or processor is added.
  */
 export default function PrivacyPage() {
-  const contact = process.env.PRIVACY_CONTACT_EMAIL || 'privacy@mathium.app'
+  const contact = legalContact()
   return (
-    <div className="min-h-screen bg-paper">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-5 py-5 sm:px-8">
-        <Link href="/" className="inline-flex items-center gap-2 font-extrabold text-ink"><LogoMark size={32} /> Mathium</Link>
-        <Link href="/login" className="btn btn-secondary btn-sm">Sign in</Link>
-      </header>
-
-      <main id="main" className="mx-auto max-w-3xl px-5 pb-20 pt-6 sm:px-8">
-        <h1 className="text-[2rem] font-extrabold leading-tight text-ink sm:text-[2.5rem]">Privacy policy</h1>
-        <p className="mt-2 text-sm text-gray-500">Last updated {UPDATED}</p>
-
-        <div className="prose-policy mt-8 space-y-8 text-[15px] leading-relaxed text-gray-700">
+    <LegalPage title="Privacy policy" updated={UPDATED}>
           <Section title="In short">
             <ul>
               <li>We collect what Mathium needs to work: your account, your learning and tutoring activity, and the files and boards you create.</li>
@@ -109,24 +99,9 @@ export default function PrivacyPage() {
           <Section title="Changes">
             <p>When we change this policy we update the date above, and tell you on Mathium or by email if the change matters for you.</p>
           </Section>
-        </div>
-      </main>
-
-      <footer className="border-t border-line">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-sm text-gray-500 sm:px-8">
-          <span className="inline-flex items-center gap-2"><LogoMark size={22} /> Mathium</span>
-          <span>Not affiliated with or endorsed by the International Baccalaureate.</span>
-        </div>
-      </footer>
-    </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="mb-3 text-lg font-extrabold text-ink">{title}</h2>
-      {children}
-    </section>
+          <Section title="Terms">
+            <p>How you may use Mathium, and what we may do with questions you create, is in our <Link href="/terms">terms of use</Link>.</p>
+          </Section>
+    </LegalPage>
   )
 }
