@@ -227,17 +227,20 @@ export default function SessionsPage() {
   
   return (
     <div>
-      <div className="mb-8 flex justify-between items-center">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="page-title">Sessions</h1>
-          <p className="text-gray-600 mt-1">Schedule and manage tutoring sessions.</p>
+          <p className="page-subtitle">Schedule sessions, open the shared board, and let students book your free times.</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn btn-primary btn-sm"
-        >
-          + Schedule Session
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/tutor/sessions/availability" className="btn btn-secondary btn-sm"><Icons.clock className="h-4 w-4" /> Availability</Link>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn btn-primary btn-sm"
+          >
+            <Icons.plus className="h-4 w-4" /> Schedule session
+          </button>
+        </div>
       </div>
       
       {/* Calendar Connection Notice */}

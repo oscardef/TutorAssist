@@ -1,6 +1,6 @@
 import { google, calendar_v3 } from 'googleapis'
 import { getAuthenticatedClient } from './oauth'
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { getUserById } from '@/lib/users'
 
 interface CreateEventParams {
@@ -193,7 +193,8 @@ export async function deleteCalendarEvent(userId: string, eventId: string): Prom
 
 // Sync session with database
 export async function syncSessionToCalendar(sessionId: string): Promise<void> {
-  const supabase = await createServerClient()
+  // Service role: also runs when a student books, on behalf of the tutor
+  const supabase = await createAdminClient()
   
   const { data: session, error } = await supabase
     .from('sessions')
@@ -243,5 +244,24 @@ export async function syncSessionToCalendar(sessionId: string): Promise<void> {
         meet_link: event.meetLink,
       })
       .eq('id', sessionId)
+  }
+}
+
+/**
+ * Busy intervals from the user's primary Google calendar, or [] when Google
+ * isn't connected or the request fails (booking then relies on sessions only).
+ */
+export async function getBusyIntervals(userId: string, from: Date, to: Date): Promise<{ start: number; end: number }[]> {
+  try {
+    const auth = await getAuthenticatedClient(userId)
+    if (!auth) return []
+    const calendar = google.calendar({ version: 'v3', auth })
+    const res = await calendar.freebusy.query({ requestBody: { timeMin: from.toISOString(), timeMax: to.toISOString(), items: [{ id: 'primary' }] } })
+    return (res.data.calendars?.primary?.busy || [])
+      .filter(b => b.start && b.end)
+      .map(b => ({ start: new Date(b.start!).getTime(), end: new Date(b.end!).getTime() }))
+  } catch (err) {
+    console.warn('[calendar] free/busy failed', err instanceof Error ? err.message : err)
+    return []
   }
 }

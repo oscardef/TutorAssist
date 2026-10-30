@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
 import { InfoTip } from '@/components/ui/info-tip'
+import { CancelSessionButton } from '@/components/cancel-session-button'
 import { format, isToday, isTomorrow, isPast } from 'date-fns'
 
 interface AssignmentWithItems {
@@ -122,6 +123,12 @@ export default async function StudentDashboard() {
   const allAssignments = assignmentsResult.data as AssignmentWithItems[] | null
   const dueItems = dueItemsResult.data
   const upcomingSessions = upcomingSessionsResult.data
+  const { count: bookableTutorCount } = await supabase
+    .from('booking_settings')
+    .select('tutor_user_id', { count: 'exact', head: true })
+    .eq('workspace_id', context?.workspaceId)
+    .eq('enabled', true)
+  const canBook = (bookableTutorCount ?? 0) > 0
   const nowMs = new Date().getTime()
   const totalAttempts = totalAttemptsResult.count
   const correctAttempts = correctAttemptsResult.count
@@ -421,11 +428,17 @@ export default async function StudentDashboard() {
         </div>
 
         <div className="space-y-6">
-          {upcomingSessions && upcomingSessions.length > 0 && (
+          {((upcomingSessions && upcomingSessions.length > 0) || canBook) && (
             <section className="card">
-              <div className="card-header"><h2 className="card-title">Upcoming sessions</h2></div>
+              <div className="card-header">
+                <h2 className="card-title">Upcoming sessions</h2>
+                {canBook && <Link href="/student/book" className="btn btn-ghost btn-sm"><Icons.plus className="h-4 w-4" /> Book</Link>}
+              </div>
+              {(!upcomingSessions || upcomingSessions.length === 0) && (
+                <div className="px-6 pb-6 text-sm text-gray-500">No sessions booked. <Link href="/student/book" className="font-semibold text-brand-700 hover:underline">Pick a time</Link></div>
+              )}
               <ul className="divide-y divide-line">
-                {upcomingSessions.map(session => {
+                {(upcomingSessions ?? []).map(session => {
                   const start = new Date(session.scheduled_at)
                   const end = new Date(start.getTime() + (session.duration_minutes || 60) * 60000)
                   if (end.getTime() < nowMs) return null
@@ -440,6 +453,7 @@ export default async function StudentDashboard() {
                         {session.meet_link && (
                           <a href={session.meet_link} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm"><Icons.video className="h-4 w-4" /> Video call</a>
                         )}
+                        {!live && <CancelSessionButton sessionId={session.id} />}
                       </div>
                     </li>
                   )

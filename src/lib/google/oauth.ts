@@ -1,5 +1,5 @@
 import { google } from 'googleapis'
-import { createServerClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!
@@ -42,8 +42,15 @@ export async function getTokensFromCode(code: string) {
 }
 
 // Get authenticated OAuth2 client for a user
+/**
+ * Google client for a user's stored connection. Reads the tokens with the
+ * service role so server code can act for the tutor of a session (a student
+ * booking a slot creates the event in the tutor's calendar). Callers must
+ * pass a user id they derived themselves (the signed-in user or a session's
+ * tutor), never one taken from request input.
+ */
 export async function getAuthenticatedClient(userId: string) {
-  const supabase = await createServerClient()
+  const supabase = await createAdminClient()
   
   const { data: connection, error } = await supabase
     .from('oauth_connections')

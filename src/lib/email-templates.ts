@@ -944,3 +944,24 @@ export function verifyEmailEmail(name: string, url: string): string {
   `
   return emailWrapper(content, 'Confirm your Mathium email')
 }
+
+/** Session booked or cancelled; sent to the tutor and the student. */
+export function sessionEmail(params: { name: string; kind: 'booked' | 'cancelled'; when: string; withName: string; url: string }): string {
+  const firstName = params.name?.split(' ')[0] || 'there'
+  const booked = params.kind === 'booked'
+  const title = booked ? 'Session booked' : 'Session cancelled'
+  const content = `
+    ${emailHeader(title, params.when, booked ? '📅' : '🗓️')}
+    <div class="content" style="padding: 32px 40px;">
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+      <p style="margin: 0 0 24px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
+        ${booked
+          ? `Your session with ${params.withName} is booked for <strong>${params.when}</strong>. The session room opens from the dashboard shortly before it starts.`
+          : `The session with ${params.withName} on <strong>${params.when}</strong> has been cancelled.`}
+      </p>
+      ${emailButton(booked ? 'Open Mathium' : 'Book another time', params.url)}
+    </div>
+    ${emailFooter()}
+  `
+  return emailWrapper(content, `${title}: ${params.when}`)
+}
