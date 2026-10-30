@@ -28,6 +28,21 @@ const nextConfig: NextConfig = {
   
   // Performance: Enable compression and optimize images
   compress: true,
+  poweredByHeader: false,
+
+  // Baseline security headers; the CSP is set per request in src/proxy.ts
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+        { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+      ],
+    }]
+  },
   
   // Reduce unnecessary logging in production
   logging: {

@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { sendEmail } from '@/lib/email'
+import { assignmentEmail } from '@/lib/email-templates'
 import { getUserById } from '@/lib/users'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
@@ -352,44 +354,17 @@ export async function PATCH(request: Request) {
               .single()
             
             // Send email notification
-            const nodemailer = await import('nodemailer')
-            const transporter = nodemailer.createTransport({
-              service: 'gmail',
-              auth: {
-                user: process.env.SMTP_EMAIL,
-                pass: process.env.SMTP_PASSWORD,
-              },
-            })
-            
-            const dueText = assignment.due_at 
-              ? `Due: ${new Date(assignment.due_at).toLocaleDateString('en-GB')}`
-              : ''
-            
-            await transporter.sendMail({
-              from: `"${workspace?.name || 'Mathium'}" <${process.env.SMTP_EMAIL}>`,
+            await sendEmail({
               to: studentEmail,
-              subject: `New Assignment: ${assignment.title}`,
-              html: `
-                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #2563eb;">New Assignment Available</h2>
-                  <p>Hi ${studentProfile.name || 'there'},</p>
-                  <p>You have a new assignment waiting for you:</p>
-                  <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-                    <h3 style="margin: 0 0 8px 0;">${assignment.title}</h3>
-                    ${assignment.description ? `<p style="color: #6b7280; margin: 0;">${assignment.description}</p>` : ''}
-                    ${dueText ? `<p style="color: #dc2626; margin: 8px 0 0 0; font-weight: 500;">${dueText}</p>` : ''}
-                  </div>
-                  <p>
-                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/assignments/${assignment.id}" 
-                       style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
-                      View Assignment
-                    </a>
-                  </p>
-                  <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-                    - ${workspace?.name || 'Your Tutor'}
-                  </p>
-                </div>
-              `,
+              subject: `New assignment: ${assignment.title}`,
+              html: assignmentEmail({
+                name: studentProfile.name || '',
+                title: assignment.title,
+                description: assignment.description,
+                due: assignment.due_at ? new Date(assignment.due_at).toLocaleDateString('en-GB', { timeZone: process.env.TZ || 'Europe/Zurich' }) : null,
+                from: workspace?.name || 'Your tutor',
+                url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/student/assignments/${assignment.id}`,
+              }),
             })
           }
         }

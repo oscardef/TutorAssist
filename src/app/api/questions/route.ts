@@ -45,8 +45,12 @@ export async function GET(request: Request) {
   const topicId = searchParams.get('topicId')
   const difficulty = searchParams.get('difficulty')
   const gradeLevel = searchParams.get('gradeLevel')
-  const programId = searchParams.get('programId')
-  const gradeLevelId = searchParams.get('gradeLevelId')
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  // Used inside PostgREST or() filters below, so only accept real ids
+  const programIdRaw = searchParams.get('programId')
+  const programId = programIdRaw && UUID.test(programIdRaw) ? programIdRaw : null
+  const gradeLevelIdRaw = searchParams.get('gradeLevelId')
+  const gradeLevelId = gradeLevelIdRaw && UUID.test(gradeLevelIdRaw) ? gradeLevelIdRaw : null
   const mode = searchParams.get('mode') // 'review' or 'weak'
   const aiGenerated = searchParams.get('aiGenerated')
   const limit = parseInt(searchParams.get('limit') || '50')

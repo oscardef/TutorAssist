@@ -33,6 +33,16 @@ const BRAND = {
 }
 
 // Common email wrapper
+/** Names and workspace titles are user input; never put them in email HTML raw. */
+function esc(value: string | null | undefined): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 function emailWrapper(content: string, previewText?: string): string {
   return `
 <!DOCTYPE html>
@@ -723,7 +733,10 @@ export interface InviteEmailParams {
 }
 
 export function generateInviteEmail(params: InviteEmailParams): string {
-  const { studentName, tutorName, workspaceName, inviteUrl } = params
+  const studentName = esc(params.studentName)
+  const tutorName = esc(params.tutorName)
+  const workspaceName = esc(params.workspaceName)
+  const inviteUrl = esc(params.inviteUrl)
 
   return `
 <!DOCTYPE html>
@@ -912,7 +925,7 @@ export const SupabaseEmailTemplates = {
 // ============================================================================
 
 export function passwordResetEmail(name: string, url: string): string {
-  const firstName = name?.split(' ')[0] || 'there'
+  const firstName = esc(name?.split(' ')[0] || 'there')
   const content = `
     ${emailHeader('Reset your password', 'Choose a new password for your Mathium account', '🔑')}
     <div class="content" style="padding: 32px 40px;">
@@ -929,7 +942,7 @@ export function passwordResetEmail(name: string, url: string): string {
 }
 
 export function verifyEmailEmail(name: string, url: string): string {
-  const firstName = name?.split(' ')[0] || 'there'
+  const firstName = esc(name?.split(' ')[0] || 'there')
   const content = `
     ${emailHeader('Confirm your email', 'One click and your Mathium account is ready', '✉️')}
     <div class="content" style="padding: 32px 40px;">
@@ -947,21 +960,39 @@ export function verifyEmailEmail(name: string, url: string): string {
 
 /** Session booked or cancelled; sent to the tutor and the student. */
 export function sessionEmail(params: { name: string; kind: 'booked' | 'cancelled'; when: string; withName: string; url: string }): string {
-  const firstName = params.name?.split(' ')[0] || 'there'
+  const firstName = esc(params.name?.split(' ')[0] || 'there')
   const booked = params.kind === 'booked'
   const title = booked ? 'Session booked' : 'Session cancelled'
   const content = `
-    ${emailHeader(title, params.when, booked ? '📅' : '🗓️')}
+    ${emailHeader(title, esc(params.when), booked ? '📅' : '🗓️')}
     <div class="content" style="padding: 32px 40px;">
       <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
       <p style="margin: 0 0 24px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
         ${booked
-          ? `Your session with ${params.withName} is booked for <strong>${params.when}</strong>. The session room opens from the dashboard shortly before it starts.`
-          : `The session with ${params.withName} on <strong>${params.when}</strong> has been cancelled.`}
+          ? `Your session with ${esc(params.withName)} is booked for <strong>${esc(params.when)}</strong>. The session room opens from the dashboard shortly before it starts.`
+          : `The session with ${esc(params.withName)} on <strong>${esc(params.when)}</strong> has been cancelled.`}
       </p>
       ${emailButton(booked ? 'Open Mathium' : 'Book another time', params.url)}
     </div>
     ${emailFooter()}
   `
   return emailWrapper(content, `${title}: ${params.when}`)
+}
+
+/** New assignment for a student. */
+export function assignmentEmail(params: { name: string; title: string; description?: string | null; due?: string | null; from: string; url: string }): string {
+  const firstName = esc(params.name?.split(' ')[0] || 'there')
+  const content = `
+    ${emailHeader('New assignment', esc(params.title), '📝')}
+    <div class="content" style="padding: 32px 40px;">
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
+        ${esc(params.from)} set you <strong>${esc(params.title)}</strong>${params.due ? `, due <strong>${esc(params.due)}</strong>` : ''}.
+      </p>
+      ${params.description ? `<p style="margin: 0 0 24px; color: ${BRAND.gray[600]}; font-size: 15px; line-height: 1.6;">${esc(params.description)}</p>` : ''}
+      ${emailButton('Open the assignment', params.url)}
+    </div>
+    ${emailFooter()}
+  `
+  return emailWrapper(content, `New assignment: ${esc(params.title)}`)
 }

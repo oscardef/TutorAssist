@@ -64,6 +64,8 @@ const MathLiveComponent = dynamic(
     // Configure MathLive globally for student use
     MathLive.MathfieldElement.fontsDirectory = 'https://unpkg.com/mathlive/dist/fonts/'
     MathLive.MathfieldElement.soundsDirectory = null // Disable sounds
+    MathLive.MathfieldElement.keypressSound = null
+    MathLive.MathfieldElement.plonkSound = null
     
     // Return a component that renders the math-field
     return function MathFieldWrapper({ 
@@ -104,7 +106,6 @@ const MathLiveComponent = dynamic(
           disabled: boolean
           addEventListener: (event: string, handler: (e: Event) => void) => void
           removeEventListener: (event: string, handler: (e: Event) => void) => void
-          setOptions: (options: Record<string, unknown>) => void
         } | null
         if (!mf) return
 
@@ -123,19 +124,16 @@ const MathLiveComponent = dynamic(
         // Wait a tick for MathLive to fully initialize to avoid ariaLiveText error
         const initTimer = setTimeout(() => {
           try {
-            mf.setOptions({
-              smartMode: true,
-              smartSuperscript: true,
-              smartFence: true,
-              removeExtraneousParentheses: true,
-              mathModeSpace: '\\:',
-              keypressSound: null,
-              plonkSound: null,
-              virtualKeyboardMode: 'off',
-              virtualKeyboardToolbar: 'none',
-              menuItems: [],
-              inlineShortcuts: INLINE_SHORTCUTS,
-            })
+            // MathLive 0.111 configures fields through properties
+            const field = mf as unknown as Record<string, unknown>
+            field.smartMode = true
+            field.smartSuperscript = true
+            field.smartFence = true
+            field.removeExtraneousParentheses = true
+            field.mathModeSpace = '\\:'
+            field.mathVirtualKeyboardPolicy = 'manual'
+            field.menuItems = []
+            field.inlineShortcuts = INLINE_SHORTCUTS
             mf.addEventListener('input', handleInput)
             mf.addEventListener('keydown', handleKeyDown)
             setIsReady(true)

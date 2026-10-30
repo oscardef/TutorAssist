@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import { headers } from "next/headers";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -23,11 +24,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Reading the request makes every page render per request, so Next can
+  // put the CSP nonce from src/proxy.ts on its scripts
+  await headers();
   return (
     <html lang="en" className={manrope.variable}>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased" suppressHydrationWarning>
