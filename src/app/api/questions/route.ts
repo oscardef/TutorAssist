@@ -452,15 +452,20 @@ export async function PATCH(request: Request) {
     if (body.hints !== undefined) updateFields.hints_json = body.hints
     if (body.solution_steps !== undefined) updateFields.solution_steps_json = body.solution_steps
 
-    // A question that was sent back from library review goes back into the queue once it is edited
-    if ((existing as { review_status?: string }).review_status === 'rejected') {
+    if (body.tags !== undefined) updateFields.tags_json = body.tags
+    if (body.figure !== undefined) updateFields.figure_json = body.figure ? parseFigure(body.figure) : null
+    if (body.imageKey !== undefined) updateFields.prompt_image_r2_key = body.imageKey || null
+    // Every question anyone makes or changes is proposed for the shared library
+    // (decision 2026-10-30). Editing content puts it back in the review queue:
+    // a rejected question gets another look, an imported copy becomes the
+    // editor's own question, and an approved one sends its update for review.
+    const contentKeys = ['prompt_text', 'prompt_latex', 'answer_type', 'correct_answer_json', 'difficulty', 'hints_json', 'solution_steps_json', 'figure_json', 'prompt_image_r2_key', 'topic_id']
+    const contentChanged = contentKeys.some(k => k in updateFields)
+    if (contentChanged && (existing as { review_status?: string }).review_status !== 'submitted') {
       updateFields.review_status = 'submitted'
       updateFields.submitted_at = new Date().toISOString()
       updateFields.review_notes = null
     }
-    if (body.tags !== undefined) updateFields.tags_json = body.tags
-    if (body.figure !== undefined) updateFields.figure_json = body.figure ? parseFigure(body.figure) : null
-    if (body.imageKey !== undefined) updateFields.prompt_image_r2_key = body.imageKey || null
     if (body.status !== undefined) updateFields.status = body.status
     
     updateFields.updated_at = new Date().toISOString()

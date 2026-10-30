@@ -72,10 +72,22 @@ export async function approveToLibrary(questionId: string, reviewerId: string, r
     avg_time_seconds: null,
     created_by: reviewerId,
   })
-  const { data: inserted, error: insertError } = await admin.from('questions').insert(copy).select('id').single()
-  if (insertError) throw new Error(insertError.message)
+  // An edited version of an already-approved question updates its library copy
+  const { data: existingCopy } = await admin.from('questions').select('id, workspace_id').eq('library', 'global').eq('source_question_id', q.id).maybeSingle()
+  let libraryId: string
+  if (existingCopy) {
+    const { workspace_id: _ws, created_by: _cb, times_attempted: _ta, times_correct: _tc, avg_time_seconds: _avg, ...updates } = copy
+    void _ws; void _cb; void _ta; void _tc; void _avg
+    const { error: updateError } = await admin.from('questions').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', existingCopy.id)
+    if (updateError) throw new Error(updateError.message)
+    libraryId = existingCopy.id as string
+  } else {
+    const { data: inserted, error: insertError } = await admin.from('questions').insert(copy).select('id').single()
+    if (insertError) throw new Error(insertError.message)
+    libraryId = inserted.id as string
+  }
   await admin.from('questions').update({ review_status: 'approved', reviewed_by: reviewerId, reviewed_at: new Date().toISOString(), review_notes: notes }).eq('id', q.id)
-  return inserted.id as string
+  return libraryId
 }
 
 export async function rejectFromLibrary(questionId: string, reviewerId: string, notes: string | null) {
