@@ -2,6 +2,7 @@ import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUsersByIds } from '@/lib/users'
 import Link from 'next/link'
+import { Icons } from '@/components/ui/icons'
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString)
@@ -122,198 +123,62 @@ export default async function StudentsPage() {
     studentStats.set(assignment.assigned_student_user_id, existing)
   })
 
+  const Plus = Icons.plus
+  const Arrow = Icons.arrowRight
+  const active = students?.filter(s => s.user_id).length || 0
+  const pending = (students?.length || 0) - active
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="page-title">Students</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your students and track their progress
-          </p>
+          <p className="page-subtitle tnum">{students?.length || 0} student{students?.length === 1 ? '' : 's'}{pending > 0 ? ` · ${pending} not signed up yet` : ''}</p>
         </div>
-        <Link
-          href="/tutor/students/new"
-          className="btn btn-primary btn-sm"
-        >
-          Add Student
-        </Link>
+        <Link href="/tutor/students/new" className="btn btn-primary"><Plus className="h-4 w-4" /> Add student</Link>
       </div>
 
       {students && students.length > 0 ? (
-        <div className="card overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Student
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Program / Grade
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Assigned Tutor
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Accuracy
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Assignments
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Last Activity
-                </th>
-                <th className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {students.map((student) => {
-                const stats = student.user_id ? studentStats.get(student.user_id) : null
-                const accuracy = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
-                const studyProgram = student.study_programs as { id: string; code: string; name: string; color: string | null } | null
-                const gradeLevel = student.grade_levels as { id: string; code: string; name: string } | null
-                const assignedTutor = student.assigned_tutor_id ? tutorMap.get(student.assigned_tutor_id) : null
-                
-                return (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <Link href={`/tutor/students/${student.id}`} className="flex items-center group">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                          <span className="text-sm font-medium text-blue-600">
-                            {student.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="font-medium text-gray-900 group-hover:text-blue-600">{student.name}</div>
-                          {student.school && (
-                            <div className="text-sm text-gray-500">{student.school}</div>
-                          )}
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {studyProgram ? (
-                          <span 
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{ 
-                              backgroundColor: studyProgram.color ? `${studyProgram.color}20` : '#e5e7eb',
-                              color: studyProgram.color || '#374151'
-                            }}
-                          >
-                            {studyProgram.code}
-                          </span>
-                        ) : null}
-                        {gradeLevel ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {gradeLevel.code}
-                          </span>
-                        ) : null}
-                        {!studyProgram && !gradeLevel && (
-                          <span className="text-sm text-gray-400">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      {assignedTutor ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-medium text-indigo-600">
-                            {assignedTutor.name?.charAt(0).toUpperCase() || 'T'}
-                          </div>
-                          <span className="text-gray-700">{assignedTutor.name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-center">
-                      {accuracy !== null ? (
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          accuracy >= 70 ? 'bg-green-100 text-green-800' : 
-                          accuracy >= 50 ? 'bg-amber-100 text-amber-800' : 
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {accuracy}%
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-center text-sm text-gray-500">
-                      {stats && stats.assigned > 0 ? (
-                        <span>{stats.completed}/{stats.assigned}</span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      {student.user_id ? (
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                      {stats?.lastActivity ? (
-                        <span title={new Date(stats.lastActivity).toLocaleString()}>
-                          {formatRelativeTime(stats.lastActivity)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                      <Link
-                        href={`/tutor/students/${student.id}`}
-                        className="text-blue-600 hover:text-blue-500"
-                      >
-                        View →
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ul className="card divide-y divide-line">
+          {students.map(student => {
+            const stats = student.user_id ? studentStats.get(student.user_id) : null
+            const accuracy = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null
+            const studyProgram = student.study_programs as { id: string; code: string; name: string; color: string | null } | null
+            const gradeLevel = student.grade_levels as { id: string; code: string; name: string } | null
+            const assignedTutor = student.assigned_tutor_id ? tutorMap.get(student.assigned_tutor_id) : null
+            return (
+              <li key={student.id}>
+                <Link href={`/tutor/students/${student.id}`} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-4 transition-colors hover:bg-paper sm:grid-cols-[auto_1.4fr_1fr_1fr_auto]">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-spark-100 text-base font-extrabold text-spark-700">{student.name.charAt(0).toUpperCase()}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-bold text-ink">{student.name}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                      {student.school && <span className="truncate">{student.school}</span>}
+                      {studyProgram && <span className="chip chip-brand px-2 py-0 text-[11px]">{studyProgram.code}</span>}
+                      {gradeLevel && <span className="chip px-2 py-0 text-[11px]">{gradeLevel.code}</span>}
+                      {!student.user_id && <span className="chip chip-spark px-2 py-0 text-[11px]">Invite pending</span>}
+                    </span>
+                  </span>
+                  <span className="hidden min-w-0 text-sm text-gray-600 sm:block">
+                    {assignedTutor ? <span className="truncate">{assignedTutor.name}</span> : <span className="text-gray-400">No tutor assigned</span>}
+                    <span className="block text-xs text-gray-400 tnum">{stats?.lastActivity ? `Active ${formatRelativeTime(stats.lastActivity)}` : 'No activity yet'}</span>
+                  </span>
+                  <span className="hidden items-center gap-3 text-sm sm:flex">
+                    {accuracy !== null ? <span className={`chip tnum ${accuracy >= 70 ? 'chip-good' : accuracy >= 50 ? 'chip-spark' : 'chip-bad'}`}>{accuracy}%</span> : <span className="chip text-gray-500">No answers</span>}
+                    {stats && stats.assigned > 0 && <span className="text-gray-500 tnum" title="Assignments completed">{stats.completed}/{stats.assigned}</span>}
+                  </span>
+                  <Arrow className="h-5 w-5 text-gray-300" />
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
       ) : (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"
-            />
-          </svg>
-          <h3 className="mt-4 text-sm font-semibold text-gray-900">No students</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by adding your first student.
-          </p>
-          <div className="mt-6">
-            <Link
-              href="/tutor/students/new"
-              className="btn btn-primary btn-sm inline-flex"
-            >
-              <svg className="-ml-0.5 mr-1.5 h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Add Student
-            </Link>
-          </div>
+        <div className="card px-6 py-14 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700"><Icons.students className="h-6 w-6" /></div>
+          <p className="mt-4 font-bold text-ink">No students yet</p>
+          <p className="mt-1 text-sm text-gray-500">Add a student and send them an invite link.</p>
+          <Link href="/tutor/students/new" className="btn btn-primary mt-5"><Plus className="h-4 w-4" /> Add your first student</Link>
         </div>
       )}
     </div>

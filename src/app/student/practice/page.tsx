@@ -872,243 +872,93 @@ export default function PracticePage() {
       !studentProfile?.study_program_id || t.program_id === studentProfile.study_program_id
     )
     
+    const Back = Icons.chevronLeft
+    const Play = Icons.arrowRight
+    const X = Icons.x
+    const filtersActive = !!browseSearch || !!browseTopicFilter || browseDifficulties.length > 0
+    const allSelected = filteredBrowseQuestions.length > 0 && selectedQuestionIds.size === filteredBrowseQuestions.length
+
     return (
-      <div className="max-w-5xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={backToSelection}
-            className="text-sm text-gray-500 hover:text-gray-700 mb-2 flex items-center gap-1 group"
-          >
-            <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-            </svg>
-            Back to practice modes
+      <div className="mx-auto max-w-4xl pb-24">
+        <div className="mb-5 flex items-start gap-3">
+          <button type="button" onClick={backToSelection} className="btn btn-secondary btn-sm mt-0.5 !h-10 !w-10 !px-0" aria-label="Back to practice" title="Back to practice">
+            <Back className="h-5 w-5" />
           </button>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="page-title">Choose Questions</h1>
-              <p className="text-gray-600 mt-1">
-                {studentProfile?.study_program?.name 
-                  ? `Showing questions from ${studentProfile.study_program.name}`
-                  : 'Select the questions you want to practice'
-                }
-              </p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-extrabold text-ink">Pick questions</h1>
+            <p className="mt-0.5 text-sm text-gray-600">Tick the ones you want, then start.</p>
+          </div>
+        </div>
+
+        <div className="card p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <input type="search" value={browseSearch} onChange={e => setBrowseSearch(e.target.value)} placeholder="Search questions…" className="input" aria-label="Search questions" />
             </div>
-            {selectedQuestionIds.size > 0 && (
-              <button
-                onClick={startCustomPractice}
-                className="hidden sm:flex px-5 py-2.5 bg-emerald-500 text-white font-medium rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25 items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                </svg>
-                Start ({selectedQuestionIds.size})
+            <select value={browseTopicFilter} onChange={e => setBrowseTopicFilter(e.target.value)} className="input sm:w-56" aria-label="Topic">
+              <option value="">All topics</option>
+              {availableTopics.map(topic => <option key={topic.id} value={topic.id}>{topic.name}</option>)}
+            </select>
+            <select value={browseSortBy} onChange={e => setBrowseSortBy(e.target.value as typeof browseSortBy)} className="input sm:w-44" aria-label="Sort">
+              <option value="newest">Newest first</option>
+              <option value="easiest">Easiest first</option>
+              <option value="hardest">Hardest first</option>
+              <option value="topic">By topic</option>
+            </select>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Difficulty">
+            <span className="mr-1 text-xs font-semibold text-gray-500">Difficulty</span>
+            {[1, 2, 3, 4, 5].map(value => (
+              <button key={value} type="button" aria-pressed={browseDifficulties.includes(value)} onClick={() => setBrowseDifficulties(prev => prev.includes(value) ? prev.filter(d => d !== value) : [...prev, value])} className={`chip ${browseDifficulties.includes(value) ? 'chip-brand' : ''}`} title={['', 'Very easy', 'Easy', 'Medium', 'Hard', 'Very hard'][value]}>
+                <span className="inline-flex gap-0.5" aria-hidden="true">{Array.from({ length: 5 }).map((_, i) => <span key={i} className={`h-1.5 w-1.5 rounded-full ${i < value ? 'bg-current' : 'bg-current/20'}`} />)}</span>
               </button>
-            )}
-          </div>
-        </div>
-        
-        {/* Search and Filters */}
-        <div className="card mb-6 p-5 space-y-4">
-          {/* Search Input */}
-          <div className="relative">
-            <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-            </svg>
-            <input
-              type="text"
-              value={browseSearch}
-              onChange={(e) => setBrowseSearch(e.target.value)}
-              placeholder="Search questions by text or topic..."
-              className="w-full pl-12 pr-10 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-50 focus:bg-white transition-colors"
-            />
-            {browseSearch && (
-              <button
-                onClick={() => setBrowseSearch('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-          
-          {/* Filter Row */}
-          <div className="flex flex-wrap items-end gap-4">
-            {/* Topic Filter */}
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Topic</label>
-              <select
-                value={browseTopicFilter}
-                onChange={(e) => setBrowseTopicFilter(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm bg-gray-50 focus:bg-white transition-colors"
-              >
-                <option value="">All Topics</option>
-                {availableTopics.map(topic => (
-                  <option key={topic.id} value={topic.id}>{topic.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Sort By */}
-            <div className="w-44">
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Sort By</label>
-              <select
-                value={browseSortBy}
-                onChange={(e) => setBrowseSortBy(e.target.value as typeof browseSortBy)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm bg-gray-50 focus:bg-white transition-colors"
-              >
-                <option value="newest">Newest First</option>
-                <option value="easiest">Easiest First</option>
-                <option value="hardest">Hardest First</option>
-                <option value="topic">By Topic</option>
-              </select>
-            </div>
-          </div>
-          
-          {/* Difficulty Filter Pills */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Difficulty</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: 1, label: 'Easy', activeClass: 'bg-green-500 text-white ring-green-300', inactiveClass: 'bg-green-50 text-green-700 hover:bg-green-100' },
-                { value: 2, label: 'Medium-Easy', activeClass: 'bg-lime-500 text-white ring-lime-300', inactiveClass: 'bg-lime-50 text-lime-700 hover:bg-lime-100' },
-                { value: 3, label: 'Medium', activeClass: 'bg-yellow-500 text-white ring-yellow-300', inactiveClass: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' },
-                { value: 4, label: 'Medium-Hard', activeClass: 'bg-orange-500 text-white ring-orange-300', inactiveClass: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
-                { value: 5, label: 'Hard', activeClass: 'bg-red-500 text-white ring-red-300', inactiveClass: 'bg-red-50 text-red-700 hover:bg-red-100' },
-              ].map(({ value, label, activeClass, inactiveClass }) => (
-                <button
-                  key={value}
-                  onClick={() => {
-                    setBrowseDifficulties(prev => 
-                      prev.includes(value) 
-                        ? prev.filter(d => d !== value)
-                        : [...prev, value]
-                    )
-                  }}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-                    browseDifficulties.includes(value)
-                      ? `${activeClass} ring-2`
-                      : inactiveClass
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-              {browseDifficulties.length > 0 && (
-                <button
-                  onClick={() => setBrowseDifficulties([])}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 underline underline-offset-2"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Selection controls */}
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            onClick={toggleSelectAll}
-            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-          >
-            {selectedQuestionIds.size === filteredBrowseQuestions.length && filteredBrowseQuestions.length > 0
-              ? 'Deselect All'
-              : 'Select All'
-            }
-          </button>
-          <span className="text-sm text-gray-500">
-            {filteredBrowseQuestions.length} question{filteredBrowseQuestions.length !== 1 ? 's' : ''}
-            {(browseSearch || browseTopicFilter || browseDifficulties.length > 0) && browseQuestions.length !== filteredBrowseQuestions.length
-              ? ` (filtered from ${browseQuestions.length})`
-              : ''
-            }
-          </span>
-        </div>
-        
-        {/* Questions list */}
-        {browseLoading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-4"></div>
-            <p className="text-gray-500">Loading questions...</p>
-          </div>
-        ) : filteredBrowseQuestions.length > 0 ? (
-          <div className="space-y-3 pb-24">
-            {filteredBrowseQuestions.map((q, index) => (
-              <div
-                key={q.id}
-                onClick={() => toggleQuestionSelection(q.id)}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  selectedQuestionIds.has(q.id)
-                    ? 'border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100'
-                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-6 h-6 mt-0.5 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
-                    selectedQuestionIds.has(q.id)
-                      ? 'border-emerald-500 bg-emerald-500 text-white'
-                      : 'border-gray-300 bg-white'
-                  }`}>
-                    {selectedQuestionIds.has(q.id) && (
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className="text-xs text-gray-400 font-mono">#{index + 1}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        q.difficulty <= 2 ? 'bg-green-100 text-green-700' :
-                        q.difficulty <= 3 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {q.difficulty <= 2 ? 'Easy' : q.difficulty <= 3 ? 'Medium' : 'Hard'}
-                      </span>
-                      {q.topics && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                          {q.topics.name}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-800">
-                      <LatexRenderer content={q.prompt_latex || q.prompt_text} />
-                    </div>
-                  </div>
-                </div>
-              </div>
             ))}
+            {filtersActive && (
+              <button type="button" onClick={() => { setBrowseSearch(''); setBrowseTopicFilter(''); setBrowseDifficulties([]) }} className="btn btn-ghost btn-sm ml-auto"><X className="h-4 w-4" /> Clear</button>
+            )}
           </div>
+        </div>
+
+        <div className="mt-5 mb-3 flex items-center justify-between text-sm">
+          <label className="inline-flex items-center gap-2 font-semibold text-ink">
+            <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="h-4 w-4 rounded border-gray-300 accent-brand-600" /> Select all
+          </label>
+          <span className="text-gray-500 tnum">{filteredBrowseQuestions.length} question{filteredBrowseQuestions.length !== 1 ? 's' : ''}{filtersActive && browseQuestions.length !== filteredBrowseQuestions.length ? ` of ${browseQuestions.length}` : ''}</span>
+        </div>
+
+        {browseLoading ? (
+          <div className="space-y-3"><div className="h-20 skeleton" /><div className="h-20 skeleton" /><div className="h-20 skeleton" /></div>
+        ) : filteredBrowseQuestions.length > 0 ? (
+          <ul className="space-y-2.5">
+            {filteredBrowseQuestions.map(q => {
+              const selected = selectedQuestionIds.has(q.id)
+              return (
+                <li key={q.id}>
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 transition-colors ${selected ? 'border-brand-500 bg-brand-50' : 'border-line bg-white hover:border-gray-300'}`}>
+                    <input type="checkbox" checked={selected} onChange={() => toggleQuestionSelection(q.id)} className="mt-1 h-5 w-5 rounded border-gray-300 accent-brand-600" aria-label="Select question" />
+                    <span className="min-w-0 flex-1">
+                      <span className="mb-1.5 flex flex-wrap items-center gap-2">
+                        <DifficultyDots level={q.difficulty} />
+                        {q.topics && <span className="chip chip-brand">{q.topics.name}</span>}
+                      </span>
+                      <span className="block text-[0.95rem] text-ink"><LatexRenderer content={q.prompt_latex || q.prompt_text} /></span>
+                    </span>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
         ) : (
-          <div className="card text-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-              </svg>
-            </div>
-            <p className="text-gray-600 font-medium mb-1">No questions found</p>
-            <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+          <div className="card px-6 py-14 text-center">
+            <p className="font-bold text-ink">No questions match</p>
+            <p className="mt-1 text-sm text-gray-500">Try fewer filters or a different search.</p>
           </div>
         )}
-        
-        {/* Floating action button */}
+
         {selectedQuestionIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
-            <button
-              onClick={startCustomPractice}
-              className="px-6 py-3.5 bg-emerald-500 text-white font-semibold rounded-2xl shadow-xl shadow-emerald-500/30 hover:from-emerald-600 hover:to-emerald-700 flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-              </svg>
-              Start Practice
-              <span className="bg-white/20 px-2 py-0.5 rounded-lg text-sm">
-                {selectedQuestionIds.size} selected
-              </span>
+          <div className="fixed inset-x-0 bottom-20 z-20 flex justify-center px-4 md:bottom-6">
+            <button type="button" onClick={startCustomPractice} className="btn btn-primary btn-lg shadow-lg">
+              Start {selectedQuestionIds.size} question{selectedQuestionIds.size === 1 ? '' : 's'} <Play className="h-5 w-5" />
             </button>
           </div>
         )}
