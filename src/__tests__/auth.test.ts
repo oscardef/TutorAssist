@@ -13,14 +13,12 @@ jest.mock('next/navigation', () => ({
   },
 }))
 
-// Mock user data
+// Mock user data (shape returned by lib/auth getUser)
 const mockUser = {
   id: 'user-123',
   email: 'test@example.com',
-  app_metadata: {},
-  user_metadata: {},
-  aud: 'authenticated',
-  created_at: '2024-01-01T00:00:00Z',
+  name: 'Test User',
+  emailVerified: true,
 }
 
 const mockTutorMembership = {
@@ -72,10 +70,6 @@ const createMockSupabaseClient = () => {
   }
 
   return {
-    auth: {
-      getUser: mockAuthGetUser,
-      signOut: mockSignOut,
-    },
     from: jest.fn(() => ({
       select: jest.fn(() => createChainableMock()),
     })),
@@ -88,6 +82,20 @@ jest.mock('@/lib/supabase/server', () => ({
   createServerClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 }))
 
+jest.mock('next/headers', () => ({
+  headers: jest.fn(() => Promise.resolve(new Headers())),
+}))
+
+// Better Auth: getSession resolves to { user, session } or null
+jest.mock('@/lib/identity/server', () => ({
+  auth: {
+    api: {
+      getSession: (...args: unknown[]) => mockAuthGetUser(...args),
+      signOut: (...args: unknown[]) => mockSignOut(...args),
+    },
+  },
+}))
+
 describe('Auth Library', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -98,10 +106,7 @@ describe('Auth Library', () => {
 
   describe('getUser', () => {
     it('should return user when authenticated', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       const { getUser } = await import('@/lib/auth')
       const user = await getUser()
@@ -111,10 +116,7 @@ describe('Auth Library', () => {
     })
 
     it('should return null when not authenticated', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue(null)
 
       const { getUser } = await import('@/lib/auth')
       const user = await getUser()
@@ -123,10 +125,7 @@ describe('Auth Library', () => {
     })
 
     it('should return null on auth error', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: null },
-        error: { message: 'Auth error' },
-      })
+      mockAuthGetUser.mockResolvedValue(null)
 
       const { getUser } = await import('@/lib/auth')
       const user = await getUser()
@@ -137,10 +136,7 @@ describe('Auth Library', () => {
 
   describe('requireUser', () => {
     it('should return user when authenticated', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       const { requireUser } = await import('@/lib/auth')
       const user = await requireUser()
@@ -149,10 +145,7 @@ describe('Auth Library', () => {
     })
 
     it('should redirect to /login when not authenticated', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue(null)
 
       const { requireUser } = await import('@/lib/auth')
 
@@ -163,10 +156,7 @@ describe('Auth Library', () => {
 
   describe('getUserContext', () => {
     it('should return full context for tutor', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: mockTutorMembership, error: null }
       mockPlatformOwnerResult = { data: null, error: null }
@@ -184,10 +174,7 @@ describe('Auth Library', () => {
     })
 
     it('should return null when user has no membership', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: null, error: null }
 
@@ -198,10 +185,7 @@ describe('Auth Library', () => {
     })
 
     it('should return null when not authenticated', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue(null)
 
       const { getUserContext } = await import('@/lib/auth')
       const context = await getUserContext()
@@ -210,10 +194,7 @@ describe('Auth Library', () => {
     })
 
     it('should identify platform owner correctly', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: { ...mockUser, id: 'user-789' } },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: { ...mockUser, id: 'user-789' }, session: {} })
 
       mockMembershipResult = { data: mockPlatformOwnerMembership, error: null }
       mockPlatformOwnerResult = { data: { id: 'some-id' }, error: null }
@@ -226,10 +207,7 @@ describe('Auth Library', () => {
     })
 
     it('should handle membership query error gracefully', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: null, error: { message: 'Database error', code: '500' } }
 
@@ -242,10 +220,7 @@ describe('Auth Library', () => {
 
   describe('requireUserContext', () => {
     it('should return context when user has workspace', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: mockTutorMembership, error: null }
       mockPlatformOwnerResult = { data: null, error: null }
@@ -257,10 +232,7 @@ describe('Auth Library', () => {
     })
 
     it('should redirect to /onboarding when no workspace', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: null, error: null }
 
@@ -272,10 +244,7 @@ describe('Auth Library', () => {
 
   describe('requireTutor', () => {
     it('should return context for tutor role', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: mockTutorMembership, error: null }
       mockPlatformOwnerResult = { data: null, error: null }
@@ -287,10 +256,7 @@ describe('Auth Library', () => {
     })
 
     it('should return context for platform owner', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: { ...mockUser, id: 'user-789' } },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: { ...mockUser, id: 'user-789' }, session: {} })
 
       mockMembershipResult = { data: mockPlatformOwnerMembership, error: null }
       mockPlatformOwnerResult = { data: { id: 'some-id' }, error: null }
@@ -302,10 +268,7 @@ describe('Auth Library', () => {
     })
 
     it('should redirect student to dashboard', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: { ...mockUser, id: 'user-456' } },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: { ...mockUser, id: 'user-456' }, session: {} })
 
       mockMembershipResult = { data: mockStudentMembership, error: null }
       mockPlatformOwnerResult = { data: null, error: null }
@@ -318,10 +281,7 @@ describe('Auth Library', () => {
 
   describe('requireStudent', () => {
     it('should return context for student role', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: { ...mockUser, id: 'user-456' } },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: { ...mockUser, id: 'user-456' }, session: {} })
 
       mockMembershipResult = { data: mockStudentMembership, error: null }
       mockPlatformOwnerResult = { data: null, error: null }
@@ -333,10 +293,7 @@ describe('Auth Library', () => {
     })
 
     it('should allow tutors to access student routes', async () => {
-      mockAuthGetUser.mockResolvedValue({
-        data: { user: mockUser },
-        error: null,
-      })
+      mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: mockTutorMembership, error: null }
       mockPlatformOwnerResult = { data: null, error: null }
@@ -357,10 +314,7 @@ describe('Role-Based Access Control', () => {
   })
 
   it('should enforce workspace isolation in context', async () => {
-    mockAuthGetUser.mockResolvedValue({
-      data: { user: mockUser },
-      error: null,
-    })
+    mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
     mockMembershipResult = { data: { workspace_id: 'workspace-A', role: 'tutor' }, error: null }
     mockPlatformOwnerResult = { data: null, error: null }
@@ -372,10 +326,7 @@ describe('Role-Based Access Control', () => {
   })
 
   it('should handle multiple workspace memberships (return first)', async () => {
-    mockAuthGetUser.mockResolvedValue({
-      data: { user: mockUser },
-      error: null,
-    })
+    mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
     mockMembershipResult = { data: mockTutorMembership, error: null }
     mockPlatformOwnerResult = { data: null, error: null }
@@ -395,10 +346,7 @@ describe('Security Edge Cases', () => {
   })
 
   it('should not expose user data on auth errors', async () => {
-    mockAuthGetUser.mockResolvedValue({
-      data: { user: null },
-      error: { message: 'Invalid token' },
-    })
+    mockAuthGetUser.mockResolvedValue(null)
 
     const { getUser } = await import('@/lib/auth')
     const user = await getUser()
@@ -407,10 +355,7 @@ describe('Security Edge Cases', () => {
   })
 
   it('should handle expired sessions', async () => {
-    mockAuthGetUser.mockResolvedValue({
-      data: { user: null },
-      error: { message: 'JWT expired' },
-    })
+    mockAuthGetUser.mockResolvedValue(null)
 
     const { requireUser } = await import('@/lib/auth')
 
@@ -418,10 +363,7 @@ describe('Security Edge Cases', () => {
   })
 
   it('should handle malformed user objects', async () => {
-    mockAuthGetUser.mockResolvedValue({
-      data: { user: { id: null, email: null } },
-      error: null,
-    })
+    mockAuthGetUser.mockResolvedValue({ user: { id: null, email: null }, session: {} })
 
     mockMembershipResult = { data: null, error: null }
 

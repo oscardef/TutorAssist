@@ -1,4 +1,4 @@
-import { requireTutor } from '@/lib/auth'
+import { requireTutor, getUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { format, isToday, isTomorrow, isPast, differenceInDays } from 'date-fns'
@@ -12,6 +12,7 @@ function getGreeting(): string {
 
 export default async function TutorDashboard() {
   const context = await requireTutor()
+  const user = await getUser()
   const supabase = await createServerClient()
 
   // Performance: Fetch all independent data in parallel
@@ -19,15 +20,12 @@ export default async function TutorDashboard() {
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
 
   const [
-    authResult,
     sessionsResult,
     studentsResult,
     flagCountResult,
     assignmentsResult,
     attemptStatsResult,
   ] = await Promise.all([
-    // Get user metadata for name
-    supabase.auth.getUser(),
     // Get upcoming sessions (today and tomorrow only)
     supabase
       .from('sessions')
@@ -64,14 +62,9 @@ export default async function TutorDashboard() {
   ])
 
   // Extract results
-  const authUser = authResult.data?.user
-  const metadata = authUser?.user_metadata || {}
   const firstName = 
-    metadata.first_name ||                           // Direct first_name field
-    metadata.name?.split(' ')[0] ||                  // name field (first word)
-    metadata.full_name?.split(' ')[0] ||             // full_name field (first word)
-    metadata.given_name ||                           // OAuth common field
-    authUser?.email?.split('@')[0] ||                // Fall back to email prefix
+    user?.name?.split(' ')[0] ||
+    user?.email?.split('@')[0] ||
     'Tutor'
   
   const sessions = sessionsResult.data

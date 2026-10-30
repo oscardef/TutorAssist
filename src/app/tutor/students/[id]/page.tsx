@@ -1,5 +1,6 @@
 import { requireTutor } from '@/lib/auth'
-import { createServerClient, createAdminClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { getUserById } from '@/lib/users'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -52,16 +53,10 @@ export default async function StudentDetailPage({
       .single()
     
     if (tutorMember) {
-      // Use admin client to get the tutor's auth user info
-      const adminClient = await createAdminClient()
-      const { data: { user: tutorUser } } = await adminClient.auth.admin.getUserById(
-        student.assigned_tutor_id
-      )
-      
-      const metadata = tutorUser?.user_metadata || {}
+      const tutorUser = await getUserById(student.assigned_tutor_id)
       assignedTutor = {
         user_id: tutorMember.user_id,
-        name: metadata.full_name || metadata.name || tutorUser?.email?.split('@')[0] || 'Tutor',
+        name: tutorUser?.name || tutorUser?.email?.split('@')[0] || 'Tutor',
         email: tutorUser?.email || ''
       }
     }

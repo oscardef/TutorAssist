@@ -1,16 +1,12 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import { createWorkspace } from '@/lib/workspace'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
     const supabase = await createServerClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError) {
-      console.error('Auth error:', userError)
-      return NextResponse.json({ error: 'Authentication error', details: userError.message }, { status: 401 })
-    }
+    const user = await getUser()
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized - no user found' }, { status: 401 })

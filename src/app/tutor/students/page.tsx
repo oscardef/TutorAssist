@@ -1,5 +1,6 @@
 import { requireTutor } from '@/lib/auth'
-import { createServerClient, createAdminClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { getUsersByIds } from '@/lib/users'
 import Link from 'next/link'
 
 function formatRelativeTime(dateString: string): string {
@@ -61,17 +62,16 @@ export default async function StudentsPage() {
   const tutorMap = new Map<string, { user_id: string; name: string; email: string }>()
   
   if (tutorMembers && tutorMembers.length > 0) {
-    const adminClient = await createAdminClient()
-    
+    const tutorUsers = await getUsersByIds(tutorMembers.map(m => m.user_id))
+
     for (const tutorMember of tutorMembers) {
-      const { data: { user: tutorUser } } = await adminClient.auth.admin.getUserById(tutorMember.user_id)
-      
+      const tutorUser = tutorUsers.get(tutorMember.user_id)
+
       if (tutorUser) {
-        const metadata = tutorUser.user_metadata || {}
         tutorMap.set(tutorMember.user_id, {
           user_id: tutorMember.user_id,
-          name: metadata.full_name || metadata.name || tutorUser.email?.split('@')[0] || 'Tutor',
-          email: tutorUser.email || ''
+          name: tutorUser.name || tutorUser.email.split('@')[0] || 'Tutor',
+          email: tutorUser.email
         })
       }
     }

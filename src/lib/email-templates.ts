@@ -906,3 +906,41 @@ export const SupabaseEmailTemplates = {
   magicLink: SUPABASE_MAGIC_LINK_EMAIL,
   emailChange: SUPABASE_EMAIL_CHANGE_EMAIL,
 }
+
+// ============================================================================
+// Transactional auth emails sent by the app itself (Better Auth callbacks)
+// ============================================================================
+
+export function passwordResetEmail(name: string, url: string): string {
+  const firstName = name?.split(' ')[0] || 'there'
+  const content = `
+    ${emailHeader('Reset your password', 'Choose a new password for your Mathium account', '🔑')}
+    <div class="content" style="padding: 32px 40px;">
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+      <p style="margin: 0 0 24px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
+        We received a request to reset the password for this email address. Click the button below to choose a new one.
+      </p>
+      ${emailButton('Reset password', url)}
+      ${infoBox('This link expires in one hour. If you did not request a reset, you can ignore this email and your password will stay the same.', 'ℹ️')}
+    </div>
+    ${emailFooter()}
+  `
+  return emailWrapper(content, 'Reset your Mathium password')
+}
+
+export function verifyEmailEmail(name: string, url: string): string {
+  const firstName = name?.split(' ')[0] || 'there'
+  const content = `
+    ${emailHeader('Confirm your email', 'One click and your Mathium account is ready', '✉️')}
+    <div class="content" style="padding: 32px 40px;">
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">Hi ${firstName},</p>
+      <p style="margin: 0 0 24px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
+        Please confirm that this is your email address so you can sign in to Mathium.
+      </p>
+      ${emailButton('Confirm email', url)}
+      ${infoBox('If you did not create a Mathium account, you can ignore this email.', 'ℹ️')}
+    </div>
+    ${emailFooter()}
+  `
+  return emailWrapper(content, 'Confirm your Mathium email')
+}

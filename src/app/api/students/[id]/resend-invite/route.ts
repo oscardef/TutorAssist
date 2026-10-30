@@ -1,6 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { requireTutor } from '@/lib/auth'
+import { requireTutor, getUser } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
@@ -181,8 +181,8 @@ export async function POST(
     }
 
     // Get tutor info
-    const { data: { user } } = await supabase.auth.getUser()
-    const tutorName = user?.user_metadata?.full_name || 'Your Tutor'
+    const user = await getUser()
+    const tutorName = user?.name || 'Your Tutor'
 
     // Get workspace name
     const { data: workspace } = await supabase

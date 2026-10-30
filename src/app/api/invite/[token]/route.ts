@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { getUserById } from '@/lib/users'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -62,9 +63,9 @@ export async function GET(
     // Get tutor name from auth.users using admin client
     let tutorName = 'Your Tutor'
     if (invite.created_by) {
-      const { data: userData } = await supabase.auth.admin.getUserById(invite.created_by)
-      if (userData?.user?.user_metadata?.full_name) {
-        tutorName = userData.user.user_metadata.full_name
+      const tutorUser = await getUserById(invite.created_by)
+      if (tutorUser?.name) {
+        tutorName = tutorUser.name
       }
     }
 

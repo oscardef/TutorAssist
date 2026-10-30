@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { getUsersByIds } from '@/lib/users'
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
+  const user = await getUser()
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const supabase = await createClient()
 
   // Get user's workspace from workspace_members
   const { data: membership } = await supabase
@@ -34,7 +32,6 @@ export async function GET(request: NextRequest) {
     .select('user_id, role, joined_at')
     .eq('workspace_id', membership.workspace_id)
 
-  // Apply role filter if provided
   if (roleFilter) {
     query = query.eq('role', roleFilter)
   }
@@ -46,12 +43,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 })
   }
 
-  // Build member list - use admin client to get user names from auth metadata
-  const adminClient = await createAdminClient()
-  
+  const memberList = members || []
+  const directory = await getUsersByIds(memberList.map(m => m.user_id))
+
   const formattedMembers = await Promise.all(
-    (members || []).map(async (member) => {
-      // For students - check student_profiles
+    memberList.map(async (member) => {
+      // For students - prefer the student profile (name as entered by the tutor)
       if (member.role === 'student') {
         const { data: studentProfile } = await supabase
           .from('student_profiles')
@@ -59,7 +56,7 @@ export async function GET(request: NextRequest) {
           .eq('user_id', member.user_id)
           .eq('workspace_id', membership.workspace_id)
           .single()
-        
+
         if (studentProfile) {
           return {
             id: member.user_id,
@@ -69,21 +66,17 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-      
-      // For tutors/owners, use admin API to get their auth user info
-      const { data: { user: memberUser } } = await adminClient.auth.admin.getUserById(member.user_id)
-      
+
+      const memberUser = directory.get(member.user_id)
       if (memberUser) {
-        const metadata = memberUser.user_metadata || {}
         return {
           id: member.user_id,
-          email: memberUser.email || '',
-          name: metadata.full_name || metadata.name || memberUser.email?.split('@')[0] || 'Tutor',
+          email: memberUser.email,
+          name: memberUser.name || memberUser.email.split('@')[0] || 'Tutor',
           role: member.role,
         }
       }
-      
-      // Fallback
+
       return {
         id: member.user_id,
         email: '',

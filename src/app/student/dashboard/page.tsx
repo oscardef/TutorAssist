@@ -23,7 +23,6 @@ export default async function StudentDashboard() {
   // Performance: Fetch all independent data in parallel (Phase 1)
   const [
     profileResult,
-    authResult,
     recentAttemptsResult,
     assignmentsResult,
     dueItemsResult,
@@ -52,8 +51,6 @@ export default async function StudentDashboard() {
       .eq('user_id', user?.id)
       .eq('workspace_id', context?.workspaceId)
       .single(),
-    // Get user metadata for name
-    supabase.auth.getUser(),
     // Get recent attempts
     supabase
       .from('attempts')
@@ -116,7 +113,6 @@ export default async function StudentDashboard() {
 
   // Extract results
   const profile = profileResult.data
-  const authUser = authResult.data?.user
   const recentAttempts = recentAttemptsResult.data
   const allAssignments = assignmentsResult.data as AssignmentWithItems[] | null
   const dueItems = dueItemsResult.data
@@ -138,14 +134,10 @@ export default async function StudentDashboard() {
     }
   }
   
-  const metadata = authUser?.user_metadata || {}
   const firstName = 
     profile?.name?.split(' ')[0] ||
-    metadata.first_name ||
-    metadata.name?.split(' ')[0] ||
-    metadata.full_name?.split(' ')[0] ||
-    metadata.given_name ||
-    authUser?.email?.split('@')[0] ||
+    user.name?.split(' ')[0] ||
+    user.email?.split('@')[0] ||
     'Student'
   
   // Group assignments: parent assignments with their children

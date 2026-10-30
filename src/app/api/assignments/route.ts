@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getUserById } from '@/lib/users'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -339,8 +340,7 @@ export async function PATCH(request: Request) {
         
         if (studentProfile?.user_id) {
           // Get the user's email from auth
-          const { data: { users } } = await supabase.auth.admin.listUsers()
-          const studentUser = users?.find(u => u.id === studentProfile.user_id)
+          const studentUser = await getUserById(studentProfile.user_id)
           const studentEmail = studentUser?.email
           
           if (studentEmail) {

@@ -1,20 +1,10 @@
-import { createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Legacy Supabase email-confirmation callback. Better Auth verification links
+// land on /api/auth/verify-email and redirect themselves; this route only
+// forwards old links that are still in someone's inbox.
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/onboarding'
-
-  if (code) {
-    const supabase = await createServerClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
-    }
-  }
-
-  // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+  return NextResponse.redirect(`${origin}${next}`)
 }

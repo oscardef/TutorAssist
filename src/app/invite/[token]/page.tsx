@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/identity/client'
 
 interface InviteInfo {
   workspaceName: string
@@ -19,7 +19,6 @@ interface InviteInfo {
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const resolvedParams = use(params)
   const router = useRouter()
-  const supabase = createClient()
 
   const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,7 +50,8 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         setInviteInfo(inviteData)
 
         // Check if user is authenticated
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: session } = await authClient.getSession()
+        const user = session?.user
         setIsAuthenticated(!!user)
         setCurrentUserEmail(user?.email || null)
       } catch (err) {
@@ -63,7 +63,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     }
 
     checkInvite()
-  }, [resolvedParams.token, supabase.auth])
+  }, [resolvedParams.token])
 
   // Handle setting up password (new account)
   const handleSetupAccount = async (e: React.FormEvent) => {

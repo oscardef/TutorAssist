@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/identity/client'
 import { useRouter } from 'next/navigation'
 
 const navItems = [
@@ -58,7 +58,6 @@ const navItems = [
 export function StudentNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
   const [isCollapsed, setIsCollapsed] = useState(() => {
     // Initialize from localStorage (only runs on client)
     if (typeof window !== 'undefined') {
@@ -74,7 +73,7 @@ export function StudentNav() {
   }
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    await authClient.signOut()
     router.push('/login')
     router.refresh()
   }

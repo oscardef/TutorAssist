@@ -1,16 +1,17 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const supabase = await createServerClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const user = await getUser()
 
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ hasWorkspace: false }, { status: 200 })
     }
 
     // Check if user has a workspace
+    const supabase = await createServerClient()
     const { data: membership, error: membershipError } = await supabase
       .from('workspace_members')
       .select('role, workspace_id')

@@ -1,36 +1,36 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { auth } from '@/lib/identity/server'
+import { createServerClient } from '@/lib/supabase/server'
 import type { UserContext, UserRole } from '@/lib/types'
 
-export async function getUser() {
-  const supabase = await createServerClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  
-  if (error || !user) {
-    return null
-  }
-  
-  return user
+export interface CurrentUser {
+  id: string
+  email: string
+  name: string
+  emailVerified: boolean
 }
 
-export async function requireUser() {
+/** The signed-in user, or null. */
+export async function getUser(): Promise<CurrentUser | null> {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) return null
+  const { id, email, name, emailVerified } = session.user
+  return { id, email, name, emailVerified }
+}
+
+export async function requireUser(): Promise<CurrentUser> {
   const user = await getUser()
-  
-  if (!user) {
-    redirect('/login')
-  }
-  
+  if (!user) redirect('/login')
   return user
 }
 
 export async function getUserContext(): Promise<UserContext | null> {
+  const user = await getUser()
+  if (!user) return null
+
   const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    return null
-  }
-  
+
   // Get workspace membership - order by created_at to get the first workspace consistently
   const { data: membership, error: membershipError } = await supabase
     .from('workspace_members')
@@ -39,16 +39,16 @@ export async function getUserContext(): Promise<UserContext | null> {
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
-  
+
   if (membershipError) {
     console.error('Error fetching workspace membership:', membershipError)
     return null
   }
-  
+
   if (!membership) {
     return null
   }
-  
+
   // Check if platform owner
   const { data: platformOwner } = await supabase
     .from('workspace_members')
@@ -57,10 +57,10 @@ export async function getUserContext(): Promise<UserContext | null> {
     .eq('role', 'platform_owner')
     .limit(1)
     .maybeSingle()
-  
+
   return {
     userId: user.id,
-    email: user.email || '',
+    email: user.email,
     workspaceId: membership.workspace_id || '',
     role: membership.role as UserRole,
     isPlatformOwner: !!platformOwner,
@@ -69,36 +69,23 @@ export async function getUserContext(): Promise<UserContext | null> {
 
 export async function requireUserContext(): Promise<UserContext> {
   const context = await getUserContext()
-  
-  if (!context) {
-    redirect('/onboarding')
-  }
-  
+  if (!context) redirect('/onboarding')
   return context
 }
 
 export async function requireTutor(): Promise<UserContext> {
   const context = await requireUserContext()
-  
-  if (context.role !== 'tutor' && !context.isPlatformOwner) {
-    redirect('/student/dashboard')
-  }
-  
+  if (context.role !== 'tutor' && !context.isPlatformOwner) redirect('/student/dashboard')
   return context
 }
 
 export async function requireStudent(): Promise<UserContext> {
   const context = await requireUserContext()
-  
-  if (context.role !== 'student' && context.role !== 'tutor' && !context.isPlatformOwner) {
-    redirect('/login')
-  }
-  
+  if (context.role !== 'student' && context.role !== 'tutor' && !context.isPlatformOwner) redirect('/login')
   return context
 }
 
 export async function signOut() {
-  const supabase = await createServerClient()
-  await supabase.auth.signOut()
+  await auth.api.signOut({ headers: await headers() })
   redirect('/login')
 }

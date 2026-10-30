@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/identity/client'
 import { useRouter } from 'next/navigation'
 
 const navigation = [
@@ -124,13 +124,12 @@ function writeNavCollapsed(value: boolean) {
 export function TutorNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
   const isCollapsed = useSyncExternalStore(subscribeNavCollapsed, readNavCollapsed, () => false)
 
   const toggleCollapsed = () => writeNavCollapsed(!isCollapsed)
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    await authClient.signOut()
     router.push('/login')
     router.refresh()
   }

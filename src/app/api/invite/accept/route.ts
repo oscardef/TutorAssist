@@ -1,5 +1,8 @@
-import { createAdminClient, createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
+import { auth } from '@/lib/identity/server'
+import { createUserWithPassword, deleteUser, getUserByEmail } from '@/lib/users'
 
 /**
  * Accept an invite - creates user account and links to student profile
@@ -87,10 +90,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Check if a user with this email already exists
-    const { data: existingUsers } = await adminClient.auth.admin.listUsers()
-    const existingUser = existingUsers?.users?.find(
-      u => u.email?.toLowerCase() === providedEmail
-    )
+    const existingUser = await getUserByEmail(providedEmail)
 
     if (existingUser) {
       // User exists - check if they're already in this workspace
@@ -147,8 +147,9 @@ export async function POST(request: Request) {
         await adminClient.from('student_profiles').update({ user_id: null }).eq('user_id', existingUser.id)
         
         // Now delete the orphaned auth user
-        const { error: deleteError } = await adminClient.auth.admin.deleteUser(existingUser.id)
-        if (deleteError) {
+        try {
+          await deleteUser(existingUser.id)
+        } catch (deleteError) {
           console.error('[Accept Invite] Failed to delete orphaned user:', deleteError)
           return NextResponse.json({ 
             error: 'Failed to set up account. Please contact support.',
@@ -168,24 +169,15 @@ export async function POST(request: Request) {
     // 4. Create the new auth user using admin API
     const displayName = fullName || studentProfile?.name || email.split('@')[0]
     
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-      email: providedEmail,
-      password: password,
-      email_confirm: true, // Auto-confirm since they have valid invite
-      user_metadata: {
-        full_name: displayName,
-        role: 'student',
-      },
-    })
-
-    if (createError || !newUser?.user) {
+    let userId: string
+    try {
+      // The invite proves control of the address, so the email counts as verified.
+      const newUser = await createUserWithPassword({ email: providedEmail, password, name: displayName, emailVerified: true })
+      userId = newUser.id
+    } catch (createError) {
       console.error('[Accept Invite] Failed to create user:', createError)
-      return NextResponse.json({ 
-        error: createError?.message || 'Failed to create account' 
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
     }
-
-    const userId = newUser.user.id
 
     // 5. Create workspace membership
     const { error: membershipError } = await adminClient
@@ -201,7 +193,7 @@ export async function POST(request: Request) {
     if (membershipError) {
       console.error('[Accept Invite] Failed to create membership:', membershipError)
       // Rollback user creation
-      await adminClient.auth.admin.deleteUser(userId)
+      await deleteUser(userId).catch(() => undefined)
       return NextResponse.json({ error: 'Failed to join workspace' }, { status: 500 })
     }
 
@@ -225,11 +217,12 @@ export async function POST(request: Request) {
       .eq('id', invite.id)
 
     // 8. Sign in the user automatically
-    const supabase = await createServerClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: providedEmail,
-      password: password,
-    })
+    let signInError: unknown = null
+    try {
+      await auth.api.signInEmail({ body: { email: providedEmail, password }, headers: await headers() })
+    } catch (err) {
+      signInError = err
+    }
 
     if (signInError) {
       console.error('[Accept Invite] Auto sign-in failed:', signInError)

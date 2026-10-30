@@ -1,5 +1,6 @@
 import { requireUser, getUserContext } from '@/lib/auth'
-import { createServerClient, createAdminClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { getUserById } from '@/lib/users'
 import { StudentSettingsForms } from '@/components/student-settings-forms'
 
 export default async function StudentSettingsPage({
@@ -50,16 +51,13 @@ export default async function StudentSettingsPage({
   // Get tutor email using admin client (to access auth.users)
   let tutorEmail: string | null = null
   if (tutorMember?.user_id) {
-    const adminSupabase = await createAdminClient()
-    const { data: tutorUser } = await adminSupabase.auth.admin.getUserById(tutorMember.user_id)
-    tutorEmail = tutorUser?.user?.email || null
+    const tutorUser = await getUserById(tutorMember.user_id)
+    tutorEmail = tutorUser?.email || null
   }
 
   const success = params?.success
   const error = params?.error
   
-  // Get user metadata for full name
-  const metadata = user?.user_metadata || {}
   
   return (
     <div className="space-y-6">
@@ -93,7 +91,7 @@ export default async function StudentSettingsPage({
         googleConnection={googleConnection}
         user={{ 
           email: user?.email || '',
-          fullName: metadata.full_name || null
+          fullName: user.name || null
         }}
         role={context?.role || 'student'}
         tutorEmail={tutorEmail}

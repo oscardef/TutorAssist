@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/identity/client'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -12,7 +12,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
   
   const inviteToken = searchParams.get('invite')
   const authError = searchParams.get('error')
@@ -20,14 +19,15 @@ function LoginForm() {
   // Check if already logged in and has invite token
   useEffect(() => {
     async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: session } = await authClient.getSession()
+      const user = session?.user
       if (user && inviteToken) {
         // User is logged in and has an invite, redirect to the invite page
         router.push(`/invite/${inviteToken}`)
       }
     }
     checkAuth()
-  }, [inviteToken, router, supabase.auth])
+  }, [inviteToken, router])
 
   // Show error message from URL params
   useEffect(() => {
@@ -42,13 +42,10 @@ function LoginForm() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const { error } = await authClient.signIn.email({ email, password })
 
       if (error) {
-        setError(error.message)
+        setError(error.message || 'Sign in failed')
         return
       }
 

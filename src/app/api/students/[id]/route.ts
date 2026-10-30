@@ -1,5 +1,6 @@
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { requireTutor } from '@/lib/auth'
+import { deleteUser } from '@/lib/users'
 import { NextResponse } from 'next/server'
 
 // GET single student with full details
@@ -277,10 +278,10 @@ export async function DELETE(
     // Delete the auth user if they had one
     // This ensures they can be re-invited with the same email
     if (authUserId) {
-      const { error: authError } = await adminClient.auth.admin.deleteUser(authUserId)
-      if (authError) {
+      try {
+        await deleteUser(authUserId)
+      } catch (authError) {
         console.error('Error deleting auth user:', authError)
-        // This shouldn't happen now that we clean up FK references, but log it
         return NextResponse.json({ 
           error: 'Student data deleted but auth account remains. Contact support.' 
         }, { status: 500 })

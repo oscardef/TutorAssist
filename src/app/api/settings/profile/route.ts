@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { updateUserName } from '@/lib/users'
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createServerClient()
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    const user = await getUser()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -18,17 +16,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
     }
 
-    // Update user metadata
-    const { error: updateError } = await supabase.auth.updateUser({
-      data: {
-        full_name: fullName.trim()
-      }
-    })
-
-    if (updateError) {
-      console.error('Failed to update profile:', updateError)
-      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
-    }
+    await updateUserName(user.id, fullName.trim())
 
     return NextResponse.json({ success: true })
   } catch (error) {

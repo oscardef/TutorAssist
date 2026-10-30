@@ -42,8 +42,6 @@ export default async function TutorSettingsPage({
   const success = params?.success
   const error = params?.error
   
-  // Get user metadata for full name
-  const metadata = user?.user_metadata || {}
 
   return (
     <div className="space-y-6">
@@ -77,7 +75,7 @@ export default async function TutorSettingsPage({
         googleConnection={googleConnection}
         user={{ 
           email: user?.email || '',
-          fullName: metadata.full_name || null
+          fullName: user.name || null
         }}
         role={context?.role || 'tutor'}
       />

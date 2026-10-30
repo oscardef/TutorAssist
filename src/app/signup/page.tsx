@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { authClient } from '@/lib/identity/client'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -20,14 +20,14 @@ function SignupForm() {
   const [resetEmailSent, setResetEmailSent] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
 
   const inviteToken = searchParams.get('invite')
 
   // Check if already logged in and fetch invite info
   useEffect(() => {
     async function checkAuthAndInvite() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: session } = await authClient.getSession()
+      const user = session?.user
       if (user && inviteToken) {
         // User is logged in and has an invite, redirect to the invite page
         router.push(`/invite/${inviteToken}`)
@@ -42,7 +42,7 @@ function SignupForm() {
       }
     }
     checkAuthAndInvite()
-  }, [inviteToken, router, supabase.auth])
+  }, [inviteToken, router])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,40 +67,26 @@ function SignupForm() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await authClient.signUp.email({
+        name: email.split('@')[0],
         email,
         password,
-        options: {
-          emailRedirectTo: inviteToken 
-            ? `${window.location.origin}/invite/${inviteToken}` 
-            : `${window.location.origin}/auth/callback`,
-        },
+        callbackURL: inviteToken ? `/invite/${inviteToken}` : '/onboarding',
       })
 
       if (error) {
         // Check if user already exists
-        if (error.message.includes('User already registered') || 
-            error.message.includes('already been registered') ||
-            error.status === 422) {
+        if (error.status === 422 || error.code === 'USER_ALREADY_EXISTS' || /already exist/i.test(error.message || '')) {
           setUserAlreadyExists(true)
           setError('An account with this email already exists. You can sign in or reset your password.')
           return
         }
-        setError(error.message)
+        setError(error.message || 'Sign up failed')
         return
       }
 
-      // Check if this is a repeated signup (user exists but not confirmed)
-      // Supabase returns a user with identities = [] for repeated signups
-      if (data?.user && data.user.identities?.length === 0) {
-        // User already exists - they need to confirm their email or use resend
-        setSignupComplete(true)
-        return
-      }
-
-      // Account created successfully - since email confirmation is disabled,
-      // we can proceed to sign them in
-      if (data?.user && data?.session) {
+      // Account created and signed in (no email verification required)
+      if (data?.user && data.token) {
         // User is already signed in, redirect appropriately
         if (inviteToken) {
           router.push(`/invite/${inviteToken}`)
@@ -130,14 +116,10 @@ function SignupForm() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: inviteToken 
-          ? `${window.location.origin}/invite/${inviteToken}?reset=true` 
-          : `${window.location.origin}/auth/callback?reset=true`,
-      })
+      const { error } = await authClient.requestPasswordReset({ email, redirectTo: '/reset-password' })
 
       if (error) {
-        setError(error.message)
+        setError(error.message || 'Failed to send password reset email')
         return
       }
 
@@ -155,18 +137,13 @@ function SignupForm() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
+      const { error } = await authClient.sendVerificationEmail({
         email,
-        options: {
-          emailRedirectTo: inviteToken 
-            ? `${window.location.origin}/invite/${inviteToken}` 
-            : `${window.location.origin}/auth/callback`,
-        },
+        callbackURL: inviteToken ? `/invite/${inviteToken}` : '/onboarding',
       })
 
       if (error) {
-        setError(error.message)
+        setError(error.message || 'Failed to resend confirmation email')
         return
       }
 
