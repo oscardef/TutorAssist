@@ -80,6 +80,18 @@ export const Icons = {
   book: ({ className }: IconProps) => (
     <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16ZM4 19a2.5 2.5 0 0 1 2.5-2.5H20" /></svg>
   ),
+  video: ({ className }: IconProps) => (
+    <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="m15.5 10 4.7-2.6a.5.5 0 0 1 .8.4v8.4a.5.5 0 0 1-.8.4L15.5 14M5 18h8.5a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2Z" /></svg>
+  ),
+  board: ({ className }: IconProps) => (
+    <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="M3.5 4.5h17v11h-17v-11ZM12 15.5V20m-4 0h8M7 12l3-3 2 2 4-4" /></svg>
+  ),
+  notes: ({ className }: IconProps) => (
+    <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="M8 4h8l4 4v12H4V4h4Zm8 0v4h4M8 12h8M8 16h5" /></svg>
+  ),
+  search: ({ className }: IconProps) => (
+    <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="m20 20-4.2-4.2M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" /></svg>
+  ),
 }
 
 export type IconName = keyof typeof Icons

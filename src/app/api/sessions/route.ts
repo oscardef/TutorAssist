@@ -112,7 +112,9 @@ export async function POST(request: Request) {
       .from('sessions')
       .insert({
         workspace_id: context.workspaceId,
-        tutor_id: membership.id,
+        // tutor_id references the tutor's user, not their membership row
+        tutor_id: context.userId,
+        student_profile_id: student.id,
         student_id: studentId,
         scheduled_at: scheduledAt,
         duration_minutes: durationMinutes,

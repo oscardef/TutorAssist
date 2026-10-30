@@ -46,3 +46,14 @@ Requires, in this order: the server security review (hub: Home Server/Access and
 every secret that ever lived in a laptop `.env.local`, a DNS record for `mathium.app` pointing at the
 server, a Caddy site block (`reverse_proxy 127.0.0.1:3100`) with `BIND_ADDRESS=127.0.0.1`, and a rebuild
 with `NEXT_PUBLIC_APP_URL=https://mathium.app` plus `BETTER_AUTH_URL`/`GOOGLE_OAUTH_REDIRECT_URI` updated in `.env`.
+
+## Live features and scaling
+
+Session rooms (`/session/<id>`) sync the whiteboard through an in-process
+event bus (`src/lib/live-bus.ts`) and Server-Sent Events. That reaches every
+client while the stack runs one `web` container, which is the intended setup.
+Running several web replicas would need the bus moved to Redis or Postgres
+`LISTEN/NOTIFY` first. A reverse proxy in front must not buffer
+`/api/sessions/*/board/stream` (Caddy streams by default).
+
+Server-rendered times use `APP_TIMEZONE` (default `Europe/Zurich`).

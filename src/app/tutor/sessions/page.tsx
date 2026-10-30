@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Icons } from '@/components/ui/icons'
 import Link from 'next/link'
 
 interface Student {
@@ -336,15 +337,20 @@ export default function SessionsPage() {
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {session.source !== 'calendar' && session.status !== 'cancelled' && (
+                      <Link href={`/session/${session.id}`} className="btn btn-primary btn-sm" title="Shared whiteboard for this session">
+                        <Icons.board className="h-4 w-4" /> Open room
+                      </Link>
+                    )}
                     {session.meet_link && (
                       <a
                         href={session.meet_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"
+                        className="btn btn-secondary btn-sm"
                       >
-                        Join Meet
+                        <Icons.video className="h-4 w-4" /> Video call
                       </a>
                     )}
                     {session.source === 'calendar' && !session.student && students.length > 0 && (

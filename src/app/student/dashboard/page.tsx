@@ -90,7 +90,10 @@ export default async function StudentDashboard() {
       .from('sessions')
       .select('*')
       .eq('student_id', user?.id)
-      .gte('scheduled_at', new Date().toISOString())
+      // Keep a session listed while it may still be running
+      .gte('scheduled_at', new Date(new Date().getTime() - 4 * 3600_000).toISOString())
+      .in('status', ['scheduled', 'confirmed'])
+      .is('actual_end', null)
       .order('scheduled_at')
       .limit(3),
     // Calculate stats - total attempts count
@@ -119,6 +122,7 @@ export default async function StudentDashboard() {
   const allAssignments = assignmentsResult.data as AssignmentWithItems[] | null
   const dueItems = dueItemsResult.data
   const upcomingSessions = upcomingSessionsResult.data
+  const nowMs = new Date().getTime()
   const totalAttempts = totalAttemptsResult.count
   const correctAttempts = correctAttemptsResult.count
   const streakData = streakDataResult.data
@@ -424,13 +428,19 @@ export default async function StudentDashboard() {
                 {upcomingSessions.map(session => {
                   const start = new Date(session.scheduled_at)
                   const end = new Date(start.getTime() + (session.duration_minutes || 60) * 60000)
+                  if (end.getTime() < nowMs) return null
+                  // Live from 15 minutes before the start until the end
+                  const live = nowMs >= start.getTime() - 15 * 60000 && nowMs <= end.getTime()
                   return (
-                    <li key={session.id} className="px-6 py-4">
-                      <div className="font-bold text-ink">{format(start, 'EEEE d MMM')}</div>
+                    <li key={session.id} className={`px-6 py-4 ${live ? 'bg-brand-50' : ''}`}>
+                      <div className="flex items-center gap-2 font-bold text-ink">{format(start, 'EEEE d MMM')}{live && <span className="chip chip-brand !py-0">Now</span>}</div>
                       <div className="text-sm text-gray-500 tnum">{format(start, 'HH:mm')} – {format(end, 'HH:mm')}</div>
-                      {session.meet_link && (
-                        <a href={session.meet_link} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm mt-3">Join meeting</a>
-                      )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Link href={`/session/${session.id}`} className={`btn btn-sm ${live ? 'btn-primary' : 'btn-secondary'}`}><Icons.board className="h-4 w-4" /> Join room</Link>
+                        {session.meet_link && (
+                          <a href={session.meet_link} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm"><Icons.video className="h-4 w-4" /> Video call</a>
+                        )}
+                      </div>
                     </li>
                   )
                 })}
