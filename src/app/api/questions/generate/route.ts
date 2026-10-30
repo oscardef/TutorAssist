@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { aiAccessError } from '@/lib/ai-access'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { enqueueJob, enqueueBatchJob, getJob } from '@/lib/jobs'
 import { createServerClient } from '@/lib/supabase/server'
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can generate questions' }, { status: 403 })
   }
+  const aiBlocked = await aiAccessError(context)
+  if (aiBlocked) return aiBlocked
   
   // Early check for OpenAI configuration
   if (!process.env.OPENAI_API_KEY) {

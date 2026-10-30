@@ -17,6 +17,8 @@ checks with a content security policy, and `npm audit`.
 | 4 | Medium | **HTML injection in emails.** Names, workspace names and assignment text went into email HTML raw. | Fixed: escaped in every template; the assignment email moved to a template and the shared sender. |
 | 5 | Medium | **Vulnerable dependencies.** nodemailer 7 (SMTP and address-parser advisories), mathlive 0.108 (XSS), lodash-es and nanoid inside Excalidraw. | Fixed: nodemailer 10.1.7, mathlive 0.111.1, overrides for lodash-es 4.18.1 and nanoid 3.3.20. No high or critical left in production dependencies. |
 | 6 | Low | PostgREST `or()` filters built from unvalidated query parameters (`programId`, `gradeLevelId`). Other filters kept results inside the caller's workspace. | Fixed: UUID validation. |
+| 8 | Medium | **AI spend open to anyone once public.** Any new sign-up becomes a tutor and could run generation on the platform's API key; one AI route (topic analysis, GET) also lacked a tutor check. Found after go-live preparation, 2026-10-30. | Fixed: `src/lib/ai-access.ts` gates every AI route to platform owners and `AI_ALLOWED_EMAILS` (or `AI_OPEN_TO_ALL=true`) with a per-workspace daily cap (`AI_DAILY_LIMIT`, default 300); tutor check added. |
+| 9 | Medium | **Uploaded SVGs served inline from our origin.** Opened directly, an SVG with script would run on mathium.app. | Fixed: markup types are served with a no-script sandbox CSP and `nosniff`. |
 | 7 | Low | Tutor-on-behalf Google calls read tokens through the caller's RLS, so student bookings could not create the tutor's event. | Fixed with the service role; call sites only pass ids derived server-side (documented in `getAuthenticatedClient`). |
 
 ## Checked and fine
@@ -41,4 +43,3 @@ checks with a content security policy, and `npm audit`.
 
 - Moderate advisories in development tooling (`drizzle-kit` → `esbuild`) and in Excalidraw's optional Mermaid importer; not reachable at runtime by users.
 - `script-src` allows `unsafe-eval` because JSXGraph compiles plotted expressions with `Function()`. The nonce and `strict-dynamic` still block injected scripts.
-- Per-user AI usage limits: generation is tutor-only today; add caps before opening sign-ups to the public.

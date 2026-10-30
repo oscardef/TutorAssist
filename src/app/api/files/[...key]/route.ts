@@ -25,14 +25,19 @@ export async function GET(_request: Request, { params }: { params: Promise<{ key
   try {
     const body = await getFile(key)
     const contentType = (await localContentType(key)) || 'application/octet-stream'
-    return new NextResponse(new Uint8Array(body), {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': String(body.length),
-        'Cache-Control': 'private, max-age=3600',
-        'Content-Disposition': 'inline',
-      },
-    })
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Content-Length': String(body.length),
+      'Cache-Control': 'private, max-age=3600',
+      'Content-Disposition': 'inline',
+      'X-Content-Type-Options': 'nosniff',
+    }
+    // Uploaded files come from users. An SVG opened directly could run script
+    // on our origin, so markup types get a policy that allows no script at all.
+    if (/svg|html|xml/.test(contentType)) {
+      headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox"
+    }
+    return new NextResponse(new Uint8Array(body), { headers })
   } catch {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { aiAccessError } from '@/lib/ai-access'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { uploadFile, getSignedUploadUrl } from '@/lib/storage'
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can upload materials' }, { status: 403 })
   }
+  const aiBlocked = await aiAccessError(context)
+  if (aiBlocked) return aiBlocked
   
   try {
     const formData = await request.formData()

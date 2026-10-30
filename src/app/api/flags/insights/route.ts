@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { aiAccessError } from '@/lib/ai-access'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { openai } from '@/lib/openai'
@@ -43,6 +44,8 @@ export async function GET() {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can view flag insights' }, { status: 403 })
   }
+  const aiBlocked = await aiAccessError(context)
+  if (aiBlocked) return aiBlocked
   
   try {
     const supabase = await createServerClient()

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { aiAccessError } from '@/lib/ai-access'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { openai } from '@/lib/openai'
@@ -19,9 +20,11 @@ export async function GET() {
   }
 
   const context = await getUserContext()
-  if (!context) {
-    return NextResponse.json({ error: 'No workspace' }, { status: 403 })
+  if (!context || context.role === 'student') {
+    return NextResponse.json({ error: 'Only tutors can analyse topics' }, { status: 403 })
   }
+  const aiBlocked = await aiAccessError(context)
+  if (aiBlocked) return aiBlocked
 
   const supabase = await createServerClient()
 
@@ -148,6 +151,8 @@ export async function POST(request: Request) {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can merge topics' }, { status: 403 })
   }
+  const aiBlocked = await aiAccessError(context)
+  if (aiBlocked) return aiBlocked
 
   try {
     const body = await request.json()

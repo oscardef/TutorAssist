@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { aiAccessError } from '@/lib/ai-access'
 import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { enqueueJob, enqueueBatchJob, processJobsById } from '@/lib/jobs'
@@ -48,6 +49,10 @@ export async function POST(request: NextRequest) {
     }
     
     const context = await requireTutor()
+    
+    const aiBlocked = await aiAccessError(context)
+    
+    if (aiBlocked) return aiBlocked
     const supabase = await createServerClient()
     const body = await request.json()
     
