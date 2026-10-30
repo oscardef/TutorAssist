@@ -56,6 +56,8 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
   const [queue, setQueue] = useState<ReviewQuestion[]>([])
   const [queueLoaded, setQueueLoaded] = useState(false)
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
   const load = useCallback(async (q: string) => {
@@ -91,12 +93,31 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
     const data = await res.json()
     if (res.ok) {
       setQueue(q => q.filter(x => x.id !== id))
+      setPicked(p => { const n = new Set(p); n.delete(id); return n })
       setMessage(decision === 'approve' ? 'Added to the library.' : 'Sent back with your note.')
       if (decision === 'approve') load(search)
     } else {
       setMessage(data.error || 'Review failed')
     }
     setTimeout(() => setMessage(null), 2500)
+  }
+
+  async function decideMany(decision: 'approve' | 'reject') {
+    const ids = Array.from(picked)
+    if (ids.length === 0) return
+    setBulkBusy(true)
+    try {
+      const res = await fetch('/api/library/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questionIds: ids, decision }) })
+      const data = await res.json()
+      const done = new Set((data.results || []).filter((r: { ok: boolean }) => r.ok).map((r: { id: string }) => r.id))
+      setQueue(q => q.filter(x => !done.has(x.id)))
+      setPicked(new Set())
+      setMessage(`${done.size} ${decision === 'approve' ? 'added to the library' : 'sent back'}${data.failed ? `, ${data.failed} failed` : ''}.`)
+      if (decision === 'approve') load(search)
+    } finally {
+      setBulkBusy(false)
+      setTimeout(() => setMessage(null), 3000)
+    }
   }
 
   const Book = Icons.book
@@ -106,7 +127,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'browse', label: 'Browse', count: total },
-    { key: 'mine', label: 'My proposals', count: mine.length },
+    { key: 'mine', label: 'My questions', count: mine.length },
     ...(isOwner ? [{ key: 'review' as Tab, label: 'Review queue', count: queueLoaded ? queue.length : undefined }] : []),
   ]
 
@@ -114,7 +135,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="page-title inline-flex items-center gap-2">Library <InfoTip text="Questions checked and approved for everyone. Propose your own from the question bank; approved ones get a shared copy here." className="text-gray-500" /></h1>
+          <h1 className="page-title inline-flex items-center gap-2">Library <InfoTip text="Every question created in any workspace is reviewed. Approved ones get a shared copy here that anyone can add to their bank." className="text-gray-500" /></h1>
           <p className="page-subtitle">Approved questions shared across every workspace. Add any of them to your bank.</p>
         </div>
         <Link href="/tutor/questions" className="btn btn-secondary btn-sm"><Book className="h-4 w-4" /> My question bank</Link>
@@ -139,7 +160,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
             <div className="card px-6 py-14 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700"><Book className="h-6 w-6" /></div>
               <p className="mt-4 font-bold text-ink">The library is empty so far</p>
-              <p className="mt-1 text-sm text-gray-500">Propose questions from your bank; approved ones appear here for everyone.</p>
+              <p className="mt-1 text-sm text-gray-500">Approved questions from every workspace appear here.</p>
             </div>
           ) : (
             <ul className="space-y-3">
@@ -173,8 +194,8 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
         <section>
           {mine.length === 0 ? (
             <div className="card px-6 py-12 text-center">
-              <p className="font-bold text-ink">No proposals yet</p>
-              <p className="mt-1 text-sm text-gray-500">Open the question bank and press “Propose” on a question you’re proud of.</p>
+              <p className="font-bold text-ink">No questions in review</p>
+              <p className="mt-1 text-sm text-gray-500">Questions you create are reviewed for the library automatically and show up here with their status.</p>
               <Link href="/tutor/questions" className="btn btn-primary mt-5">Question bank</Link>
             </div>
           ) : (
@@ -209,10 +230,23 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
               <p className="mt-1 text-sm text-gray-500">Proposed questions from every workspace show up here.</p>
             </div>
           ) : (
+            <>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <label className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+                <input type="checkbox" checked={picked.size === queue.length && queue.length > 0} onChange={() => setPicked(picked.size === queue.length ? new Set() : new Set(queue.map(q => q.id)))} className="h-4 w-4 rounded border-gray-300 accent-brand-600" /> Select all <span className="text-gray-500 tnum">{queue.length}</span>
+              </label>
+              {picked.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => decideMany('reject')} disabled={bulkBusy} className="btn btn-secondary btn-sm"><X className="h-4 w-4" /> Reject {picked.size}</button>
+                  <button type="button" onClick={() => decideMany('approve')} disabled={bulkBusy} className="btn btn-primary btn-sm"><Check className="h-4 w-4" /> {bulkBusy ? 'Working…' : `Approve ${picked.size}`}</button>
+                </div>
+              )}
+            </div>
             <ul className="space-y-4">
               {queue.map(q => (
-                <li key={q.id} className="card p-5">
+                <li key={q.id} className={`card p-5 ${picked.has(q.id) ? 'border-brand-400' : ''}`}>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <input type="checkbox" checked={picked.has(q.id)} onChange={() => setPicked(p => { const n = new Set(p); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); return n })} className="h-4 w-4 rounded border-gray-300 accent-brand-600" aria-label="Select for bulk review" />
                     <span className="chip">{q.workspaces?.name || 'Workspace'}</span>
                     {q.topics?.name && <span className="chip chip-brand">{q.topics.name}</span>}
                     <DifficultyDots level={q.difficulty} />
@@ -232,6 +266,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
                 </li>
               ))}
             </ul>
+            </>
           )}
         </section>
       )}

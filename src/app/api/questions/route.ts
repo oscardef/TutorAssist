@@ -424,7 +424,7 @@ export async function PATCH(request: Request) {
     // Verify question belongs to workspace
     const { data: existing } = await supabase
       .from('questions')
-      .select('id')
+      .select('id, review_status')
       .eq('id', id)
       .eq('workspace_id', context.workspaceId)
       .eq('library', 'workspace')
@@ -448,6 +448,13 @@ export async function PATCH(request: Request) {
     if (body.primary_grade_level_id !== undefined) updateFields.primary_grade_level_id = body.primary_grade_level_id
     if (body.hints !== undefined) updateFields.hints_json = body.hints
     if (body.solution_steps !== undefined) updateFields.solution_steps_json = body.solution_steps
+
+    // A question that was sent back from library review goes back into the queue once it is edited
+    if ((existing as { review_status?: string }).review_status === 'rejected') {
+      updateFields.review_status = 'submitted'
+      updateFields.submitted_at = new Date().toISOString()
+      updateFields.review_notes = null
+    }
     if (body.tags !== undefined) updateFields.tags_json = body.tags
     if (body.status !== undefined) updateFields.status = body.status
     

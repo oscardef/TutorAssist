@@ -27,16 +27,24 @@ export async function GET() {
 export async function POST(request: Request) {
   const context = await requireOwner()
   if (!context) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  const { questionId, decision, notes } = await request.json()
-  if (!questionId || !['approve', 'reject'].includes(decision)) return NextResponse.json({ error: 'questionId and decision are required' }, { status: 400 })
-  try {
-    if (decision === 'approve') {
-      const id = await approveToLibrary(questionId, context.userId, context.workspaceId, notes || null)
-      return NextResponse.json({ ok: true, libraryQuestionId: id })
+  const { questionId, questionIds, decision, notes } = await request.json()
+  const ids: string[] = Array.isArray(questionIds) ? questionIds : questionId ? [questionId] : []
+  if (ids.length === 0 || !['approve', 'reject'].includes(decision)) return NextResponse.json({ error: 'questionId(s) and decision are required' }, { status: 400 })
+  const results: { id: string; ok: boolean; libraryQuestionId?: string; error?: string }[] = []
+  for (const id of ids) {
+    try {
+      if (decision === 'approve') {
+        const libraryQuestionId = await approveToLibrary(id, context.userId, context.workspaceId, notes || null)
+        results.push({ id, ok: true, libraryQuestionId })
+      } else {
+        await rejectFromLibrary(id, context.userId, notes || null)
+        results.push({ id, ok: true })
+      }
+    } catch (err) {
+      results.push({ id, ok: false, error: err instanceof Error ? err.message : 'Review failed' })
     }
-    await rejectFromLibrary(questionId, context.userId, notes || null)
-    return NextResponse.json({ ok: true })
-  } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Review failed' }, { status: 400 })
   }
+  const failed = results.filter(r => !r.ok)
+  if (ids.length === 1 && failed.length === 1) return NextResponse.json({ error: failed[0].error }, { status: 400 })
+  return NextResponse.json({ ok: failed.length === 0, results, approved: results.filter(r => r.ok).length, failed: failed.length })
 }
