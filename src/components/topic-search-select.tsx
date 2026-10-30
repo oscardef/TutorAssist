@@ -80,6 +80,21 @@ export function TopicSearchSelect({
   }, [])
 
   // Handle keyboard navigation
+  const handleSelect = useCallback((id: string) => {
+    if (multiple) {
+      if (selectedTopics.includes(id)) {
+        onChange(selectedTopics.filter(t => t !== id))
+      } else {
+        onChange([...selectedTopics, id])
+      }
+    } else {
+      onChange([id])
+      setIsOpen(false)
+    }
+    clear()
+    inputRef.current?.focus()
+  }, [multiple, selectedTopics, onChange, clear])
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (disabled) return
 
@@ -109,7 +124,7 @@ export function TopicSearchSelect({
         }
         break
     }
-  }, [disabled, focusedIndex, results, query, selectedTopics, onChange])
+  }, [disabled, focusedIndex, results, query, selectedTopics, onChange, handleSelect])
 
   // Scroll focused item into view
   useEffect(() => {
@@ -118,21 +133,6 @@ export function TopicSearchSelect({
       items[focusedIndex]?.scrollIntoView({ block: 'nearest' })
     }
   }, [focusedIndex])
-
-  const handleSelect = useCallback((id: string) => {
-    if (multiple) {
-      if (selectedTopics.includes(id)) {
-        onChange(selectedTopics.filter(t => t !== id))
-      } else {
-        onChange([...selectedTopics, id])
-      }
-    } else {
-      onChange([id])
-      setIsOpen(false)
-    }
-    clear()
-    inputRef.current?.focus()
-  }, [multiple, selectedTopics, onChange, clear])
 
   const handleRemove = useCallback((id: string) => {
     onChange(selectedTopics.filter(t => t !== id))

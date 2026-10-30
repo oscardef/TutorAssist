@@ -9,7 +9,7 @@ interface MockQuestion {
   id: string
   workspace_id: string
   answer_type: string
-  correct_answer: {
+  correct_answer_json: {
     value?: string | number | boolean
     correct?: number
     choices?: { text: string }[]
@@ -152,7 +152,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-123',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 5 },
+        correct_answer_json: { value: 5 },
       }
 
       const request = createMockRequest({
@@ -178,7 +178,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-123',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 5 },
+        correct_answer_json: { value: 5 },
       }
 
       const request = createMockRequest({
@@ -200,7 +200,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-123',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 5 },
+        correct_answer_json: { value: 5 },
       }
 
       const request = createMockRequest({
@@ -226,7 +226,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-mc',
         workspace_id: 'workspace-123',
         answer_type: 'multiple_choice',
-        correct_answer: {
+        correct_answer_json: {
           correct: 2, // Index 2 is correct
           choices: [
             { text: 'Option A' },
@@ -265,7 +265,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-mc',
         workspace_id: 'workspace-123',
         answer_type: 'multiple_choice',
-        correct_answer: { correct: 1 },
+        correct_answer_json: { correct: 1 },
       }
 
       const request = createMockRequest({
@@ -286,7 +286,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-tf',
         workspace_id: 'workspace-123',
         answer_type: 'true_false',
-        correct_answer: { value: 'true' },
+        correct_answer_json: { value: 'true' },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -308,7 +308,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-tf',
         workspace_id: 'workspace-123',
         answer_type: 'true_false',
-        correct_answer: { value: 'true' },
+        correct_answer_json: { value: 'true' },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -331,7 +331,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-tf',
         workspace_id: 'workspace-123',
         answer_type: 'true_false',
-        correct_answer: { value: 'true' },
+        correct_answer_json: { value: 'true' },
       }
       let request = createMockRequest({ questionId: 'q-tf', answerLatex: 'true' })
       await POST(request)
@@ -343,7 +343,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-tf',
         workspace_id: 'workspace-123',
         answer_type: 'true_false',
-        correct_answer: { value: 1 as unknown as string },
+        correct_answer_json: { value: 1 as unknown as string },
       }
       request = createMockRequest({ questionId: 'q-tf', answerLatex: 'true' })
       await POST(request)
@@ -357,7 +357,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-num',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 42 },
+        correct_answer_json: { value: 42 },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -372,7 +372,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-num',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 3.14 },
+        correct_answer_json: { value: 3.14 },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -387,7 +387,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-num',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 0.5 },
+        correct_answer_json: { value: 0.5 },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -402,7 +402,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-num',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 5 },
+        correct_answer_json: { value: 5 },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -423,7 +423,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-fill',
         workspace_id: 'workspace-123',
         answer_type: 'fill_blank',
-        correct_answer: {
+        correct_answer_json: {
           blanks: [
             { position: 0, value: '5' },
             { position: 1, value: '10' },
@@ -457,7 +457,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-fill',
         workspace_id: 'workspace-123',
         answer_type: 'fill_blank',
-        correct_answer: {
+        correct_answer_json: {
           blanks: [
             { position: 0, value: '5' },
             { position: 1, value: '10' },
@@ -485,7 +485,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-match',
         workspace_id: 'workspace-123',
         answer_type: 'matching',
-        correct_answer: {
+        correct_answer_json: {
           correctMatches: [1, 0, 2], // Index 0 matches to 1, index 1 matches to 0, etc.
           pairs: [
             { left: 'A', right: '1' },
@@ -523,7 +523,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-long',
         workspace_id: 'workspace-123',
         answer_type: 'long_answer',
-        correct_answer: { value: 'Sample answer' },
+        correct_answer_json: { value: 'Sample answer' },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -547,7 +547,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-expr',
         workspace_id: 'workspace-123',
         answer_type: 'expression',
-        correct_answer: { value: '2x+1' },
+        correct_answer_json: { value: '2x+1' },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -566,7 +566,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-expr',
         workspace_id: 'workspace-123',
         answer_type: 'expression',
-        correct_answer: { latex: '\\frac{1}{2}' },
+        correct_answer_json: { latex: '\\frac{1}{2}' },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -584,7 +584,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-expr',
         workspace_id: 'workspace-123',
         answer_type: 'short_answer',
-        correct_answer: {
+        correct_answer_json: {
           value: 'pi',
           alternates: ['3.14', '3.14159', 'π'],
         },
@@ -611,7 +611,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-err',
         workspace_id: 'workspace-123',
         answer_type: 'expression',
-        correct_answer: null, // Missing correct answer data
+        correct_answer_json: null, // Missing correct answer data
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -632,7 +632,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-null',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: {}, // Empty object
+        correct_answer_json: {}, // Empty object
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -654,7 +654,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-123',
         workspace_id: 'workspace-123',
         answer_type: 'numeric',
-        correct_answer: { value: 5 },
+        correct_answer_json: { value: 5 },
       }
 
       const { POST } = await import('@/app/api/attempts/route')
@@ -678,7 +678,7 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
         id: 'q-123',
         workspace_id: 'workspace-123',
         answer_type: 'short_answer',
-        correct_answer: { value: 'hello' },
+        correct_answer_json: { value: 'hello' },
       }
 
       const { POST } = await import('@/app/api/attempts/route')

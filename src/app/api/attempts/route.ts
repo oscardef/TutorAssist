@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     // This ensures answers are checked consistently and securely
     // SECURITY: Never trust client-submitted isCorrect - always validate server-side
     let isCorrect = false // Default to false - must be proven correct by server validation
-    let validationDetails: { 
+    const validationDetails: { 
       matchType?: string
       blanksCorrect?: number
       blanksTotal?: number

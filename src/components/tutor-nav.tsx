@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -100,26 +100,34 @@ function SettingsIcon({ className }: { className?: string }) {
   )
 }
 
+// Collapsed state lives in localStorage; a tiny external store keeps React in sync
+// without setting state inside an effect. The server snapshot is always `false`,
+// so server and first client render match and the stored value applies right after hydration.
+const NAV_COLLAPSED_KEY = 'tutor-nav-collapsed'
+const navListeners = new Set<() => void>()
+function subscribeNavCollapsed(callback: () => void) {
+  navListeners.add(callback)
+  window.addEventListener('storage', callback)
+  return () => {
+    navListeners.delete(callback)
+    window.removeEventListener('storage', callback)
+  }
+}
+function readNavCollapsed() {
+  return localStorage.getItem(NAV_COLLAPSED_KEY) === 'true'
+}
+function writeNavCollapsed(value: boolean) {
+  localStorage.setItem(NAV_COLLAPSED_KEY, String(value))
+  navListeners.forEach(listener => listener())
+}
+
 export function TutorNav() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  // Start with false to match server render, then sync from localStorage after hydration
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isHydrated, setIsHydrated] = useState(false)
+  const isCollapsed = useSyncExternalStore(subscribeNavCollapsed, readNavCollapsed, () => false)
 
-  // Sync with localStorage after hydration to avoid mismatch
-  useEffect(() => {
-    const stored = localStorage.getItem('tutor-nav-collapsed') === 'true'
-    setIsCollapsed(stored)
-    setIsHydrated(true)
-  }, [])
-
-  const toggleCollapsed = () => {
-    const newState = !isCollapsed
-    setIsCollapsed(newState)
-    localStorage.setItem('tutor-nav-collapsed', String(newState))
-  }
+  const toggleCollapsed = () => writeNavCollapsed(!isCollapsed)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

@@ -294,7 +294,7 @@ export default function PracticePage() {
       const availableAnswered = [...answered]
       
       for (let i = 0; i < remaining && availableAnswered.length > 0; i++) {
-        let random = Math.random() * totalWeight
+        const random = Math.random() * totalWeight
         let cumulativeWeight = 0
         
         for (let j = 0; j < availableAnswered.length; j++) {

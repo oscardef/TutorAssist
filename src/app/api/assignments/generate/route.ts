@@ -621,7 +621,7 @@ export async function POST(request: Request) {
       
       // Check if we need to generate new questions
       const needsMoreQuestions = existingQuestions.length < questionCount
-      let generatedQuestionIds: string[] = []
+      const generatedQuestionIds: string[] = []
       
       console.log('Question sourcing decision:', {
         existingQuestionsCount: existingQuestions.length,

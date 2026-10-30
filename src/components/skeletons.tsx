@@ -120,9 +120,9 @@ export function StudentDashboardSkeleton() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <Pulse className="h-5 w-24 mb-4" />
             <div className="flex items-end justify-between gap-2 h-28">
-              {[...Array(7)].map((_, i) => (
+              {[42, 68, 35, 80, 55, 62, 48].map((h, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                  <Pulse className="w-full rounded-t-lg" style={{ height: `${20 + Math.random() * 60}%` }} />
+                  <Pulse className="w-full rounded-t-lg" style={{ height: `${h}%` }} />
                   <Pulse className="h-3 w-6" />
                 </div>
               ))}

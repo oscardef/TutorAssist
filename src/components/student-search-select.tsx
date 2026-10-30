@@ -79,6 +79,21 @@ export function StudentSearchSelect({
   }, [])
 
   // Handle keyboard navigation
+  const handleSelect = useCallback((id: string) => {
+    if (multiple) {
+      if (selectedStudents.includes(id)) {
+        onChange(selectedStudents.filter(s => s !== id))
+      } else {
+        onChange([...selectedStudents, id])
+      }
+    } else {
+      onChange([id])
+      setIsOpen(false)
+    }
+    clear()
+    inputRef.current?.focus()
+  }, [multiple, selectedStudents, onChange, clear])
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (disabled) return
 
@@ -108,7 +123,7 @@ export function StudentSearchSelect({
         }
         break
     }
-  }, [disabled, focusedIndex, results, query, selectedStudents, onChange])
+  }, [disabled, focusedIndex, results, query, selectedStudents, onChange, handleSelect])
 
   // Scroll focused item into view
   useEffect(() => {
@@ -117,21 +132,6 @@ export function StudentSearchSelect({
       items[focusedIndex]?.scrollIntoView({ block: 'nearest' })
     }
   }, [focusedIndex])
-
-  const handleSelect = useCallback((id: string) => {
-    if (multiple) {
-      if (selectedStudents.includes(id)) {
-        onChange(selectedStudents.filter(s => s !== id))
-      } else {
-        onChange([...selectedStudents, id])
-      }
-    } else {
-      onChange([id])
-      setIsOpen(false)
-    }
-    clear()
-    inputRef.current?.focus()
-  }, [multiple, selectedStudents, onChange, clear])
 
   const handleRemove = useCallback((id: string) => {
     onChange(selectedStudents.filter(s => s !== id))
