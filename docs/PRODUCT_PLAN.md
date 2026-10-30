@@ -105,6 +105,12 @@ m70q is fine for development, staging, Oscar's own tutoring and a beta with frie
 
 ---
 
+## 3.3 Design system (started 2026-10-30)
+
+Direction: a maths workbook, not a SaaS dashboard. Warm paper canvas (`#f6f5f0`), deep ink text (`#17202f`), one teal for every action and active state (`#0f7a77`), amber "spark" for progress, streaks and highlights (`#f2a541`), green/red reserved for right/wrong. One typeface, Manrope, with weight contrast (800 display, 600 interface, 500 body) and tabular numerals wherever numbers line up. Radii 12–20 px, hairline warm borders instead of drop shadows, graph paper as the signature texture behind hero bands and the auth panel. Motion: one rise-in on page load, nothing on hover beyond colour; `prefers-reduced-motion` respected. Accessibility floor: visible focus rings, 44 px targets, skip link, labelled icon buttons, mobile bottom tab bar for students on phones.
+
+Done: tokens (`src/app/globals.css`), brand mark and icon set (`src/components/ui/`), app shell (`src/components/app-shell.tsx`), auth shell and the six auth pages, landing page, tutor and student dashboards. Tailwind's gray/blue/indigo/purple scales are remapped to the tokens, so every other page already follows the palette and type; their markup (practice, question bank, assignments, students, generate, settings) still needs a proper pass with the shared `card`, `btn`, `input`, `chip` classes.
+
 ## 4. Workstreams
 
 ### WS0: Stabilise (1–2 weeks) — done in the working tree 2026-10-30 except secret rotation and the commit
