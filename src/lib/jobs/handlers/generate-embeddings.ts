@@ -1,9 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Job } from '@/lib/types'
 import OpenAI from 'openai'
+import { openai } from '@/lib/openai'
 import crypto from 'crypto'
 
-const openai = new OpenAI()
 
 // Job handler to generate embeddings for questions
 export async function handleGenerateEmbedding(job: Job): Promise<void> {

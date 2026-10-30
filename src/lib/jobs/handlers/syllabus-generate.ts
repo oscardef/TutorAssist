@@ -1,12 +1,9 @@
-import OpenAI from 'openai'
+import { openai } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Job } from '@/lib/types'
 import { completeJob, failJob } from '../queue'
 import { logAIUsage, createGenerationMetadata, AI_MODELS, PROMPT_VERSIONS } from '@/lib/ai-usage'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 interface SyllabusBatchPayload {
   topicId: string

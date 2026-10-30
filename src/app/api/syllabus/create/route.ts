@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
-import OpenAI from 'openai'
+import { openai } from '@/lib/openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 interface TopicData {
   name: string

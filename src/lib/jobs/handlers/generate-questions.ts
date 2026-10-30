@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { openai } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Job } from '@/lib/types'
 import { completeJob, failJob } from '../queue'
@@ -16,9 +17,6 @@ import {
   AI_MODELS 
 } from '@/lib/ai-usage'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 // Check if OpenAI is configured
 function checkOpenAIConfig(): void {

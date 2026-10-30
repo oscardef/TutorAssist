@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
-import OpenAI from 'openai'
+import { openai } from '@/lib/openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 interface FlagInsight {
   type: 'pattern' | 'question_issue' | 'student_pattern' | 'recommendation'

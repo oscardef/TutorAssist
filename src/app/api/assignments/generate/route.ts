@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
+import { openai } from '@/lib/openai'
 import { 
   ASSIGNMENT_GENERATION_SYSTEM_PROMPT,
   ANSWER_FORMAT_SPEC,
@@ -9,9 +10,6 @@ import {
   normalizeAnswer,
 } from '@/lib/prompts/question-generation'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 interface StudentHistory {
   topicsStruggled: { topicId: string; topicName: string; errorRate: number }[]
