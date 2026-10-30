@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireUser, getUserContext } from '@/lib/auth'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 
 // Get topics for workspace
 export async function GET(request: Request) {
@@ -216,6 +216,23 @@ export async function PATCH(request: Request) {
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // Linking a topic to a syllabus point tags its questions that have none yet
+    if (body.curriculumNodeId) {
+      const { data: tagged } = await supabase
+        .from('questions')
+        .update({ curriculum_node_id: body.curriculumNodeId })
+        .eq('workspace_id', context.workspaceId)
+        .eq('topic_id', topicId)
+        .is('curriculum_node_id', null)
+        .select('id')
+      const ids = (tagged || []).map(q => q.id)
+      if (ids.length) {
+        // Their approved library copies too, so library coverage counts them
+        const admin = await createAdminClient()
+        await admin.from('questions').update({ curriculum_node_id: body.curriculumNodeId }).eq('library', 'global').in('source_question_id', ids).is('curriculum_node_id', null)
+      }
     }
     
     return NextResponse.json({ topic })

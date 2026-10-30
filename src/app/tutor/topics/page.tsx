@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { SyllabusLinkHelper, SyllabusSuggestions } from '@/components/syllabus-link-helper'
 import { SyllabusPicker } from '@/components/syllabus-picker'
 import { InfoTip } from '@/components/ui/info-tip'
 import Link from 'next/link'
@@ -379,6 +380,8 @@ export default function TopicsPage() {
           </button>
         </div>
       </div>
+
+      <SyllabusLinkHelper topics={topics} onLinked={fetchTopics} />
       
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
@@ -628,6 +631,7 @@ export default function TopicsPage() {
                     <div>
                       <span className="label inline-flex items-center gap-1.5">Syllabus point <InfoTip text="Link the topic to the course syllabus. Generated questions follow its scope and level, and new questions in this topic are tagged with it." className="text-gray-500" /></span>
                       <SyllabusPicker value={curriculumNodeId} onChange={setCurriculumNodeId} />
+                      <SyllabusSuggestions name={name} description={description} value={curriculumNodeId} onPick={setCurriculumNodeId} />
                     </div>
                     
                     <div>
