@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
 import { InfoTip } from '@/components/ui/info-tip'
 import { CancelSessionButton } from '@/components/cancel-session-button'
+import LatexRenderer from '@/components/latex-renderer'
 import { format, isToday, isTomorrow, isPast } from 'date-fns'
 
 interface AssignmentWithItems {
@@ -129,6 +130,13 @@ export default async function StudentDashboard() {
     .eq('workspace_id', context?.workspaceId)
     .eq('enabled', true)
   const canBook = (bookableTutorCount ?? 0) > 0
+  // Tutor notes on recent attempts (RLS leaves out notes marked tutors-only)
+  const { data: tutorNotes } = await supabase
+    .from('tutor_feedback')
+    .select('id, comment, error_tags, created_at, attempts(is_correct, questions(prompt_text, prompt_latex))')
+    .eq('student_user_id', user?.id)
+    .order('created_at', { ascending: false })
+    .limit(4)
   const nowMs = new Date().getTime()
   const totalAttempts = totalAttemptsResult.count
   const correctAttempts = correctAttemptsResult.count
@@ -455,6 +463,27 @@ export default async function StudentDashboard() {
                         )}
                         {!live && <CancelSessionButton sessionId={session.id} />}
                       </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )}
+
+          {tutorNotes && tutorNotes.length > 0 && (
+            <section className="card">
+              <div className="card-header"><h2 className="card-title">From your tutor</h2></div>
+              <ul className="divide-y divide-line">
+                {tutorNotes.map(n => {
+                  type NoteQuestion = { prompt_text: string; prompt_latex: string | null }
+                  const attempt = (Array.isArray(n.attempts) ? n.attempts[0] : n.attempts) as unknown as { questions: NoteQuestion | NoteQuestion[] | null } | null
+                  const q = Array.isArray(attempt?.questions) ? attempt?.questions[0] : attempt?.questions
+                  return (
+                    <li key={n.id} className="px-6 py-4">
+                      {q && <div className="line-clamp-2 text-xs text-gray-500"><LatexRenderer content={q.prompt_latex || q.prompt_text} /></div>}
+                      {(n.error_tags as string[] | null)?.length ? <div className="mt-1.5 flex flex-wrap gap-1">{(n.error_tags as string[]).map(t => <span key={t} className="chip !py-0 text-[11px]">{t}</span>)}</div> : null}
+                      {n.comment && <p className="mt-1.5 text-sm text-ink">{n.comment}</p>}
+                      <p className="mt-1 text-[11px] text-gray-400">{format(new Date(n.created_at), 'd MMM')}</p>
                     </li>
                   )
                 })}

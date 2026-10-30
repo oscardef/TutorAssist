@@ -1,4 +1,6 @@
 import { requireTutor } from '@/lib/auth'
+import { AttemptFeedback } from '@/components/attempt-feedback'
+import type { FeedbackItem } from '@/lib/feedback'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserById } from '@/lib/users'
 import Link from 'next/link'
@@ -122,6 +124,14 @@ export default async function StudentDetailPage({
         .order('created_at', { ascending: false })
         .limit(20)
     : { data: [] }
+
+  // Tutor notes on these attempts
+  const attemptIds = (attempts || []).map(a => a.id)
+  const { data: feedbackRows } = attemptIds.length
+    ? await supabase.from('tutor_feedback').select('id, attempt_id, comment, error_tags, is_private, created_at').in('attempt_id', attemptIds).order('created_at')
+    : { data: [] as FeedbackItem[] }
+  const feedbackByAttempt = new Map<string, FeedbackItem[]>()
+  for (const f of (feedbackRows || []) as FeedbackItem[]) feedbackByAttempt.set(f.attempt_id, [...(feedbackByAttempt.get(f.attempt_id) ?? []), f])
 
   // Get spaced repetition stats
   const { data: srStats } = await supabase
@@ -464,8 +474,8 @@ export default async function StudentDetailPage({
       {/* Recent Attempts */}
       <div className="card overflow-hidden">
         <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="font-semibold text-gray-900">Recent Practice Attempts</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Review what the student got right and wrong</p>
+          <h2 className="card-title">Recent practice</h2>
+          <p className="text-xs text-gray-500 mt-0.5">What they got right and wrong. Add a note and the student sees it on their home page.</p>
         </div>
         {attempts && attempts.length > 0 ? (
           <div className="divide-y divide-gray-100">
@@ -499,13 +509,14 @@ export default async function StudentDetailPage({
                           {attempt.answer_raw || '-'}
                         </span>
                       </div>
-                      {!attempt.is_correct && attempt.questions?.correct_answer && (
+                      {!attempt.is_correct && attempt.questions?.correct_answer_json?.value !== undefined && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-500">Correct:</span>
-                          <span className="font-medium text-green-700">{attempt.questions.correct_answer}</span>
+                          <span className="font-medium text-green-700">{String(attempt.questions.correct_answer_json.value)}</span>
                         </div>
                       )}
                     </div>
+                    <AttemptFeedback attemptId={attempt.id} initial={feedbackByAttempt.get(attempt.id) ?? []} />
                   </div>
                 </div>
               </div>
