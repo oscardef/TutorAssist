@@ -1,9 +1,10 @@
 /**
  * IB Diploma Programme mathematics, guides for first assessment 2021.
  * Topic numbering and scope follow the guides; titles are our own short
- * wording (never guide prose). Entered from memory on 2026-10-30 and NOT yet
- * checked line by line against the guides, so the curricula are seeded with
- * status 'draft'. SL lines apply to SL and HL; AHL lines are HL only.
+ * wording (never guide prose). Entered from memory on 2026-10-30. Math AA was
+ * then checked against the official guide (83 points, same numbering) and is
+ * 'verified'; Math AI stays 'draft' until its guide is checked. SL lines
+ * apply to SL and HL; AHL lines are HL only.
  */
 import type { CurriculumSeed } from './types'
 
@@ -75,7 +76,7 @@ SL4.10 | Regression line of x on y
 SL4.11 | Formulae for conditional probability and independence
 SL4.12 | Standardising normal variables; inverse normal with unknown parameters
 AHL4.13 | Bayes' theorem
-AHL4.14 | Continuous random variables and probability density functions
+AHL4.14 | Variance of discrete random variables; continuous random variables and probability density functions
 # 5 | Calculus
 SL5.1 | Limits and the derivative as a rate of change
 SL5.2 | Increasing and decreasing functions; reading f'(x) from a graph
@@ -184,9 +185,10 @@ AHL5.17 | Phase portraits for coupled linear systems
 AHL5.18 | Second-order differential equations as coupled systems
 `
 
+const AA_NOTE = 'Structure and numbering checked against the IB DP Mathematics: analysis and approaches guide (first assessment 2021, ibo.org) on 2026-10-30; titles are our own short wording.'
 const NOTE = 'Structure and numbering from the IB DP mathematics guide (first assessment 2021); titles are our own wording. Entered from memory 2026-10-30, not yet checked against the guide.'
 
 export const IB_DP_MATH: CurriculumSeed[] = [
-  { code: 'IBDP-AA-2021', framework: 'IB DP', name: 'Mathematics: analysis and approaches', shortName: 'Math AA', version: 'First assessment 2021', levels: ['SL', 'HL'], sourceNote: NOTE, orderIndex: 10, outline: AA },
+  { code: 'IBDP-AA-2021', framework: 'IB DP', name: 'Mathematics: analysis and approaches', shortName: 'Math AA', version: 'First assessment 2021', levels: ['SL', 'HL'], sourceNote: AA_NOTE, orderIndex: 10, outline: AA, status: 'verified' },
   { code: 'IBDP-AI-2021', framework: 'IB DP', name: 'Mathematics: applications and interpretation', shortName: 'Math AI', version: 'First assessment 2021', levels: ['SL', 'HL'], sourceNote: NOTE, orderIndex: 20, outline: AI },
 ]

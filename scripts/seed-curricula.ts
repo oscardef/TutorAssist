@@ -11,10 +11,11 @@ import { CURRICULA, parseOutline } from '../db/curricula'
 export async function seedCurricula(sql: postgres.Sql) {
   for (const c of CURRICULA) {
     const [row] = await sql`
-      INSERT INTO public.curricula (code, framework, name, short_name, version, levels, source_note, order_index)
-      VALUES (${c.code}, ${c.framework}, ${c.name}, ${c.shortName}, ${c.version}, ${c.levels}, ${c.sourceNote}, ${c.orderIndex})
+      INSERT INTO public.curricula (code, framework, name, short_name, version, levels, source_note, order_index, status)
+      VALUES (${c.code}, ${c.framework}, ${c.name}, ${c.shortName}, ${c.version}, ${c.levels}, ${c.sourceNote}, ${c.orderIndex}, ${c.status ?? 'draft'})
       ON CONFLICT (code) DO UPDATE SET framework = EXCLUDED.framework, name = EXCLUDED.name, short_name = EXCLUDED.short_name,
-        version = EXCLUDED.version, levels = EXCLUDED.levels, source_note = EXCLUDED.source_note, order_index = EXCLUDED.order_index, updated_at = now()
+        version = EXCLUDED.version, levels = EXCLUDED.levels, source_note = EXCLUDED.source_note, order_index = EXCLUDED.order_index,
+        status = EXCLUDED.status, updated_at = now()
       RETURNING id`
     const nodes = parseOutline(c.outline)
     const ids = new Map<string, string>()

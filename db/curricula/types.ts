@@ -7,6 +7,8 @@ export interface CurriculumSeed {
   levels: string[]
   sourceNote: string
   orderIndex: number
+  /** 'verified' once checked line by line against the official guide */
+  status?: 'draft' | 'verified'
   /**
    * One line per node. "# 1 | Title" is a topic heading; "SL1.2 | Title" or
    * "AHL1.10 | Title" is a syllabus point under the last heading.
