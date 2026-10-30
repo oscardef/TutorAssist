@@ -1,4 +1,5 @@
 import { FIGURE_SCHEMA_FOR_PROMPT } from '@/lib/figures'
+import { PARTS_SCHEMA_FOR_PROMPT } from '@/lib/parts'
 /**
  * Centralized AI Prompts for Mathium
  * 
@@ -160,10 +161,13 @@ Return a JSON object with a "questions" array. Each question object MUST have:
     }
   ],
   "tags": ["algebra", "linear-equations"],
-  "figure": { /* optional, see below */ }
+  "figure": { /* optional, see below */ },
+  "parts": [ /* optional, see below */ ]
 }
 
 ${FIGURE_SCHEMA_FOR_PROMPT}
+
+${PARTS_SCHEMA_FOR_PROMPT}
 
 ## Quality Guidelines
 

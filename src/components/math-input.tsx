@@ -5,6 +5,60 @@ import dynamic from 'next/dynamic'
 import MathSymbolsPanel from './math-symbols-panel'
 
 // Dynamic import of MathLive to avoid SSR issues
+// Inline shortcuts that trigger on space (shared by every math field)
+const INLINE_SHORTCUTS = {
+    // Greek letters commonly used
+    'pi': { mode: 'math', value: '\\pi' },
+    'theta': { mode: 'math', value: '\\theta' },
+    'alpha': { mode: 'math', value: '\\alpha' },
+    'beta': { mode: 'math', value: '\\beta' },
+    'gamma': { mode: 'math', value: '\\gamma' },
+    'delta': { mode: 'math', value: '\\delta' },
+    'sigma': { mode: 'math', value: '\\sigma' },
+    'omega': { mode: 'math', value: '\\omega' },
+    'lambda': { mode: 'math', value: '\\lambda' },
+    'phi': { mode: 'math', value: '\\phi' },
+    'mu': { mode: 'math', value: '\\mu' },
+    
+    // Square roots
+    'sqrt': { mode: 'math', value: '\\sqrt{#@}' },
+    'cbrt': { mode: 'math', value: '\\sqrt[3]{#@}' },
+    
+    // Fractions
+    'frac': { mode: 'math', value: '\\frac{#@}{#?}' },
+    
+    // Common symbols
+    'inf': { mode: 'math', value: '\\infty' },
+    'infinity': { mode: 'math', value: '\\infty' },
+    'pm': { mode: 'math', value: '\\pm' },
+    'deg': { mode: 'math', value: '^{\\circ}' },
+    
+    // Comparison operators
+    '<=': { mode: 'math', value: '\\le' },
+    '>=': { mode: 'math', value: '\\ge' },
+    '!=': { mode: 'math', value: '\\ne' },
+    'approx': { mode: 'math', value: '\\approx' },
+    
+    // Calculus
+    'int': { mode: 'math', value: '\\int' },
+    'sum': { mode: 'math', value: '\\sum' },
+    'lim': { mode: 'math', value: '\\lim' },
+    'partial': { mode: 'math', value: '\\partial' },
+    
+    // Trig functions
+    'sin': { mode: 'math', value: '\\sin' },
+    'cos': { mode: 'math', value: '\\cos' },
+    'tan': { mode: 'math', value: '\\tan' },
+    'sec': { mode: 'math', value: '\\sec' },
+    'csc': { mode: 'math', value: '\\csc' },
+    'cot': { mode: 'math', value: '\\cot' },
+    'arcsin': { mode: 'math', value: '\\arcsin' },
+    'arccos': { mode: 'math', value: '\\arccos' },
+    'arctan': { mode: 'math', value: '\\arctan' },
+    'log': { mode: 'math', value: '\\log' },
+    'ln': { mode: 'math', value: '\\ln' },
+  }
+
 const MathLiveComponent = dynamic(
   () => import('mathlive').then((MathLive) => {
     // Configure MathLive globally for student use
@@ -30,6 +84,11 @@ const MathLiveComponent = dynamic(
     }) {
       const mathFieldRef = useRef<HTMLElement>(null)
       const [isReady, setIsReady] = useState(false)
+      // Latest callbacks live in refs so listeners are attached once per field
+      // and never need re-binding while the student types.
+      const onChangeRef = useRef(onChange)
+      const onSubmitRef = useRef(onSubmit)
+      useEffect(() => { onChangeRef.current = onChange; onSubmitRef.current = onSubmit })
 
       // Expose the ref for symbol insertion
       useEffect(() => {
@@ -38,6 +97,7 @@ const MathLiveComponent = dynamic(
         }
       }, [onInsertSymbol, isReady])
 
+      // One-time setup per field: options and listeners.
       useEffect(() => {
         const mf = mathFieldRef.current as unknown as {
           value: string
@@ -45,124 +105,68 @@ const MathLiveComponent = dynamic(
           addEventListener: (event: string, handler: (e: Event) => void) => void
           removeEventListener: (event: string, handler: (e: Event) => void) => void
           setOptions: (options: Record<string, unknown>) => void
-          executeCommand: (command: string | string[]) => void
-        }
+        } | null
         if (!mf) return
 
         const handleInput = (e: Event) => {
           const target = e.target as unknown as { value: string }
-          onChange(target.value)
+          onChangeRef.current(target.value)
         }
-
         const handleKeyDown = (e: Event) => {
           const ke = e as KeyboardEvent
-          if (ke.key === 'Enter' && onSubmit) {
+          if (ke.key === 'Enter' && onSubmitRef.current) {
             ke.preventDefault()
-            onSubmit()
+            onSubmitRef.current()
           }
         }
-        
+
         // Wait a tick for MathLive to fully initialize to avoid ariaLiveText error
         const initTimer = setTimeout(() => {
           try {
-            mf.value = value
-            mf.disabled = disabled || false
-            setIsReady(true)
-            
-            // Configure MathLive with simplified settings for students
             mf.setOptions({
-              // Smart input features
               smartMode: true,
               smartSuperscript: true,
               smartFence: true,
               removeExtraneousParentheses: true,
               mathModeSpace: '\\:',
-              
-              // Disable sounds
               keypressSound: null,
               plonkSound: null,
-              
-              // Disable virtual keyboard - use symbol panel instead
               virtualKeyboardMode: 'off',
-              
-              // Disable all the formatting/style toolbars
               virtualKeyboardToolbar: 'none',
-              
-              // Menu bar settings - disable styling options
               menuItems: [],
-              
-              // Inline shortcuts that trigger on space
-              inlineShortcuts: {
-                // Greek letters commonly used
-                'pi': { mode: 'math', value: '\\pi' },
-                'theta': { mode: 'math', value: '\\theta' },
-                'alpha': { mode: 'math', value: '\\alpha' },
-                'beta': { mode: 'math', value: '\\beta' },
-                'gamma': { mode: 'math', value: '\\gamma' },
-                'delta': { mode: 'math', value: '\\delta' },
-                'sigma': { mode: 'math', value: '\\sigma' },
-                'omega': { mode: 'math', value: '\\omega' },
-                'lambda': { mode: 'math', value: '\\lambda' },
-                'phi': { mode: 'math', value: '\\phi' },
-                'mu': { mode: 'math', value: '\\mu' },
-                
-                // Square roots
-                'sqrt': { mode: 'math', value: '\\sqrt{#@}' },
-                'cbrt': { mode: 'math', value: '\\sqrt[3]{#@}' },
-                
-                // Fractions
-                'frac': { mode: 'math', value: '\\frac{#@}{#?}' },
-                
-                // Common symbols
-                'inf': { mode: 'math', value: '\\infty' },
-                'infinity': { mode: 'math', value: '\\infty' },
-                'pm': { mode: 'math', value: '\\pm' },
-                'deg': { mode: 'math', value: '^{\\circ}' },
-                
-                // Comparison operators
-                '<=': { mode: 'math', value: '\\le' },
-                '>=': { mode: 'math', value: '\\ge' },
-                '!=': { mode: 'math', value: '\\ne' },
-                'approx': { mode: 'math', value: '\\approx' },
-                
-                // Calculus
-                'int': { mode: 'math', value: '\\int' },
-                'sum': { mode: 'math', value: '\\sum' },
-                'lim': { mode: 'math', value: '\\lim' },
-                'partial': { mode: 'math', value: '\\partial' },
-                
-                // Trig functions
-                'sin': { mode: 'math', value: '\\sin' },
-                'cos': { mode: 'math', value: '\\cos' },
-                'tan': { mode: 'math', value: '\\tan' },
-                'sec': { mode: 'math', value: '\\sec' },
-                'csc': { mode: 'math', value: '\\csc' },
-                'cot': { mode: 'math', value: '\\cot' },
-                'arcsin': { mode: 'math', value: '\\arcsin' },
-                'arccos': { mode: 'math', value: '\\arccos' },
-                'arctan': { mode: 'math', value: '\\arctan' },
-                'log': { mode: 'math', value: '\\log' },
-                'ln': { mode: 'math', value: '\\ln' },
-              },
+              inlineShortcuts: INLINE_SHORTCUTS,
             })
-
             mf.addEventListener('input', handleInput)
             mf.addEventListener('keydown', handleKeyDown)
+            setIsReady(true)
           } catch {
-            // MathLive not ready yet, will retry on next render
+            // MathLive not ready; the field still works as a plain math-field
           }
         }, 50)
-        
+
         return () => {
           clearTimeout(initTimer)
           try {
             mf.removeEventListener('input', handleInput)
             mf.removeEventListener('keydown', handleKeyDown)
           } catch {
-            // Cleanup may fail if MathLive wasn't initialized
+            // ignore
           }
         }
-      }, [value, disabled, onChange, onSubmit])
+      }, [])
+
+      // Keep the field in sync with the controlled value without touching the
+      // caret: only write when the value really differs (e.g. reset, restore).
+      useEffect(() => {
+        const mf = mathFieldRef.current as unknown as { value: string; disabled: boolean } | null
+        if (!mf) return
+        try {
+          if ((mf.value ?? '') !== (value ?? '')) mf.value = value ?? ''
+          mf.disabled = !!disabled
+        } catch {
+          // ignore until MathLive upgrades the element
+        }
+      }, [value, disabled, isReady])
 
       return (
         <math-field 

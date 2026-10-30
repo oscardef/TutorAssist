@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
 import { QuestionMedia } from '@/components/question-media'
+import { PartsAnswerBlock } from '@/components/question-player/parts'
+import { parseParts, gradeParts, type PartResult } from '@/lib/parts'
 import { IconButton, DifficultyDots, ProgressTrail, ProgressBar, ChoiceList, FeedbackBanner, HintsPanel, SolutionPanel, YourAnswerCard, FlagModal, CompletionModal } from '@/components/question-player'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
@@ -14,6 +16,7 @@ import { useSounds } from '@/lib/sounds'
 import { useConfetti } from '@/lib/confetti'
 
 interface Question {
+  parts_json?: unknown[] | null
   prompt_image_r2_key?: string | null
   figure_json?: Record<string, unknown> | null
   id: string
@@ -83,6 +86,7 @@ export default function StudentAssignmentDetailPage() {
   
   // Current question state
   const [answer, setAnswer] = useState('')
+  const [partAnswers, setPartAnswers] = useState<string[]>([])
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null)
   const [showHints, setShowHints] = useState(false)
   const [visibleHintCount, setVisibleHintCount] = useState(0)
@@ -160,6 +164,7 @@ export default function StudentAssignmentDetailPage() {
   // Reset state when changing questions
   useEffect(() => {
     setAnswer('')
+    setPartAnswers([])
     setSelectedChoice(null)
     setShowHints(false)
     setVisibleHintCount(0)
@@ -246,7 +251,11 @@ export default function StudentAssignmentDetailPage() {
     let isCorrect = false
     let userAnswer = answer
 
-    if (currentQuestion.answer_type === 'multiple_choice') {
+    const qParts = parseParts(currentQuestion.parts_json)
+    if (qParts) {
+      isCorrect = gradeParts(qParts, partAnswers).allCorrect
+      userAnswer = JSON.stringify(partAnswers)
+    } else if (currentQuestion.answer_type === 'multiple_choice') {
       userAnswer = String(selectedChoice)
       isCorrect = selectedChoice === correctAnswer.correct
     } else if (currentQuestion.answer_type === 'true_false') {
@@ -283,6 +292,7 @@ export default function StudentAssignmentDetailPage() {
           questionId: currentQuestion.id,
           assignmentId,
           answerLatex: userAnswer,
+          partAnswers: qParts ? partAnswers : undefined,
           isCorrect: finalIsCorrect,
           hintsUsed: usedHints ? visibleHintCount : 0,
         }),
@@ -411,6 +421,12 @@ export default function StudentAssignmentDetailPage() {
   const Arrow = Icons.arrowRight
   const Check = Icons.check
   const results = items.map(item => attempts[item.question_id] ? attempts[item.question_id].isCorrect : undefined)
+  const questionParts = parseParts(currentQuestion?.parts_json)
+  const shownPartAnswers: string[] = (() => {
+    if (!currentAttempt) return partAnswers
+    try { const v = JSON.parse(currentAttempt.answer); return Array.isArray(v) ? v.map(x => (x == null ? '' : String(x))) : [] } catch { return [] }
+  })()
+  const shownPartResults = currentAttempt && questionParts ? gradeParts(questionParts, shownPartAnswers).results : null
   const answered = Object.keys(attempts).length
 
   return (
@@ -464,7 +480,16 @@ export default function StudentAssignmentDetailPage() {
           </div>
           <QuestionMedia imageKey={currentQuestion?.prompt_image_r2_key} figure={currentQuestion?.figure_json} className="mb-6" />
 
-          {currentQuestion?.answer_type === 'multiple_choice' && currentQuestion.correct_answer_json.choices ? (
+          {questionParts ? (
+            <PartsAnswerBlock
+              parts={questionParts}
+              answers={shownPartAnswers}
+              onAnswer={(idx, v) => setPartAnswers(prev => { const next = [...prev]; next[idx] = v; return next })}
+              submitted={!!currentAttempt}
+              results={shownPartResults}
+              onSubmitLast={() => { if (!currentAttempt) handleSubmit() }}
+            />
+          ) : currentQuestion?.answer_type === 'multiple_choice' && currentQuestion.correct_answer_json.choices ? (
             <ChoiceList
               choices={currentQuestion.correct_answer_json.choices}
               selected={selectedChoice}
@@ -500,7 +525,7 @@ export default function StudentAssignmentDetailPage() {
               claimed={claimedCorrect}
               claiming={flagSubmitting}
               onClaim={handleClaimCorrect}
-              correctAnswer={currentQuestion ? <AnswerDisplay answerType={currentQuestion.answer_type} correctAnswer={currentQuestion.correct_answer_json} /> : undefined}
+              correctAnswer={currentQuestion && !questionParts ? <AnswerDisplay answerType={currentQuestion.answer_type} correctAnswer={currentQuestion.correct_answer_json} /> : undefined}
             />
           )}
 
@@ -520,7 +545,7 @@ export default function StudentAssignmentDetailPage() {
 
         <div className="flex items-center justify-end gap-2 border-t border-line bg-paper px-5 py-4">
           {!currentAttempt ? (
-            <button type="button" onClick={handleSubmit} disabled={isSubmitting || (currentQuestion?.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())} className="btn btn-primary btn-lg">
+            <button type="button" onClick={handleSubmit} disabled={isSubmitting || (questionParts ? !partAnswers.some(a => a && a.trim()) : currentQuestion?.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim())} className="btn btn-primary btn-lg">
               {isSubmitting ? 'Checking…' : <>Check answer <Check className="h-5 w-5" /></>}
             </button>
           ) : currentIndex < items.length - 1 ? (

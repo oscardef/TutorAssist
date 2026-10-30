@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
 import { QuestionMedia } from '@/components/question-media'
+import { PartsAnswerBlock } from '@/components/question-player/parts'
+import { parseParts, gradeParts, type PartResult } from '@/lib/parts'
 import { InfoTip } from '@/components/ui/info-tip'
 import { IconButton, DifficultyDots, ProgressBar, ChoiceList, FeedbackBanner, HintsPanel, SolutionPanel, YourAnswerCard, FlagModal } from '@/components/question-player'
 import LatexRenderer from '@/components/latex-renderer'
@@ -15,6 +17,7 @@ import { useSounds } from '@/lib/sounds'
 import { useConfetti } from '@/lib/confetti'
 
 interface Question {
+  parts_json?: unknown[] | null
   prompt_image_r2_key?: string | null
   figure_json?: Record<string, unknown> | null
   id: string
@@ -166,6 +169,8 @@ export default function PracticePage() {
   
   // Question state
   const [answer, setAnswer] = useState('')
+  const [partAnswers, setPartAnswers] = useState<string[]>([])
+  const [partResults, setPartResults] = useState<PartResult[] | null>(null)
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null)
   const [showHints, setShowHints] = useState(false)
   const [visibleHintCount, setVisibleHintCount] = useState(0)
@@ -510,6 +515,8 @@ export default function PracticePage() {
 
   function resetState() {
     setAnswer('')
+    setPartAnswers([])
+    setPartResults(null)
     setSelectedChoice(null)
     setShowHints(false)
     setVisibleHintCount(0)
@@ -532,7 +539,13 @@ export default function PracticePage() {
     let correct = false
     let userAnswer = answer
 
-    if (question.answer_type === 'multiple_choice') {
+    const qParts = parseParts(question.parts_json)
+    if (qParts) {
+      const graded = gradeParts(qParts, partAnswers)
+      correct = graded.allCorrect
+      userAnswer = JSON.stringify(partAnswers)
+      setPartResults(graded.results)
+    } else if (question.answer_type === 'multiple_choice') {
       userAnswer = String(selectedChoice)
       correct = selectedChoice === correctAnswer.correct
     } else if (question.answer_type === 'true_false') {
@@ -579,6 +592,7 @@ export default function PracticePage() {
         body: JSON.stringify({
           questionId: question.id,
           answerLatex: userAnswer,
+          partAnswers: qParts ? partAnswers : undefined,
           isCorrect: correct,
           timeSpentSeconds: timeSpent,
           hintsUsed: visibleHintCount,
@@ -1078,6 +1092,7 @@ export default function PracticePage() {
   }
 
   const topicName = topics.find(t => t.id === selectedTopic)?.name || question.topics?.name || 'Practice'
+  const questionParts = parseParts(question.parts_json)
 
   const Back = Icons.chevronLeft
   const Flame = Icons.flame
@@ -1121,7 +1136,16 @@ export default function PracticePage() {
           </div>
           <QuestionMedia imageKey={question.prompt_image_r2_key} figure={question.figure_json} className="mb-6" />
 
-          {question.answer_type === 'multiple_choice' && question.correct_answer_json.choices ? (
+          {questionParts ? (
+            <PartsAnswerBlock
+              parts={questionParts}
+              answers={partAnswers}
+              onAnswer={(idx, v) => setPartAnswers(prev => { const next = [...prev]; next[idx] = v; return next })}
+              submitted={submitted}
+              results={partResults}
+              onSubmitLast={() => { if (!submitted) handleSubmit() }}
+            />
+          ) : question.answer_type === 'multiple_choice' && question.correct_answer_json.choices ? (
             <ChoiceList
               choices={question.correct_answer_json.choices}
               selected={selectedChoice}
@@ -1177,7 +1201,7 @@ export default function PracticePage() {
         <div className="flex items-center justify-between gap-2 border-t border-line bg-paper px-5 py-4">
           <button type="button" onClick={backToSelection} className="btn btn-ghost">End session</button>
           {!submitted ? (
-            <button type="button" onClick={handleSubmit} disabled={question.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim()} className="btn btn-primary btn-lg">
+            <button type="button" onClick={handleSubmit} disabled={questionParts ? !partAnswers.some(a => a && a.trim()) : question.answer_type === 'multiple_choice' ? selectedChoice === null : !answer.trim()} className="btn btn-primary btn-lg">
               Check answer <Check className="h-5 w-5" />
             </button>
           ) : (

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { parseFigure } from '@/lib/figures'
+import { parseParts } from '@/lib/parts'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -346,6 +347,7 @@ export async function POST(request: Request) {
         prompt_text: questionText,
         prompt_latex: questionLatexFinal || null,
         figure_json: body.figure ? parseFigure(body.figure) : null,
+        parts_json: body.parts ? parseParts(body.parts) : null,
         prompt_image_r2_key: typeof body.imageKey === 'string' ? body.imageKey : null,
         answer_type: answerType,
         correct_answer_json: answerJson,
@@ -454,12 +456,13 @@ export async function PATCH(request: Request) {
 
     if (body.tags !== undefined) updateFields.tags_json = body.tags
     if (body.figure !== undefined) updateFields.figure_json = body.figure ? parseFigure(body.figure) : null
+    if (body.parts !== undefined) updateFields.parts_json = body.parts ? parseParts(body.parts) : null
     if (body.imageKey !== undefined) updateFields.prompt_image_r2_key = body.imageKey || null
     // Every question anyone makes or changes is proposed for the shared library
     // (decision 2026-10-30). Editing content puts it back in the review queue:
     // a rejected question gets another look, an imported copy becomes the
     // editor's own question, and an approved one sends its update for review.
-    const contentKeys = ['prompt_text', 'prompt_latex', 'answer_type', 'correct_answer_json', 'difficulty', 'hints_json', 'solution_steps_json', 'figure_json', 'prompt_image_r2_key', 'topic_id']
+    const contentKeys = ['prompt_text', 'prompt_latex', 'answer_type', 'correct_answer_json', 'difficulty', 'hints_json', 'solution_steps_json', 'figure_json', 'parts_json', 'prompt_image_r2_key', 'topic_id']
     const contentChanged = contentKeys.some(k => k in updateFields)
     if (contentChanged && (existing as { review_status?: string }).review_status !== 'submitted') {
       updateFields.review_status = 'submitted'

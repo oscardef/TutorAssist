@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, use, useCallback } from 'react'
+import { PartsEditor } from '@/components/parts-editor'
+import { parseParts, type QuestionPart } from '@/lib/parts'
 import { FigureEditor } from '@/components/figure-editor'
 import { ImageUpload } from '@/components/image-upload'
 import { parseFigure, type FigureSpec } from '@/lib/figures'
@@ -31,6 +33,7 @@ interface GradeLevel {
 }
 
 interface Question {
+  parts_json?: unknown[] | null
   prompt_image_r2_key?: string | null
   figure_json?: Record<string, unknown> | null
   id: string
@@ -84,6 +87,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
   const [tags, setTags] = useState('')
   const [figure, setFigure] = useState<FigureSpec | null>(null)
+  const [parts, setParts] = useState<QuestionPart[] | null>(null)
   const [imageKey, setImageKey] = useState<string | null>(null)
   const [status, setStatus] = useState('active')
   
@@ -126,6 +130,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         setSolutionSteps(steps.length > 0 ? steps : [''])
         setTags(q.tags_json?.join(', ') || '')
         setFigure(parseFigure(q.figure_json))
+        setParts(parseParts(q.parts_json))
         setImageKey(q.prompt_image_r2_key || null)
         setStatus(q.status || 'active')
         
@@ -192,6 +197,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           prompt_latex: promptLatex || null,
           figure,
           imageKey,
+          parts: parts ? parseParts(parts) : null,
           answer_type: answerType,
           correct_answer_json: correctAnswerJson,
           difficulty,
@@ -576,6 +582,15 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
             </select>
           </div>
           
+          {/* Parts */}
+          <div className="card p-5">
+            <div className="mb-3">
+              <span className="label">Parts</span>
+              <p className="hint">For exam-style questions split into parts (a), (b) and so on, each with marks.</p>
+            </div>
+            <PartsEditor value={parts} onChange={setParts} />
+          </div>
+
           {/* Figure and image */}
           <div className="card p-5">
             <div className="mb-3">

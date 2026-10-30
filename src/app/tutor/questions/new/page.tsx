@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { PartsEditor } from '@/components/parts-editor'
+import { parseParts, type QuestionPart } from '@/lib/parts'
 import { FigureEditor } from '@/components/figure-editor'
 import { ImageUpload } from '@/components/image-upload'
 import type { FigureSpec } from '@/lib/figures'
@@ -35,6 +37,7 @@ export default function NewQuestionPage() {
   const [solutionSteps, setSolutionSteps] = useState<string[]>([''])
   const [tags, setTags] = useState('')
   const [figure, setFigure] = useState<FigureSpec | null>(null)
+  const [parts, setParts] = useState<QuestionPart[] | null>(null)
   const [imageKey, setImageKey] = useState<string | null>(null)
   
   // Create topic modal state
@@ -192,6 +195,7 @@ export default function NewQuestionPage() {
           promptLatex: questionLatex.trim() || null,
           figure,
           imageKey,
+          parts: parts ? parseParts(parts) : null,
           correctAnswerJson: correctAnswerJson,
           answerType,
           tolerance: answerType === 'numeric' && answerTolerance ? parseFloat(answerTolerance) : null,
@@ -476,6 +480,15 @@ export default function NewQuestionPage() {
           </div>
         </div>
         
+        {/* Parts */}
+        <div className="card p-5">
+          <div className="mb-3">
+            <span className="label">Parts</span>
+            <p className="hint">For exam-style questions split into parts (a), (b) and so on, each with marks.</p>
+          </div>
+          <PartsEditor value={parts} onChange={setParts} />
+        </div>
+
         {/* Figure and image */}
         <div className="card p-5">
           <div className="mb-3">

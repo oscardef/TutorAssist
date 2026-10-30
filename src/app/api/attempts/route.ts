@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { parseParts, gradeParts, type PartResult } from '@/lib/parts'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { 
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       isCorrect: clientIsCorrect, // Renamed - we'll verify server-side
       timeSpentSeconds,
       hintsUsed = 0,
+      partAnswers,
     } = body
     
     if (!questionId) {
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
     // Verify question exists in workspace AND fetch answer data for validation
     const { data: question, error: questionError } = await supabase
       .from('questions')
-      .select('id, workspace_id, answer_type, correct_answer_json')
+      .select('id, workspace_id, answer_type, correct_answer_json, parts_json')
       .eq('id', questionId)
       .eq('workspace_id', context.workspaceId)
       .single()
@@ -66,9 +68,27 @@ export async function POST(request: Request) {
       matchesTotal?: number
       serverValidated?: boolean
       validationError?: string
+      parts?: PartResult[]
+      marksEarned?: number
+      marksTotal?: number
     } = { serverValidated: true }
+    let partialCredit: number | null = null
+    let answerRaw: string = typeof answerLatex === 'string' ? answerLatex : ''
+
+    // Multi-part question: grade every part, record marks as partial credit
+    const parts = parseParts(question.parts_json)
+    const isMultiPart = !!parts && Array.isArray(partAnswers)
     
-    try {
+    if (isMultiPart && parts) {
+      const graded = gradeParts(parts, (partAnswers as unknown[]).map(a => (a === null || a === undefined ? '' : String(a))))
+      isCorrect = graded.allCorrect
+      partialCredit = Math.round(graded.credit * 1000) / 1000
+      validationDetails.matchType = 'parts'
+      validationDetails.parts = graded.results
+      validationDetails.marksEarned = graded.earned
+      validationDetails.marksTotal = graded.total
+      answerRaw = JSON.stringify(partAnswers)
+    } else try {
       const correctAnswerData = question.correct_answer_json as {
         value?: string | number
         correct?: number
@@ -211,8 +231,9 @@ export async function POST(request: Request) {
         question_id: questionId,
         assignment_id: assignmentId || null,
         student_user_id: user.id,
-        answer_raw: answerLatex,
+        answer_raw: answerRaw,
         is_correct: isCorrect,
+        partial_credit: partialCredit,
         time_spent_seconds: timeSpentSeconds || null,
         hints_viewed: hintsUsed,
         submitted_at: new Date().toISOString(),

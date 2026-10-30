@@ -1,4 +1,5 @@
 import { parseFigure } from '@/lib/figures'
+import { parseParts } from '@/lib/parts'
 import OpenAI from 'openai'
 import { openai } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -230,6 +231,7 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
         prompt_text: stripLatexToPlainText(q.questionLatex),
         prompt_latex: q.questionLatex,
         figure_json: parseFigure((q as { figure?: unknown }).figure),
+        parts_json: parseParts((q as { parts?: unknown }).parts),
         answer_type: answerType,
         correct_answer_json: normalizeAnswer(q.correctAnswer, q.answerType),
         // Inherit program/grade level from topic
@@ -486,6 +488,7 @@ Remember: Use \\( \\) for inline math. Include the "latex" field in the answer.`
         prompt_text: stripLatexToPlainText(finalVariant.questionLatex),
         prompt_latex: finalVariant.questionLatex,
         figure_json: parseFigure((finalVariant as { figure?: unknown }).figure),
+        parts_json: parseParts((finalVariant as { parts?: unknown }).parts),
         answer_type: finalVariant.answerType || original.answer_type,
         correct_answer_json: normalizeAnswer(finalVariant.correctAnswer, finalVariant.answerType),
         difficulty: difficultyAdjustment,

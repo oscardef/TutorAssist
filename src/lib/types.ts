@@ -168,6 +168,7 @@ export interface Question {
   prompt_latex: string | null
   prompt_image_r2_key: string | null
   figure_json: Record<string, unknown> | null
+  parts_json: unknown[] | null
   answer_type: AnswerType
   correct_answer_json: CorrectAnswer
   tolerance: number | null
