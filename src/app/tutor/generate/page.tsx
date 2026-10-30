@@ -553,7 +553,7 @@ export default function GeneratePage() {
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex justify-between items-start">
           <div className="flex gap-3">
-            <span className="text-red-500 flex-shrink-0">⚠️</span>
+            <span className="text-red-500 flex-shrink-0"></span>
             <div>
               <p className="font-medium">Error</p>
               <p className="text-sm mt-1">{error}</p>
@@ -566,7 +566,7 @@ export default function GeneratePage() {
       {success && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex justify-between items-start">
           <div className="flex gap-3">
-            <span className="text-green-500 flex-shrink-0">✅</span>
+            <span className="text-green-500 flex-shrink-0"></span>
             <div>
               <p>{success}</p>
               {generationType === 'questions' && (
@@ -582,9 +582,9 @@ export default function GeneratePage() {
       <div className="mb-6">
         <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
           {[
-            { value: 'questions', label: 'Questions', icon: '❓', desc: 'Generate practice questions' },
-            { value: 'topics', label: 'Topics/Syllabus', icon: '📚', desc: 'Generate curriculum topics' },
-            { value: 'assignment', label: 'Assignment', icon: '📝', desc: 'Create student assignments' },
+            { value: 'questions', label: 'Questions', desc: 'Generate practice questions' },
+            { value: 'topics', label: 'Topics/Syllabus', desc: 'Generate curriculum topics' },
+            { value: 'assignment', label: 'Assignment', desc: 'Create student assignments' },
           ].map((type) => (
             <button
               key={type.value}
@@ -596,7 +596,7 @@ export default function GeneratePage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <span className="text-lg mr-2">{type.icon}</span>
+              <span className="text-lg mr-2"></span>
               {type.label}
             </button>
           ))}

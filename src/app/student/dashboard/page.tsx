@@ -2,6 +2,7 @@ import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
+import { InfoTip } from '@/components/ui/info-tip'
 import { format, isToday, isTomorrow, isPast } from 'date-fns'
 
 interface AssignmentWithItems {
@@ -219,6 +220,33 @@ export default async function StudentDashboard() {
     : 0
   
   const greeting = getGreeting()
+
+  const DAILY_GOAL = 10
+  const weekStartDate = new Date(); weekStartDate.setDate(weekStartDate.getDate() - ((weekStartDate.getDay() + 6) % 7)); weekStartDate.setHours(0, 0, 0, 0)
+  const todayKey = format(new Date(), 'yyyy-MM-dd')
+  const todayCount = (streakData || []).filter(a => a.submitted_at && format(new Date(a.submitted_at), 'yyyy-MM-dd') === todayKey).length
+  const activeDays = new Set((streakData || []).map(a => a.submitted_at ? format(new Date(a.submitted_at), 'yyyy-MM-dd') : '').filter(Boolean))
+  const weekDots = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i))
+    return { label: format(d, 'EEEEE'), active: activeDays.has(format(d, 'yyyy-MM-dd')), today: i === 6 }
+  })
+  // The next thing to do: first unfinished assignment (earliest due)
+  const nextUpAssignment = displayAssignments.find(a => {
+    const total = (a.children && a.children.length > 0)
+      ? a.children.reduce((n, c) => n + ((c.assignment_items as { count: number }[])?.[0]?.count || 0), 0)
+      : ((a.assignment_items as { count: number }[])?.[0]?.count || 0)
+    const done = (a.children && a.children.length > 0)
+      ? a.children.reduce((n, c) => n + (completedByAssignment.get(c.id) || 0), 0)
+      : (completedByAssignment.get(a.id) || 0)
+    return total > 0 && done < total
+  })
+  const nextUp = nextUpAssignment ? {
+    title: nextUpAssignment.title,
+    href: nextUpAssignment.children && nextUpAssignment.children.length > 0
+      ? `/student/assignments/${(nextUpAssignment.children.find(c => (completedByAssignment.get(c.id) || 0) < ((c.assignment_items as { count: number }[])?.[0]?.count || 0)) || nextUpAssignment.children[0]).id}`
+      : `/student/assignments/${nextUpAssignment.id}`,
+    due: nextUpAssignment.due_at ? (isToday(new Date(nextUpAssignment.due_at)) ? 'today' : isTomorrow(new Date(nextUpAssignment.due_at)) ? 'tomorrow' : format(new Date(nextUpAssignment.due_at), 'd MMM')) : null,
+  } : null
   
   const Practice = Icons.practice
   const Progress = Icons.progress
@@ -229,35 +257,41 @@ export default async function StudentDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Hero band */}
+      {/* Hero: greeting + today's goal card */}
       <section className="bg-graph-fade -mx-4 -mt-6 px-4 pb-6 pt-8 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-10">
-        <div className="animate-rise flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="page-title">{greeting}, {firstName}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {profile?.study_programs && <span className="chip chip-brand">{profile.study_programs.name}</span>}
-              {profile?.grade_levels && <span className="chip">{profile.grade_levels.name}</span>}
-              {currentStreak > 0 && (
-                <span className="chip chip-spark"><Flame className="h-3.5 w-3.5" /> {currentStreak} day streak</span>
+        <div className="grid gap-6 lg:grid-cols-[1fr_minmax(300px,380px)] lg:items-stretch">
+          <div className="animate-rise flex flex-col justify-between">
+            <div>
+              <h1 className="text-[1.75rem] font-extrabold leading-tight text-ink sm:text-[2.125rem]">{greeting}, {firstName}</h1>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {profile?.study_programs && <span className="chip chip-brand">{profile.study_programs.name}</span>}
+                {profile?.grade_levels && <span className="chip">{profile.grade_levels.name}</span>}
+              </div>
+              <p className="mt-4 max-w-md text-gray-600">
+                {nextUp
+                  ? <>Pick up <span className="font-bold text-ink">{nextUp.title}</span>{nextUp.due ? `, due ${nextUp.due}` : ''}.</>
+                  : dueItems && dueItems.length > 0
+                  ? <>{dueItems.length} question{dueItems.length === 1 ? '' : 's'} are ready to review before they fade.</>
+                  : <>Nothing is due. A short practice keeps the streak alive.</>}
+              </p>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              {nextUp ? (
+                <Link href={nextUp.href} className="btn btn-primary btn-lg"><Practice className="h-5 w-5" /> Continue</Link>
+              ) : (
+                <Link href="/student/practice" className="btn btn-primary btn-lg"><Practice className="h-5 w-5" /> Practise</Link>
+              )}
+              {dueItems && dueItems.length > 0 && (
+                <span className="inline-flex items-center gap-2">
+                  <Link href="/student/practice?mode=review" className="btn btn-spark btn-lg"><Clock className="h-5 w-5" /> Review {dueItems.length}</Link>
+                  <InfoTip text="Questions you got wrong or answered a while ago come back on a schedule, so they stick." label="What is review?" className="text-gray-500" />
+                </span>
               )}
             </div>
           </div>
-          {dueItems && dueItems.length > 0 ? (
-            <Link href="/student/practice?mode=review" className="btn btn-spark btn-lg">
-              <Clock className="h-5 w-5" /> Review {dueItems.length} due
-            </Link>
-          ) : (
-            <Link href="/student/practice" className="btn btn-primary btn-lg">
-              <Practice className="h-5 w-5" /> Practise now
-            </Link>
-          )}
+
+          <GoalCard today={todayCount} goal={DAILY_GOAL} streak={currentStreak} week={weekDots} accuracy={accuracy} answered={totalAttempts || 0} />
         </div>
-        <dl className="animate-rise-2 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Questions answered" value={totalAttempts || 0} />
-          <Stat label="Accuracy" value={`${accuracy}%`} />
-          <Stat label="Day streak" value={currentStreak} />
-          <Stat label="Ready to review" value={dueItems?.length || 0} />
-        </dl>
       </section>
 
       {assignedTutor && (
@@ -406,12 +440,54 @@ export default async function StudentDashboard() {
 
           <section className="card p-6">
             <h2 className="card-title">This week</h2>
-            <div className="mt-4">
-              <WeeklyProgressChart attempts={recentAttempts || []} />
-            </div>
+            {(recentAttempts || []).some(a => a.submitted_at && new Date(a.submitted_at) >= weekStartDate) ? (
+              <div className="mt-4"><WeeklyProgressChart attempts={recentAttempts || []} /></div>
+            ) : (
+              <div className="mt-4 rounded-xl bg-paper px-4 py-5 text-center">
+                <p className="text-sm font-bold text-ink">No practice yet this week</p>
+                <p className="mt-1 text-xs text-gray-500">Ten questions a day keeps the streak.</p>
+                <Link href="/student/practice" className="btn btn-secondary btn-sm mt-3">Start</Link>
+              </div>
+            )}
           </section>
         </div>
       </div>
+    </div>
+  )
+}
+
+function GoalCard({ today, goal, streak, week, accuracy, answered }: { today: number; goal: number; streak: number; week: { label: string; active: boolean; today: boolean }[]; accuracy: number; answered: number }) {
+  const pct = Math.min(100, Math.round((today / goal) * 100))
+  const r = 52
+  const c = 2 * Math.PI * r
+  const Flame = Icons.flame
+  return (
+    <div className="animate-rise-2 relative overflow-hidden rounded-3xl bg-ink p-6 text-white shadow-lg">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-600/30" aria-hidden="true" />
+      <div className="relative flex items-center gap-5">
+        <svg width="132" height="132" viewBox="0 0 132 132" aria-label={`${today} of ${goal} questions today`}>
+          <circle cx="66" cy="66" r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="12" />
+          <circle cx="66" cy="66" r={r} fill="none" stroke="#f2a541" strokeWidth="12" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} transform="rotate(-90 66 66)" />
+          <text x="66" y="62" textAnchor="middle" fontSize="30" fontWeight="800" fill="#fff">{today}</text>
+          <text x="66" y="84" textAnchor="middle" fontSize="12" fontWeight="600" fill="rgba(255,255,255,0.7)">of {goal} today</text>
+        </svg>
+        <div className="min-w-0 flex-1">
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/70">Streak <InfoTip text="Days in a row with at least one question answered. Today counts once you answer one." label="What is a streak?" /></p>
+          <p className="mt-0.5 flex items-center gap-2 text-3xl font-extrabold tnum"><Flame className={`h-7 w-7 ${streak > 0 ? 'text-spark-400' : 'text-white/30'}`} /> {streak} <span className="text-base font-semibold text-white/60">day{streak === 1 ? '' : 's'}</span></p>
+          <ol className="mt-3 flex gap-1.5" aria-label="Last seven days">
+            {week.map((d, i) => (
+              <li key={i} className="flex flex-col items-center gap-1">
+                <span className={`block h-3 w-3 rounded-full ${d.active ? 'bg-spark-400' : 'bg-white/15'} ${d.today ? 'ring-2 ring-white/60' : ''}`} title={d.active ? 'Practised' : 'No practice'} />
+                <span className="text-[10px] font-semibold text-white/50">{d.label}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+      <dl className="relative mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm">
+        <div><dt className="text-white/60">Accuracy</dt><dd className="text-xl font-extrabold tnum">{accuracy}%</dd></div>
+        <div><dt className="text-white/60">Answered</dt><dd className="text-xl font-extrabold tnum">{answered}</dd></div>
+      </dl>
     </div>
   )
 }

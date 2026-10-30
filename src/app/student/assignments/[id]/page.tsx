@@ -368,7 +368,7 @@ export default function StudentAssignmentDetailPage() {
   }
 
   function getRandomCorrectMessage() {
-    const messages = ['Correct! 🎉', 'Well done! ⭐', 'Perfect! 💯', 'Great job! 🌟', 'Excellent! ✨']
+    const messages = ['Correct! ', 'Well done! ⭐', 'Perfect! ', 'Great job! ', 'Excellent! ']
     return messages[Math.floor(Math.random() * messages.length)]
   }
 
@@ -394,8 +394,7 @@ export default function StudentAssignmentDetailPage() {
   if (!assignment || items.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">📋</div>
-        <p className="text-gray-600 text-lg">Assignment not found or has no questions.</p>
+                <p className="text-gray-600 text-lg">Assignment not found or has no questions.</p>
         <Link href="/student/assignments" className="text-blue-600 hover:underline mt-4 inline-block font-medium">
           ← Back to Assignments
         </Link>

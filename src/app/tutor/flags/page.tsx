@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import LatexRenderer from '@/components/latex-renderer'
+import { Icons } from '@/components/ui/icons'
+import { IconButton } from '@/components/question-player'
 
 interface Flag {
   id: string
@@ -78,7 +80,6 @@ export default function FlagsPage() {
     suggestedAction?: string
     suggestedFix?: string
   }>>(new Map())
-  const [showAiResults, setShowAiResults] = useState(false)
   
   useEffect(() => {
     fetchFlags()
@@ -272,7 +273,6 @@ export default function FlagsPage() {
         })
       }
       setAiResults(resultsMap)
-      setShowAiResults(true)
       setSuccess(`AI analyzed ${data.flagsAnalyzed} flags`)
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
@@ -321,670 +321,243 @@ export default function FlagsPage() {
   const pendingCount = flags.filter(f => f.status === 'pending').length
   const acceptedCount = flags.filter(f => f.status === 'accepted').length
   
-  const flagTypeLabels: Record<string, { label: string; color: string; icon: string }> = {
-    incorrect_answer: { label: 'Incorrect Answer', color: 'bg-red-100 text-red-700', icon: '❌' },
-    unclear: { label: 'Unclear', color: 'bg-yellow-100 text-yellow-700', icon: '❓' },
-    typo: { label: 'Typo', color: 'bg-orange-100 text-orange-700', icon: '📝' },
-    too_hard: { label: 'Too Hard', color: 'bg-purple-100 text-purple-700', icon: '🔥' },
-    claim_correct: { label: 'Claims Correct', color: 'bg-blue-100 text-blue-700', icon: '✋' },
-    missing_content: { label: 'Missing Content', color: 'bg-pink-100 text-pink-700', icon: '📄' },
-    multiple_valid: { label: 'Multiple Valid', color: 'bg-indigo-100 text-indigo-700', icon: '🔀' },
-    other: { label: 'Other', color: 'bg-gray-100 text-gray-700', icon: '💬' },
+  const flagTypeLabels: Record<string, { label: string; cls: string }> = {
+    incorrect_answer: { label: 'Answer wrong', cls: 'chip-bad' },
+    unclear: { label: 'Confusing', cls: 'chip-spark' },
+    typo: { label: 'Typo', cls: 'chip-spark' },
+    too_hard: { label: 'Too hard', cls: 'chip' },
+    claim_correct: { label: 'Claims correct', cls: 'chip-brand' },
+    missing_content: { label: 'Missing content', cls: 'chip' },
+    multiple_valid: { label: 'Several valid', cls: 'chip-brand' },
+    other: { label: 'Other', cls: 'chip' },
   }
-  
-  const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    reviewed: 'bg-blue-100 text-blue-700',
-    fixed: 'bg-green-100 text-green-700',
-    dismissed: 'bg-gray-100 text-gray-500',
-    accepted: 'bg-emerald-100 text-emerald-700',
+  const statusLabels: Record<string, { label: string; cls: string }> = {
+    pending: { label: 'Pending', cls: 'chip-spark' },
+    reviewed: { label: 'Reviewed', cls: 'chip' },
+    fixed: { label: 'Fixed', cls: 'chip-good' },
+    dismissed: { label: 'Dismissed', cls: 'chip' },
+    accepted: { label: 'Accepted', cls: 'chip-good' },
   }
-  
+  const filters: { key: typeof filter; label: string; count: number }[] = [
+    { key: 'pending', label: 'Pending', count: pendingCount },
+    { key: 'accepted', label: 'Accepted', count: acceptedCount },
+    { key: 'reviewed', label: 'Reviewed', count: flags.filter(f => f.status === 'reviewed').length },
+    { key: 'fixed', label: 'Fixed', count: flags.filter(f => f.status === 'fixed').length },
+    { key: 'dismissed', label: 'Dismissed', count: flags.filter(f => f.status === 'dismissed').length },
+    { key: 'all', label: 'All', count: flags.length },
+  ]
+  const Sparkles = Icons.sparkles
+  const Progress = Icons.progress
+  const Check = Icons.check
+  const X = Icons.x
+  const Questions = Icons.questions
+  const Flag = Icons.flag
+  const selectable = filteredFlags.filter(f => f.status === 'pending')
+  const allSelected = selectable.length > 0 && selectable.every(f => selectedFlagIds.has(f.id))
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="space-y-4">
+        <div className="h-8 w-40 skeleton" />
+        <div className="h-10 w-full skeleton" />
+        <div className="h-24 w-full skeleton" />
+        <div className="h-24 w-full skeleton" />
       </div>
     )
   }
-  
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="page-title">Question Flags</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Review and resolve student-reported issues with questions
-          </p>
+          <h1 className="page-title">Flags</h1>
+          <p className="page-subtitle">Questions your students reported. Decide, fix, or dismiss.</p>
         </div>
         <div className="flex items-center gap-2">
-          {acceptedCount > 0 && (
-            <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">
-              {acceptedCount} accepted
-            </span>
-          )}
-          {pendingCount > 0 && (
-            <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-700">
-              {pendingCount} pending
-            </span>
-          )}
+          <button type="button" onClick={() => { setActiveTab(activeTab === 'insights' ? 'flags' : 'insights') }} className={`btn btn-secondary btn-sm ${activeTab === 'insights' ? '!border-brand-400 !bg-brand-50' : ''}`} aria-pressed={activeTab === 'insights'}>
+            <Progress className="h-4 w-4" /> Patterns
+          </button>
         </div>
       </div>
-      
+
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center justify-between">
+        <div className="alert-error flex items-center justify-between" role="alert">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <button type="button" onClick={() => setError(null)} aria-label="Dismiss" className="rounded p-1 hover:bg-white/50"><X className="h-4 w-4" /></button>
         </div>
       )}
-      
-      {success && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-          </svg>
-          {success}
-        </div>
-      )}
-      
-      {/* Main Tabs: Flags vs Insights */}
-      <div className="flex gap-4 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('flags')}
-          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'flags'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Flags
-          {pendingCount > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700 rounded-full">
-              {pendingCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('insights')}
-          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === 'insights'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
-          </svg>
-          AI Insights
-        </button>
-      </div>
-      
-      {/* Insights Tab Content */}
+      {success && <div className="alert-success" role="status">{success}</div>}
+
       {activeTab === 'insights' && (
-        <div className="space-y-6">
+        <section className="card p-5">
           {loadingInsights ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            </div>
+            <p className="text-sm text-gray-500">Looking for patterns…</p>
           ) : insights ? (
-            <>
-              {/* Summary Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="card p-4">
-                  <p className="text-sm text-gray-500">Total Flags (30d)</p>
-                  <p className="page-title">{insights.summary.totalFlags}</p>
-                </div>
-                <div className="card p-4">
-                  <p className="text-sm text-gray-500">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">{insights.summary.pendingCount}</p>
-                </div>
-                <div className="card p-4">
-                  <p className="text-sm text-gray-500">Accept Rate</p>
-                  <p className="text-2xl font-bold text-emerald-600">{insights.summary.acceptedRate}%</p>
-                </div>
-                <div className="card p-4">
-                  <p className="text-sm text-gray-500">Problem Questions</p>
-                  <p className="text-2xl font-bold text-red-600">{insights.summary.problematicQuestionCount}</p>
-                </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div><p className="text-xs font-semibold text-gray-500">Flags</p><p className="text-xl font-extrabold text-ink tnum">{insights.summary.totalFlags}</p></div>
+                <div><p className="text-xs font-semibold text-gray-500">Pending</p><p className="text-xl font-extrabold text-ink tnum">{insights.summary.pendingCount}</p></div>
+                <div><p className="text-xs font-semibold text-gray-500">Accepted</p><p className="text-xl font-extrabold text-ink tnum">{Math.round(insights.summary.acceptedRate)}%</p></div>
+                <div><p className="text-xs font-semibold text-gray-500">Questions with issues</p><p className="text-xl font-extrabold text-ink tnum">{insights.summary.problematicQuestionCount}</p></div>
               </div>
-              
-              {/* Common Flag Types */}
-              {insights.summary.commonTypes.length > 0 && (
-                <div className="card p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Most Common Flag Types</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {insights.summary.commonTypes.map(({ type, count }) => (
-                      <span key={type} className={`px-3 py-1 rounded-full text-sm font-medium ${flagTypeLabels[type]?.color || 'bg-gray-100 text-gray-700'}`}>
-                        {flagTypeLabels[type]?.icon || '📌'} {flagTypeLabels[type]?.label || type} ({count})
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* AI Summary */}
-              {insights.aiSummary && (
-                <div className="bg-purple-50 rounded-lg border border-purple-200 p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
-                    </svg>
-                    <h3 className="font-semibold text-gray-900">AI Analysis</h3>
-                  </div>
-                  <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-                    {insights.aiSummary}
-                  </div>
-                </div>
-              )}
-              
-              {/* Insights */}
-              {insights.insights.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-900">Actionable Insights</h3>
-                  {insights.insights.map((insight, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`rounded-lg border p-4 ${
-                        insight.severity === 'high' ? 'bg-red-50 border-red-200' :
-                        insight.severity === 'medium' ? 'bg-yellow-50 border-yellow-200' :
-                        'bg-blue-50 border-blue-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              insight.severity === 'high' ? 'bg-red-100 text-red-700' :
-                              insight.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-blue-100 text-blue-700'
-                            }`}>
-                              {insight.severity.toUpperCase()}
-                            </span>
-                            <h4 className="font-medium text-gray-900">{insight.title}</h4>
-                          </div>
-                          <p className="mt-1 text-sm text-gray-600">{insight.description}</p>
-                          {insight.actionSuggestion && (
-                            <p className="mt-2 text-sm font-medium text-gray-700">
-                              💡 {insight.actionSuggestion}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-sm text-gray-500 shrink-0">
-                          {insight.affectedCount} affected
-                        </span>
+              {insights.aiSummary && <p className="text-sm text-gray-700">{insights.aiSummary}</p>}
+              {insights.insights.length > 0 && (
+                <ul className="divide-y divide-line">
+                  {insights.insights.map((ins, idx) => (
+                    <li key={idx} className="flex items-start gap-3 py-3">
+                      <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${ins.severity === 'high' ? 'bg-[#d64545]' : ins.severity === 'medium' ? 'bg-spark-400' : 'bg-brand-400'}`} aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="font-bold text-ink">{ins.title} <span className="font-normal text-gray-500 tnum">· {ins.affectedCount}</span></p>
+                        <p className="text-sm text-gray-600">{ins.description}</p>
+                        {ins.actionSuggestion && <p className="mt-1 text-sm font-semibold text-brand-700">{ins.actionSuggestion}</p>}
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                  <p>No actionable insights at this time</p>
-                  <p className="text-sm mt-1">Check back as more flags are submitted</p>
-                </div>
+                </ul>
               )}
-              
-              {/* Refresh button */}
-              <div className="flex justify-center">
-                <button
-                  onClick={() => { setInsights(null); fetchInsights() }}
-                  className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
-                  Refresh Insights
-                </button>
-              </div>
-            </>
+              <button type="button" onClick={fetchInsights} className="btn btn-ghost btn-sm">Refresh</button>
+            </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <p>Unable to load insights</p>
-              <button
-                onClick={fetchInsights}
-                className="mt-2 text-blue-600 hover:text-blue-800"
-              >
-                Try again
-              </button>
-            </div>
+            <p className="text-sm text-gray-500">No patterns yet.</p>
           )}
-        </div>
+        </section>
       )}
-      
-      {/* Flags Tab Content */}
-      {activeTab === 'flags' && (
-        <>
-      {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 pb-4 overflow-x-auto">
-        {(['all', 'pending', 'accepted', 'reviewed', 'fixed', 'dismissed'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-              filter === status
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-            {status === 'pending' && pendingCount > 0 && (
-              <span className="ml-1">({pendingCount})</span>
-            )}
-            {status === 'accepted' && acceptedCount > 0 && (
-              <span className="ml-1">({acceptedCount})</span>
-            )}
-          </button>
-        ))}
-      </div>
-      
-      {/* AI Bulk Review Section */}
-      {pendingCount > 0 && (
-        <div className="bg-purple-50 rounded-lg border border-purple-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">AI Bulk Review</h3>
-                <p className="text-sm text-gray-600">
-                  Select flags and let AI analyze them to suggest resolutions.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={selectAllPending}
-                className="text-sm text-purple-600 hover:text-purple-800"
-              >
-                {selectedFlagIds.size === pendingCount ? 'Deselect All' : `Select All (${pendingCount})`}
-              </button>
-              <button
-                onClick={runAiReview}
-                disabled={selectedFlagIds.size === 0 || aiReviewing}
-                className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {aiReviewing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-                    </svg>
-                    Review with AI ({selectedFlagIds.size})
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-          
-          {/* AI Results Summary */}
-          {showAiResults && aiResults.size > 0 && (
-            <div className="mt-4 p-3 bg-white rounded-lg border border-purple-100">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium text-gray-700">AI Recommendations</h4>
-                <button
-                  onClick={() => setShowAiResults(false)}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  Hide
-                </button>
-              </div>
-              <div className="flex gap-4 text-sm">
-                <span className="text-emerald-600">
-                  ✓ Accept: {Array.from(aiResults.values()).filter(r => r.recommendation === 'accept').length}
-                </span>
-                <span className="text-gray-500">
-                  ✗ Dismiss: {Array.from(aiResults.values()).filter(r => r.recommendation === 'dismiss').length}
-                </span>
-                <span className="text-orange-600">
-                  ⚠ Fix: {Array.from(aiResults.values()).filter(r => r.recommendation === 'fix_question').length}
-                </span>
-                <span className="text-blue-600">
-                  ? Review: {Array.from(aiResults.values()).filter(r => r.recommendation === 'needs_review').length}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {filteredFlags.length > 0 ? (
-        <div className="space-y-4">
-          {filteredFlags.map((flag) => (
-            <div
-              key={flag.id}
-              className={`rounded-lg border bg-white p-4 transition-colors ${
-                flag.status === 'pending' ? 'border-yellow-200 bg-yellow-50/30' : 'border-gray-200'
-              } ${selectedFlagIds.has(flag.id) ? 'ring-2 ring-purple-500 border-purple-300' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                    {/* Selection checkbox for pending flags */}
-                    {flag.status === 'pending' && (
-                      <button
-                        onClick={() => toggleFlagSelection(flag.id)}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                          selectedFlagIds.has(flag.id)
-                            ? 'border-purple-500 bg-purple-500 text-white'
-                            : 'border-gray-300 hover:border-purple-400'
-                        }`}
-                      >
-                        {selectedFlagIds.has(flag.id) && (
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                          </svg>
-                        )}
-                      </button>
-                    )}
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${flagTypeLabels[flag.flag_type].color}`}>
-                      <span>{flagTypeLabels[flag.flag_type].icon}</span>
-                      {flagTypeLabels[flag.flag_type].label}
-                    </span>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[flag.status]}`}>
-                      {flag.status.charAt(0).toUpperCase() + flag.status.slice(1)}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {format(new Date(flag.created_at), 'MMM d, yyyy h:mm a')}
-                    </span>
-                  </div>
-                  
-                  {/* AI Recommendation Banner */}
-                  {aiResults.has(flag.id) && (
-                    <div className={`mb-3 p-3 rounded-lg border ${
-                      aiResults.get(flag.id)?.recommendation === 'accept' 
-                        ? 'bg-emerald-50 border-emerald-200' 
-                        : aiResults.get(flag.id)?.recommendation === 'dismiss'
-                        ? 'bg-gray-50 border-gray-200'
-                        : aiResults.get(flag.id)?.recommendation === 'fix_question'
-                        ? 'bg-orange-50 border-orange-200'
-                        : 'bg-blue-50 border-blue-200'
-                    }`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-semibold text-purple-600 flex items-center gap-1">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-                              </svg>
-                              AI Suggestion
-                            </span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
-                              aiResults.get(flag.id)?.confidence === 'high' 
-                                ? 'bg-green-100 text-green-700' 
-                                : aiResults.get(flag.id)?.confidence === 'medium'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {aiResults.get(flag.id)?.confidence} confidence
-                            </span>
-                          </div>
-                          <p className={`text-sm font-medium ${
-                            aiResults.get(flag.id)?.recommendation === 'accept' 
-                              ? 'text-emerald-700' 
-                              : aiResults.get(flag.id)?.recommendation === 'dismiss'
-                              ? 'text-gray-700'
-                              : aiResults.get(flag.id)?.recommendation === 'fix_question'
-                              ? 'text-orange-700'
-                              : 'text-blue-700'
-                          }`}>
-                            {aiResults.get(flag.id)?.recommendation === 'accept' && '✓ Accept - Student is correct'}
-                            {aiResults.get(flag.id)?.recommendation === 'dismiss' && '✗ Dismiss - Student answer is incorrect'}
-                            {aiResults.get(flag.id)?.recommendation === 'fix_question' && '⚠ Fix Question - Issue found'}
-                            {aiResults.get(flag.id)?.recommendation === 'needs_review' && '? Needs Manual Review'}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-1">{aiResults.get(flag.id)?.reasoning}</p>
-                          {aiResults.get(flag.id)?.suggestedFix && (
-                            <p className="text-xs text-orange-600 mt-1">
-                              <strong>Suggested fix:</strong> {aiResults.get(flag.id)?.suggestedFix}
-                            </p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => applyAiRecommendation(flag.id)}
-                          disabled={submitting}
-                          className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 shrink-0"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {flag.questions && (
-                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <p className="text-xs font-medium text-gray-500 mb-1">Question:</p>
-                      <div className="text-sm text-gray-900">
-                        <LatexRenderer content={flag.questions.prompt_latex || flag.questions.prompt_text} />
-                      </div>
-                      <div className="mt-2 pt-2 border-t border-gray-200 flex items-center gap-2 text-xs">
-                        <span className="text-gray-500">Expected answer:</span>
-                        <code className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded">
-                          {typeof flag.questions.correct_answer_json?.value === 'object' 
-                            ? JSON.stringify(flag.questions.correct_answer_json.value) 
-                            : String(flag.questions.correct_answer_json?.value)}
-                        </code>
-                        {flag.questions.correct_answer_json?.alternates && flag.questions.correct_answer_json.alternates.length > 0 && (
-                          <span className="text-gray-400">
-                            (+{flag.questions.correct_answer_json.alternates.length} alternates)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {flag.student_answer && (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-xs font-medium text-blue-600 mb-1">Student&apos;s Answer:</p>
-                      <code className="text-sm text-blue-900 font-mono">{flag.student_answer}</code>
-                    </div>
-                  )}
-                  
-                  {flag.comment && (
-                    <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                      <p className="text-xs font-medium text-amber-600 mb-1">Student&apos;s Comment:</p>
-                      <p className="text-sm text-amber-900">{flag.comment}</p>
-                    </div>
-                  )}
-                  
-                  {flag.review_notes && (
-                    <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-xs font-medium text-slate-600 mb-1">Review Notes:</p>
-                      <p className="text-sm text-slate-900">{flag.review_notes}</p>
-                    </div>
-                  )}
-                  
-                  <p className="mt-3 text-xs text-gray-500">
-                    Reported by: <span className="font-medium">{flag.student?.name || flag.student?.email || 'Unknown student'}</span>
-                  </p>
-                </div>
-                
-                <div className="flex flex-col gap-2 ml-4 shrink-0">
-                  {flag.questions && (
-                    <>
-                      <Link
-                        href={`/tutor/questions/${flag.questions.id}`}
-                        className="btn btn-secondary btn-sm"
-                      >
-                        View Question
-                      </Link>
-                      <Link
-                        href={`/tutor/questions/${flag.questions.id}?edit=true`}
-                        className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 text-center"
-                      >
-                        Edit Question
-                      </Link>
-                    </>
-                  )}
-                  
-                  {flag.status === 'pending' && (
-                    <div className="border-t border-gray-200 pt-2 mt-1 space-y-2">
-                      {/* Quick accept for claim_correct flags */}
-                      {flag.flag_type === 'claim_correct' && flag.student_answer && (
-                        <button
-                          onClick={() => quickAccept(flag)}
-                          disabled={submitting}
-                          className="w-full rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-                        >
-                          Accept Answer
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => {
-                          setReviewingFlag(flag)
-                          setReviewStatus('reviewed')
-                          setReviewNotes('')
-                          setAddAsAlternate(false)
-                        }}
-                        className="btn btn-primary btn-sm w-full"
-                      >
-                        Review
-                      </button>
-                      
-                      <button
-                        onClick={() => quickDismiss(flag.id)}
-                        disabled={submitting}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+
+      {/* Filter row + bulk tools */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter flags">
+          {filters.map(f => (
+            <button key={f.key} type="button" onClick={() => setFilter(f.key)} className={`chip ${filter === f.key ? 'chip-brand' : ''}`} aria-pressed={filter === f.key}>
+              {f.label} <span className="tnum opacity-70">{f.count}</span>
+            </button>
           ))}
         </div>
-      ) : (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5"
-            />
-          </svg>
-          <h3 className="mt-4 text-sm font-semibold text-gray-900">
-            {filter === 'pending' ? 'No pending flags' : 'No flags found'}
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {filter === 'pending' 
-              ? 'All flags have been reviewed!'
-              : 'When students report issues with questions, they will appear here.'}
-          </p>
+        {selectable.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={allSelected} onChange={selectAllPending} className="h-4 w-4 rounded border-gray-300 accent-brand-600" /> Select pending
+            </label>
+            <button type="button" onClick={runAiReview} disabled={selectedFlagIds.size === 0 || aiReviewing} className="btn btn-secondary btn-sm" title="Suggest a resolution for the selected flags">
+              <Sparkles className="h-4 w-4 text-spark-600" /> {aiReviewing ? 'Thinking…' : `Suggest (${selectedFlagIds.size})`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Flags */}
+      {filteredFlags.length === 0 ? (
+        <div className="card px-6 py-14 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-paper-deep text-gray-500"><Flag className="h-6 w-6" /></div>
+          <p className="mt-4 font-bold text-ink">Nothing here</p>
+          <p className="mt-1 text-sm text-gray-500">{filter === 'pending' ? 'No flags waiting for you.' : 'No flags with this status.'}</p>
         </div>
+      ) : (
+        <ul className="space-y-3">
+          {filteredFlags.map(flag => {
+            const type = flagTypeLabels[flag.flag_type] || flagTypeLabels.other
+            const status = statusLabels[flag.status] || statusLabels.pending
+            const ai = aiResults.get(flag.id)
+            const expected = flag.questions?.correct_answer_json?.value
+            return (
+              <li key={flag.id} className="card p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  {flag.status === 'pending' && (
+                    <input type="checkbox" checked={selectedFlagIds.has(flag.id)} onChange={() => toggleFlagSelection(flag.id)} aria-label="Select flag" className="mt-1.5 h-4 w-4 rounded border-gray-300 accent-brand-600" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className={`chip ${type.cls}`}>{type.label}</span>
+                      <span className={`chip ${status.cls}`}>{status.label}</span>
+                      <span className="text-gray-500">{flag.student?.name || 'Student'} · {format(new Date(flag.created_at), 'd MMM')}</span>
+                    </div>
+                    <p className="mt-2 text-ink"><LatexRenderer content={flag.questions?.prompt_latex || flag.questions?.prompt_text || ''} /></p>
+                    <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                      {flag.student_answer && (
+                        <div><dt className="text-xs font-semibold text-gray-500">Student answered</dt><dd className="font-semibold text-ink"><LatexRenderer content={flag.student_answer} /></dd></div>
+                      )}
+                      {expected !== undefined && expected !== null && (
+                        <div><dt className="text-xs font-semibold text-gray-500">Expected</dt><dd className="font-semibold text-[#1f6b43]"><LatexRenderer content={String(expected)} /></dd></div>
+                      )}
+                      {flag.comment && (
+                        <div className="sm:col-span-2"><dt className="text-xs font-semibold text-gray-500">Comment</dt><dd className="text-gray-700">{flag.comment}</dd></div>
+                      )}
+                      {flag.review_notes && (
+                        <div className="sm:col-span-2"><dt className="text-xs font-semibold text-gray-500">Your note</dt><dd className="text-gray-700">{flag.review_notes}</dd></div>
+                      )}
+                    </dl>
+                    {ai && (
+                      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-spark-200 bg-spark-50 px-3 py-2 text-sm">
+                        <Sparkles className="h-4 w-4 text-spark-600" />
+                        <span className="font-semibold text-ink">Suggests: {ai.recommendation.replace('_', ' ')}</span>
+                        <span className="text-gray-600">{ai.reasoning}</span>
+                        <button type="button" onClick={() => applyAiRecommendation(flag.id)} className="btn btn-spark btn-sm ml-auto">Apply</button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-shrink-0 items-center gap-1.5">
+                    {flag.questions?.id && (
+                      <Link href={`/tutor/questions/${flag.questions.id}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white text-gray-500 hover:border-gray-300 hover:text-ink" aria-label="Open question" title="Open question">
+                        <Questions className="h-5 w-5" />
+                      </Link>
+                    )}
+                    {flag.status === 'pending' && (
+                      <>
+                        <IconButton label={flag.flag_type === 'claim_correct' ? 'Accept the student’s answer' : 'Mark as reviewed'} onClick={() => quickAccept(flag)} disabled={submitting} className="!text-[#1f6b43] hover:!border-[#bfe4cd]"><Check className="h-5 w-5" /></IconButton>
+                        <IconButton label="Dismiss" onClick={() => quickDismiss(flag.id)} disabled={submitting}><X className="h-5 w-5" /></IconButton>
+                        <button type="button" onClick={() => { setReviewingFlag(flag); setReviewStatus(flag.flag_type === 'claim_correct' ? 'accepted' : 'reviewed'); setAddAsAlternate(flag.flag_type === 'claim_correct'); setReviewNotes('') }} className="btn btn-primary btn-sm">Review</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
       )}
-      </>
-      )}
-      
-      {/* Review Modal */}
+
+      {/* Review modal */}
       {reviewingFlag && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Review Flag</h2>
-            
-            {/* Show student's answer for claim_correct flags */}
-            {reviewingFlag.flag_type === 'claim_correct' && reviewingFlag.student_answer && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm font-medium text-blue-700">Student claims this answer is correct:</p>
-                <p className="text-lg text-blue-900 mt-1 font-mono">{reviewingFlag.student_answer}</p>
-                {reviewingFlag.questions?.correct_answer_json && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Expected: <span className="font-mono">{String(reviewingFlag.questions.correct_answer_json.value)}</span>
-                  </p>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="review-title">
+          <div className="card animate-scale-in w-full max-w-lg rounded-b-none p-6 shadow-xl sm:rounded-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 id="review-title" className="text-lg font-extrabold text-ink">Review flag</h2>
+              <IconButton label="Close" onClick={() => setReviewingFlag(null)}><X className="h-5 w-5" /></IconButton>
+            </div>
+            <p className="text-ink"><LatexRenderer content={reviewingFlag.questions?.prompt_latex || reviewingFlag.questions?.prompt_text || ''} /></p>
+            {reviewingFlag.student_answer && (
+              <div className="mt-3 rounded-xl bg-paper px-3 py-2 text-sm">
+                <span className="text-gray-500">Student answered </span><span className="font-semibold text-ink"><LatexRenderer content={reviewingFlag.student_answer} /></span>
+                {reviewingFlag.questions?.correct_answer_json?.value !== undefined && (
+                  <><span className="text-gray-500"> · expected </span><span className="font-semibold text-[#1f6b43]"><LatexRenderer content={String(reviewingFlag.questions.correct_answer_json.value)} /></span></>
                 )}
               </div>
             )}
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={reviewStatus}
-                  onChange={(e) => setReviewStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="reviewed">Reviewed</option>
-                  {reviewingFlag.flag_type === 'claim_correct' && (
-                    <option value="accepted">Accept - Student was correct</option>
-                  )}
-                  <option value="fixed">Fixed</option>
-                  <option value="dismissed">Dismissed</option>
-                </select>
-              </div>
-              
-              {/* Option to add as alternate answer */}
-              {reviewingFlag.flag_type === 'claim_correct' && reviewStatus === 'accepted' && reviewingFlag.student_answer && (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={addAsAlternate}
-                      onChange={(e) => setAddAsAlternate(e.target.checked)}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                    <span className="text-sm text-green-800">
-                      Add &quot;{reviewingFlag.student_answer}&quot; as an alternate correct answer
-                    </span>
-                  </label>
-                  <p className="text-xs text-green-600 mt-1 ml-6">
-                    This will allow future students to get this answer marked correct automatically.
-                  </p>
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Review Notes (optional)
-                </label>
-                <textarea
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Add notes about how this was resolved..."
-                />
-              </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Decision">
+              {[
+                { v: 'accepted', l: 'Accept', d: 'The student was right' },
+                { v: 'fixed', l: 'Fixed', d: 'I corrected the question' },
+                { v: 'reviewed', l: 'Reviewed', d: 'Seen, no change needed' },
+                { v: 'dismissed', l: 'Dismiss', d: 'Not an issue' },
+              ].map(o => (
+                <button key={o.v} type="button" role="radio" aria-checked={reviewStatus === o.v} onClick={() => setReviewStatus(o.v)} className={`rounded-xl border-2 px-3 py-2.5 text-left transition-colors ${reviewStatus === o.v ? 'border-brand-500 bg-brand-50' : 'border-line hover:border-gray-300'}`}>
+                  <span className="block text-sm font-bold text-ink">{o.l}</span>
+                  <span className="block text-xs text-gray-500">{o.d}</span>
+                </button>
+              ))}
             </div>
-            
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setReviewingFlag(null)
-                  setAddAsAlternate(false)
-                }}
-                className="btn btn-secondary btn-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReviewSubmit}
-                disabled={submitting}
-                className="btn btn-primary btn-sm"
-              >
-                {submitting ? 'Saving...' : 'Save Review'}
-              </button>
+            {reviewingFlag.flag_type === 'claim_correct' && reviewStatus === 'accepted' && reviewingFlag.student_answer && (
+              <label className="mt-3 flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" checked={addAsAlternate} onChange={e => setAddAsAlternate(e.target.checked)} className="h-4 w-4 rounded border-gray-300 accent-brand-600" />
+                Also accept this answer for everyone in future
+              </label>
+            )}
+            <div className="mt-4">
+              <label htmlFor="review-notes" className="label">Note <span className="font-normal text-gray-500">(optional)</span></label>
+              <textarea id="review-notes" value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} rows={2} className="input resize-none" placeholder="Shown to you only…" />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setReviewingFlag(null)} className="btn btn-ghost">Cancel</button>
+              <button type="button" onClick={handleReviewSubmit} disabled={submitting} className="btn btn-primary">{submitting ? 'Saving…' : 'Save decision'}</button>
             </div>
           </div>
         </div>

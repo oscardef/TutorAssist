@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
+import { InfoTip } from '@/components/ui/info-tip'
 import { IconButton, DifficultyDots, ProgressBar, ChoiceList, FeedbackBanner, HintsPanel, SolutionPanel, YourAnswerCard, FlagModal } from '@/components/question-player'
 import LatexRenderer from '@/components/latex-renderer'
 import MathInput from '@/components/math-input'
@@ -755,6 +756,7 @@ export default function PracticePage() {
             <ModeTile
               icon={<Clock className="h-6 w-6" />}
               title="Review"
+              tip="Questions you missed or haven’t seen for a while come back on a schedule so they stay learned."
               body={totalPracticed > 0 ? 'Questions due to come back' : 'Answer a few questions first'}
               disabled={totalPracticed === 0}
               onClick={() => startPractice('review')}
@@ -762,6 +764,7 @@ export default function PracticePage() {
             <ModeTile
               icon={<Target className="h-6 w-6" />}
               title="Weak spots"
+              tip="Topics where your accuracy is under 60%, plus questions you got wrong."
               body={hasWeakTopics
                 ? `${weakTopics.length} topic${weakTopics.length > 1 ? 's' : ''} need work`
                 : improvementTopics.length > 0
@@ -1345,8 +1348,10 @@ export default function PracticePage() {
   )
 }
 
-function ModeTile({ icon, title, body, onClick, disabled, primary }: { icon: React.ReactNode; title: string; body: string; onClick: () => void; disabled?: boolean; primary?: boolean }) {
+function ModeTile({ icon, title, body, onClick, disabled, primary, tip }: { icon: React.ReactNode; title: string; body: string; onClick: () => void; disabled?: boolean; primary?: boolean; tip?: string }) {
   return (
+    <span className="relative block">
+    {tip && <span className="absolute right-3 top-3 z-10 text-gray-500"><InfoTip text={tip} /></span>}
     <button
       type="button"
       onClick={onClick}
@@ -1361,6 +1366,7 @@ function ModeTile({ icon, title, body, onClick, disabled, primary }: { icon: Rea
         <span className={`block text-sm ${primary ? 'text-white/85' : 'text-gray-500'}`}>{body}</span>
       </span>
     </button>
+    </span>
   )
 }
 

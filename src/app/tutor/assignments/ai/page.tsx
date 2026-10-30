@@ -699,7 +699,7 @@ export default function AIAssignmentPage() {
           {/* Tips Sidebar */}
           <div className="space-y-4">
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <h3 className="font-medium text-purple-900 mb-2">💡 Tips for great prompts</h3>
+              <h3 className="font-medium text-purple-900 mb-2"> Tips for great prompts</h3>
               <ul className="text-sm text-purple-800 space-y-2">
                 <li>• Be specific about topics (e.g., &quot;quadratic equations&quot; vs &quot;algebra&quot;)</li>
                 <li>• Mention desired question types (word problems, proofs, calculations)</li>
@@ -709,7 +709,7 @@ export default function AIAssignmentPage() {
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-medium text-blue-900 mb-2">🎯 Example prompts</h3>
+              <h3 className="font-medium text-blue-900 mb-2"> Example prompts</h3>
               <ul className="text-sm text-blue-800 space-y-2">
                 <li className="cursor-pointer hover:text-blue-600" onClick={() => setPrompt('Create a review assignment covering linear equations, graphing, and slope-intercept form. Include both calculation and word problems.')}>
                   &quot;Review assignment on linear equations...&quot;
@@ -730,7 +730,7 @@ export default function AIAssignmentPage() {
           {/* Student Insights */}
           {studentHistory && studentHistory.totalAttempts > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-medium text-blue-900 mb-2">📊 Student Insights</h3>
+              <h3 className="font-medium text-blue-900 mb-2"> Student Insights</h3>
               <div className="grid gap-4 sm:grid-cols-3 text-sm">
                 <div>
                   <span className="text-blue-700">Total Practice:</span>

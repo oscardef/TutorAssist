@@ -1,6 +1,7 @@
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { Icons } from '@/components/ui/icons'
 import { ExpandableTopics } from '@/components/expandable-topics'
 
 interface Assignment {
@@ -228,308 +229,176 @@ export default async function StudentAssignmentsPage() {
   const pendingAssignments = grouped.filter((a) => a.status === 'active')
   const completedAssignments = grouped.filter((a) => a.status === 'completed')
   
+  const Practice = Icons.practice
+  const pendingQuestions = pendingAssignments.reduce((n, a) => n + Math.max(0, a.totalQuestions - a.completedQuestions), 0)
+
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="page-title">My Assignments</h1>
-        <p className="text-gray-600 mt-1">
-          Complete your assignments to track your progress.
-        </p>
-      </div>
-      
-      {/* Pending Assignments */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Pending ({pendingAssignments.length})
-        </h2>
-        
+    <div className="space-y-8">
+      <section className="bg-graph-fade -mx-4 -mt-6 px-4 pb-6 pt-8 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-10">
+        <div className="animate-rise flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="page-title">Assignments</h1>
+            <p className="page-subtitle tnum">
+              {pendingAssignments.length === 0
+                ? 'All caught up.'
+                : `${pendingAssignments.length} to do · ${pendingQuestions} question${pendingQuestions === 1 ? '' : 's'} left`}
+            </p>
+          </div>
+          {pendingAssignments.length === 0 && (
+            <Link href="/student/practice" className="btn btn-primary"><Practice className="h-5 w-5" /> Practise instead</Link>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-gray-500">To do</h2>
         {pendingAssignments.length > 0 ? (
           <div className="grid gap-4">
-            {pendingAssignments.map((assignment) => (
-              <AssignmentCard key={assignment.id} assignment={assignment} />
+            {pendingAssignments.map((assignment, idx) => (
+              <AssignmentCard key={assignment.id} assignment={assignment} featured={idx === 0} />
             ))}
           </div>
         ) : (
-          <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
-            No pending assignments.
+          <div className="card px-6 py-12 text-center">
+            <p className="font-bold text-ink">Nothing waiting for you</p>
+            <p className="mt-1 text-sm text-gray-500">New assignments from your tutor land here.</p>
           </div>
         )}
-      </div>
-      
-      {/* Completed Assignments */}
+      </section>
+
       {completedAssignments.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Completed ({completedAssignments.length})
-          </h2>
-          
-          <div className="grid gap-4">
-            {completedAssignments.map((assignment) => (
+        <section>
+          <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-gray-500">Done</h2>
+          <div className="grid gap-3">
+            {completedAssignments.map(assignment => (
               <CompletedAssignmentCard key={assignment.id} assignment={assignment} />
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   )
 }
 
-function AssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) {
+function dueLabel(due: Date | null) {
+  if (!due) return null
+  const now = new Date()
+  const days = Math.ceil((due.getTime() - now.getTime()) / 86400000)
+  if (days < 0) return { text: 'Overdue', cls: 'chip-bad' }
+  if (days === 0) return { text: 'Due today', cls: 'chip-spark' }
+  if (days === 1) return { text: 'Due tomorrow', cls: 'chip-spark' }
+  return { text: `Due ${due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`, cls: 'chip' }
+}
+
+function Ring({ value, size = 56, done }: { value: number; size?: number; done?: boolean }) {
+  const r = size / 2 - 5
+  const c = 2 * Math.PI * r
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0" aria-label={`${value}% complete`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-paper-deep)" strokeWidth="6" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={done ? '#2e8b57' : 'var(--color-brand-500)'} strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(100, value) / 100)} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      <text x={size / 2} y={size / 2 + 5} textAnchor="middle" fontSize={size >= 56 ? 14 : 11} fontWeight="800" fill="var(--color-ink)">{done ? '✓' : `${value}`}</text>
+    </svg>
+  )
+}
+
+function AssignmentCard({ assignment, featured }: { assignment: AssignmentWithProgress; featured?: boolean }) {
   const hasChildren = assignment.children && assignment.children.length > 0
   const dueDate = assignment.due_at ? new Date(assignment.due_at) : null
-  const isOverdue = dueDate && dueDate < new Date()
+  const due = dueLabel(dueDate)
   const { totalQuestions, completedQuestions, correctQuestions, topics } = assignment
-  const progress = totalQuestions > 0 
-    ? Math.round((completedQuestions / totalQuestions) * 100) 
-    : 0
-  
-  // Find the first incomplete child to continue with
-  const firstIncompleteChild = hasChildren 
+  const progress = totalQuestions > 0 ? Math.round((completedQuestions / totalQuestions) * 100) : 0
+  const firstIncompleteChild = hasChildren
     ? assignment.children.find(c => c.completedQuestions < c.totalQuestions) || assignment.children[0]
     : null
-
-  if (hasChildren) {
-    return (
-      <div className={`bg-white rounded-lg shadow-sm border ${isOverdue ? 'border-red-300' : ''}`}>
-        {/* Header section */}
-        <div className="p-6">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                {assignment.title}
-                <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                  {assignment.children.length} parts
-                </span>
-              </h3>
-              {assignment.description && (
-                <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
-              )}
-              {/* Topics badges - expandable */}
-              <ExpandableTopics topics={topics} maxVisible={4} />
-            </div>
-            {dueDate && (
-              <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                {isOverdue ? 'Overdue' : `Due ${dueDate.toLocaleDateString('en-GB')}`}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>
-                  {completedQuestions} of {totalQuestions} completed
-                  {completedQuestions > 0 && (
-                    <span className={`ml-2 font-medium ${correctQuestions === completedQuestions ? 'text-green-600' : 'text-blue-600'}`}>
-                      • ✓ {correctQuestions} correct
-                    </span>
-                  )}
-                </span>
-                <span>{progress}%</span>
-              </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-600 rounded-full transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-            {firstIncompleteChild && (
-              <Link 
-                href={`/student/assignments/${firstIncompleteChild.id}`}
-                className="btn btn-primary btn-sm"
-              >
-                Continue →
-              </Link>
-            )}
-          </div>
-        </div>
-        
-        {/* Sub-assignments list */}
-        <div className="border-t border-gray-100 divide-y divide-gray-100">
-          {assignment.children.map((child, idx) => {
-            const isComplete = child.completedQuestions >= child.totalQuestions
-            
-            return (
-              <Link
-                key={child.id}
-                href={`/student/assignments/${child.id}`}
-                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  isComplete 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {isComplete ? '✓' : idx + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 truncate">{child.title}</div>
-                  <div className="text-sm text-gray-500">
-                    {child.completedQuestions} of {child.totalQuestions} questions
-                    {child.completedQuestions > 0 && (
-                      <span className={`ml-1 ${child.correctQuestions === child.completedQuestions ? 'text-green-600' : ''}`}>
-                        • ✓ {child.correctQuestions} correct
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                </svg>
-              </Link>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
+  const href = hasChildren && firstIncompleteChild ? `/student/assignments/${firstIncompleteChild.id}` : `/student/assignments/${assignment.id}`
+  const Arrow = Icons.arrowRight
+  const Check = Icons.check
 
   return (
-    <Link
-      href={`/student/assignments/${assignment.id}`}
-      className={`bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow ${
-        isOverdue ? 'border-red-300' : ''
-      }`}
-    >
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
-          {assignment.description && (
-            <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
-          )}
-          {/* Topics badges - expandable */}
-          <ExpandableTopics topics={topics} maxVisible={3} />
-        </div>
-        {dueDate && (
-          <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-            {isOverdue ? 'Overdue' : `Due ${dueDate.toLocaleDateString('en-GB')}`}
-          </span>
-        )}
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <div className="flex justify-between text-sm text-gray-600 mb-1">
-            <span>
-              {completedQuestions} of {totalQuestions} completed
-              {completedQuestions > 0 && (
-                <span className={`ml-2 font-medium ${correctQuestions === completedQuestions ? 'text-green-600' : 'text-blue-600'}`}>
-                  • ✓ {correctQuestions} correct
-                </span>
-              )}
-            </span>
-            <span>{progress}%</span>
+    <article className={`card overflow-hidden ${featured ? 'border-brand-300 shadow-md' : ''}`}>
+      <div className="flex items-center gap-4 p-5">
+        <Ring value={progress} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-extrabold text-ink">{assignment.title}</h3>
+            {hasChildren && <span className="chip">{assignment.children.length} parts</span>}
+            {due && <span className={`chip ${due.cls}`}>{due.text}</span>}
           </div>
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-blue-600 rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
+          {assignment.description && <p className="mt-0.5 text-sm text-gray-600">{assignment.description}</p>}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 text-sm text-gray-500 tnum">
+            <span>{completedQuestions} of {totalQuestions} done</span>
+            {completedQuestions > 0 && <span className="font-semibold text-[#1f6b43]">{correctQuestions} correct</span>}
           </div>
+          {topics.length > 0 && <div className="mt-2"><ExpandableTopics topics={topics} maxVisible={featured ? 5 : 3} /></div>}
         </div>
-        <span className="text-blue-600 text-sm font-medium">
-          Continue →
-        </span>
+        <Link href={href} className={`btn ${featured ? 'btn-primary' : 'btn-secondary'} flex-shrink-0`} aria-label={`Continue ${assignment.title}`}>
+          {completedQuestions > 0 ? 'Continue' : 'Start'} <Arrow className="h-4 w-4" />
+        </Link>
       </div>
-    </Link>
+
+      {hasChildren && (
+        <ol className="divide-y divide-line border-t border-line bg-paper/60">
+          {assignment.children.map((child, idx) => {
+            const isComplete = child.completedQuestions >= child.totalQuestions
+            const inProgress = !isComplete && child.completedQuestions > 0
+            return (
+              <li key={child.id}>
+                <Link href={`/student/assignments/${child.id}`} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-white">
+                  <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold tnum ${isComplete ? 'bg-[#e3f3ea] text-[#1f6b43]' : inProgress ? 'bg-brand-100 text-brand-800' : 'bg-paper-deep text-gray-500'}`}>
+                    {isComplete ? <Check className="h-4 w-4" /> : idx + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-ink">{child.title}</span>
+                    <span className="block text-xs text-gray-500 tnum">{child.completedQuestions} of {child.totalQuestions}{child.completedQuestions > 0 ? ` · ${child.correctQuestions} correct` : ''}</span>
+                  </span>
+                  <Arrow className="h-4 w-4 flex-shrink-0 text-gray-300" />
+                </Link>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </article>
   )
 }
 
 function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithProgress }) {
   const hasChildren = assignment.children && assignment.children.length > 0
   const { totalQuestions, correctQuestions, mostRecentScore } = assignment
-
-  if (hasChildren) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm border">
-        {/* Header */}
-        <div className="p-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-green-600">✓</span>
-              <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
-              <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                {assignment.children.length} parts
-              </span>
-            </div>
-            {mostRecentScore !== undefined && (
-              <span className="text-sm font-medium text-gray-600">
-                Score: {mostRecentScore}%
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-gray-500 mt-1">
-            {totalQuestions} questions • Completed {assignment.completed_at ? new Date(assignment.completed_at).toLocaleDateString('en-GB') : ''}
-          </p>
-        </div>
-        
-        {/* Sub-assignments list */}
-        <div className="border-t border-gray-100 divide-y divide-gray-100">
-          {assignment.children.map((child) => (
-            <div
-              key={child.id}
-              className="flex items-center gap-4 px-6 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700">
-                ✓
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-700 truncate">{child.title}</div>
-                <div className="text-xs text-gray-500">
-                  {child.totalQuestions} questions • {child.correctQuestions}/{child.totalQuestions} correct
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link
-                  href={`/student/assignments/${child.id}`}
-                  className="text-gray-500 text-sm hover:text-gray-700"
-                >
-                  View
-                </Link>
-                <Link
-                  href={`/student/assignments/${child.id}?retake=true`}
-                  className="text-blue-600 text-sm font-medium hover:text-blue-700"
-                >
-                  Redo
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  const score = mostRecentScore ?? (totalQuestions > 0 ? Math.round((correctQuestions / totalQuestions) * 100) : 0)
+  const when = assignment.completed_at ? new Date(assignment.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null
+  const Redo = Icons.clock
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-green-600">✓</span>
-            <h3 className="font-semibold text-gray-900">{assignment.title}</h3>
+    <article className="card">
+      <div className="flex items-center gap-4 px-5 py-4">
+        <Ring value={score} size={48} done={score >= 100} />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-bold text-ink">{assignment.title}</h3>
+          <p className="text-sm text-gray-500 tnum">{totalQuestions} questions · {score}%{when ? ` · ${when}` : ''}{hasChildren ? ` · ${assignment.children.length} parts` : ''}</p>
+        </div>
+        {!hasChildren && (
+          <div className="flex items-center gap-1.5">
+            <Link href={`/student/assignments/${assignment.id}`} className="btn btn-ghost btn-sm">Review</Link>
+            <Link href={`/student/assignments/${assignment.id}?retake=true`} className="btn btn-secondary btn-sm" title="Do it again"><Redo className="h-4 w-4" /> Redo</Link>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            {totalQuestions} questions • {correctQuestions}/{totalQuestions} correct
-            {mostRecentScore !== undefined && ` (${mostRecentScore}%)`}
-            {assignment.completed_at && ` • Completed ${new Date(assignment.completed_at).toLocaleDateString('en-GB')}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link 
-            href={`/student/assignments/${assignment.id}`}
-            className="text-gray-500 text-sm hover:text-gray-700"
-          >
-            View
-          </Link>
-          <Link 
-            href={`/student/assignments/${assignment.id}?retake=true`}
-            className="text-blue-600 text-sm font-medium hover:text-blue-700"
-          >
-            Redo
-          </Link>
-        </div>
+        )}
       </div>
-    </div>
+      {hasChildren && (
+        <ul className="divide-y divide-line border-t border-line">
+          {assignment.children.map(child => (
+            <li key={child.id} className="flex items-center gap-3 px-5 py-2.5">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-ink">{child.title}</span>
+                <span className="block text-xs text-gray-500 tnum">{child.correctQuestions}/{child.totalQuestions} correct</span>
+              </span>
+              <Link href={`/student/assignments/${child.id}`} className="btn btn-ghost btn-sm">Review</Link>
+              <Link href={`/student/assignments/${child.id}?retake=true`} className="btn btn-secondary btn-sm"><Redo className="h-4 w-4" /> Redo</Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </article>
   )
 }
