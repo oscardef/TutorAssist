@@ -8,7 +8,7 @@ import { processJobs } from '@/lib/jobs'
 export async function POST(request: NextRequest) {
   try {
     const context = await requireTutor()
-    const aiBlocked = await aiAccessError(context)
+    const aiBlocked = await aiAccessError(context, 'question_variant')
     if (aiBlocked) return aiBlocked
     const supabase = await createServerClient()
     const body = await request.json()

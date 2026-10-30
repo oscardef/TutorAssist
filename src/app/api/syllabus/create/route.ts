@@ -24,7 +24,7 @@ interface SyllabusData {
 export async function POST(request: NextRequest) {
   try {
     const context = await requireTutor()
-    const aiBlocked = await aiAccessError(context)
+    const aiBlocked = await aiAccessError(context, 'syllabus_create')
     if (aiBlocked) return aiBlocked
     const supabase = await createServerClient()
     const body = await request.json()

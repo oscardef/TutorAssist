@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     
     const context = await requireTutor()
     
-    const aiBlocked = await aiAccessError(context)
+    const aiBlocked = await aiAccessError(context, 'bulk_generate')
     
     if (aiBlocked) return aiBlocked
     const supabase = await createServerClient()

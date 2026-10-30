@@ -44,7 +44,7 @@ export async function GET() {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can view flag insights' }, { status: 403 })
   }
-  const aiBlocked = await aiAccessError(context)
+  const aiBlocked = await aiAccessError(context, 'flag_insights')
   if (aiBlocked) return aiBlocked
   
   try {

@@ -1,6 +1,7 @@
 import type { Job, JobType } from '@/lib/types'
 import { createAdminClient } from '@/lib/supabase/server'
 import { handleExtractMaterial } from './handlers/extract-material'
+import { runWithAIContext } from '@/lib/ai-context'
 import { handleGenerateQuestions, handleRegenVariant } from './handlers/generate-questions'
 import { handleBatchGenerate, handleProcessBatchResult } from './handlers/batch-generate'
 import { handleGeneratePdf } from './handlers/generate-pdf'
@@ -101,7 +102,8 @@ async function processJob(job: Job): Promise<void> {
   console.log(`Processing job ${job.id} (${job.type})`)
   
   try {
-    await handler(job)
+    // AI calls inside the job are attributed to its workspace and requester
+    await runWithAIContext({ workspaceId: job.workspace_id ?? null, userId: job.created_by_user_id ?? null, operation: job.type, jobId: job.id }, () => handler(job))
     console.log(`Job ${job.id} completed`)
   } catch (error) {
     console.error(`Job ${job.id} failed:`, error)

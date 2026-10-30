@@ -11,7 +11,7 @@ export default async function TutorLayout({ children }: { children: React.ReactN
 
   return (
     <ToastProvider>
-      <TutorNav userName={user?.name || user?.email || 'Tutor'} workspaceName={workspace?.name}>
+      <TutorNav userName={user?.name || user?.email || 'Tutor'} workspaceName={workspace?.name} isOwner={context.isPlatformOwner}>
         {children}
       </TutorNav>
     </ToastProvider>

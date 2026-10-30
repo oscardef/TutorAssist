@@ -4,7 +4,7 @@ import { openai } from '@/lib/openai'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Job } from '@/lib/types'
 import { completeJob, failJob } from '../queue'
-import { logAIUsage, createGenerationMetadata, AI_MODELS, PROMPT_VERSIONS } from '@/lib/ai-usage'
+import { createGenerationMetadata, AI_MODELS, PROMPT_VERSIONS } from '@/lib/ai-usage'
 
 
 interface SyllabusBatchPayload {
@@ -200,26 +200,7 @@ Return a JSON object with a "questions" array.`,
       throw new Error(`Failed to insert questions: ${insertError.message}`)
     }
     
-    // Log AI usage
-    await logAIUsage({
-      workspaceId: job.workspace_id,
-      userId: job.created_by_user_id,
-      operationType: 'syllabus_generate',
-      model: AI_MODELS.GPT4O,
-      tokensInput,
-      tokensOutput,
-      durationMs: generationTimeMs,
-      success: true,
-      jobId: job.id,
-      metadata: {
-        topicId,
-        topicName,
-        questionsRequested: count,
-        questionsGenerated: insertedQuestions?.length || 0,
-        syllabusContext,
-        subtopics,
-      },
-    })
+    // AI usage is logged by the OpenAI client (lib/openai.ts)
     
     await completeJob(job.id, {
       success: true,

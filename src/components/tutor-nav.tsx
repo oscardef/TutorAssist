@@ -16,9 +16,12 @@ const items: NavItem[] = [
   { href: '/tutor/settings', label: 'Settings', icon: 'settings', primary: true },
 ]
 
-export function TutorNav({ userName, workspaceName, children }: { userName: string; workspaceName?: string | null; children: React.ReactNode }) {
+// Platform owners also manage AI limits for everyone
+const ownerItems: NavItem[] = [{ href: '/tutor/admin/ai', label: 'AI usage', icon: 'progress' }]
+
+export function TutorNav({ userName, workspaceName, isOwner = false, children }: { userName: string; workspaceName?: string | null; isOwner?: boolean; children: React.ReactNode }) {
   return (
-    <AppShell items={items} homeHref="/tutor/dashboard" roleLabel="Tutor" userName={userName} workspaceName={workspaceName}>
+    <AppShell items={isOwner ? [...items.slice(0, -1), ...ownerItems, items[items.length - 1]] : items} homeHref="/tutor/dashboard" roleLabel="Tutor" userName={userName} workspaceName={workspaceName}>
       {children}
     </AppShell>
   )

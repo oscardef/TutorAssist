@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can run data cleanup' }, { status: 403 })
   }
-  const aiBlocked = await aiAccessError(context)
+  const aiBlocked = await aiAccessError(context, 'cleanup')
   if (aiBlocked) return aiBlocked
   
   const { searchParams } = new URL(request.url)

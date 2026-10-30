@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can upload materials' }, { status: 403 })
   }
-  const aiBlocked = await aiAccessError(context)
+  const aiBlocked = await aiAccessError(context, 'material_upload')
   if (aiBlocked) return aiBlocked
   
   try {

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can generate questions' }, { status: 403 })
   }
-  const aiBlocked = await aiAccessError(context)
+  const aiBlocked = await aiAccessError(context, 'question_generate')
   if (aiBlocked) return aiBlocked
   
   // Early check for OpenAI configuration

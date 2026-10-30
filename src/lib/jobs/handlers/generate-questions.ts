@@ -13,12 +13,7 @@ import {
   normalizeAnswer,
   type GeneratedQuestion 
 } from '@/lib/prompts/question-generation'
-import { 
-  logAIUsage, 
-  createGenerationMetadata, 
-  PROMPT_VERSIONS, 
-  AI_MODELS 
-} from '@/lib/ai-usage'
+import { createGenerationMetadata, PROMPT_VERSIONS, AI_MODELS } from '@/lib/ai-usage'
 
 
 // Check if OpenAI is configured
@@ -287,26 +282,7 @@ Remember: Use \\( \\) for inline math and \\[ \\] for display math. Include the 
       }
     }
     
-    // Log AI usage for cost tracking
-    await logAIUsage({
-      workspaceId,
-      userId: job.created_by_user_id,
-      operationType: 'generate_questions',
-      model: modelName,
-      tokensInput,
-      tokensOutput,
-      durationMs: generationTimeMs,
-      success: true,
-      jobId: job.id,
-      metadata: {
-        topicId,
-        topicName: topic.name,
-        questionsRequested: count,
-        questionsGenerated: uniqueQuestions.length,
-        duplicatesFiltered: validQuestions.length - uniqueQuestions.length,
-        invalidFiltered: invalidQuestions.length,
-      },
-    })
+    // AI usage is logged by the OpenAI client (lib/openai.ts)
     
     await completeJob(job.id, {
       success: true,

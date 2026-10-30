@@ -23,7 +23,7 @@ export async function GET() {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can analyse topics' }, { status: 403 })
   }
-  const aiBlocked = await aiAccessError(context)
+  const aiBlocked = await aiAccessError(context, 'topic_analysis')
   if (aiBlocked) return aiBlocked
 
   const supabase = await createServerClient()
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
   if (!context || context.role === 'student') {
     return NextResponse.json({ error: 'Only tutors can merge topics' }, { status: 403 })
   }
-  const aiBlocked = await aiAccessError(context)
+  const aiBlocked = await aiAccessError(context, 'topic_analysis')
   if (aiBlocked) return aiBlocked
 
   try {

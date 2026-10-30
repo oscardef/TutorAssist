@@ -32,7 +32,7 @@ export async function logAIUsage(params: AIUsageParams): Promise<void> {
     
     const costUsd = estimateAICost(params.model, params.tokensInput, params.tokensOutput)
     
-    await supabase.from('ai_usage_log').insert({
+    const { error } = await supabase.from('ai_usage_log').insert({
       workspace_id: params.workspaceId,
       user_id: params.userId,
       operation_type: params.operationType,
@@ -45,9 +45,10 @@ export async function logAIUsage(params: AIUsageParams): Promise<void> {
       success: params.success,
       error_message: params.errorMessage || null,
       job_id: params.jobId || null,
-      batch_id: params.batchId || null,
-      metadata: params.metadata || {},
+      metadata: { ...(params.metadata || {}), ...(params.batchId ? { batchId: params.batchId } : {}) },
     })
+    // PostgREST reports failures in the result instead of throwing
+    if (error) console.error('[AIUsage] Failed to log AI usage:', error.message)
   } catch (error) {
     // Don't fail the main operation if logging fails
     console.error('[AIUsage] Failed to log AI usage:', error)
