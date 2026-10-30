@@ -66,12 +66,20 @@ roles: owner · admin · teacher · tutor · student · parent (later)
 ## 3. Target architecture on m70q
 
 ```
-Caddy (host)  ──►  web (Next.js, :3100)          ──►  Postgres 17 + pgvector
-                   worker (same image, node worker.js) ─►  (same DB)
-                   realtime (ws: whiteboard/session rooms)
-                   storage: local volume (/srv/appdata/tutorassist/files) via adapter
+Caddy (host)  ──►  web (Next.js, :3100)  ──►  PostgREST (data API, RLS)  ──►  Postgres 17 + pgvector
+                   worker (same image, tsx src/worker.ts) ──►  PostgREST / Postgres
+                   Better Auth (in web) ──►  Postgres `identity` schema (never exposed by PostgREST)
+                   realtime (ws: whiteboard/session rooms)            [phase 5]
+                   storage: local volume (/srv/appdata/mathium/files) via adapter
                    outbound: OpenAI/Claude, Google Calendar, email provider, Stripe
 ```
+
+**Implemented 2026-10-30 (branch `mathium-phase-1`).** One deliberate change from the first draft: the
+application's 82 data-access files keep talking to **PostgREST** (one static binary) instead of being
+rewritten onto Drizzle. The app mints a short-lived HS256 JWT per request from the Better Auth session
+(`role` authenticated/anon/service_role, `sub` = user id), so the 84 existing row-level-security policies
+keep working unchanged. Drizzle is used for the identity schema and new code; old routes migrate to it
+incrementally. This cut the port from weeks of rewriting to days, with no behaviour change to verify.
 
 Stack lives at `/opt/stacks/tutorassist/` (compose + `.env` 0600), state at `/srv/appdata/tutorassist/` (NVMe), file uploads mirrored to HDD by the backup job. Two environments: `staging` (tailnet only, `100.88.107.120:3100`) and `prod` (public via Caddy once the security review is done).
 
@@ -80,10 +88,10 @@ Stack lives at `/opt/stacks/tutorassist/` (compose + `.env` 0600), state at `/sr
 | Concern | Recommendation | Why |
 |---|---|---|
 | Database | **Plain Postgres 17 + pgvector** in Docker, not self-hosted Supabase | Self-hosted Supabase is ~10 containers (PostgREST, GoTrue, Realtime, Storage, Studio, gateway, pooler…) with painful upgrades and a patched Postgres image; we use none of PostgREST/Realtime/Storage from the app server. Plain Postgres is one container and portable to any VPS. |
-| ORM / access | **Drizzle ORM** + `postgres` driver; one `db` module replaces `createServerClient / createAdminClient` | Typed schema in code, migrations generated and versioned, no more hand-run SQL in a dashboard. |
+| Data access | **PostgREST v16** behind the existing query-builder calls (`@supabase/postgrest-js`), JWT minted from the session; **Drizzle** for identity tables and new code | Zero-rewrite port with RLS intact; PostgREST is a single stable binary. Plain SQL migrations in `db/migrations/` applied by `scripts/db-migrate.ts`. |
 | Auth | **Better Auth**: email+password, Google and magic-link invites now; Microsoft Entra (built-in social provider) when a school asks; the SSO plugin (per-organisation OIDC/SAML) for school identity providers later | Official Supabase migration guide; sessions in our DB; organisations and invitations built in; Microsoft and SAML verified in its docs (2026-10-30). Alternative: Auth.js. Avoid Keycloak (too heavy). |
-| Authorization | App-layer tenancy checks in the data layer **plus** Postgres RLS kept as defence in depth, rewritten from `auth.uid()` to `current_setting('app.user_id')` set per transaction | Multi-tenant SaaS selling to schools should not rely on one layer. The RLS rewrite is mechanical (128 occurrences). Do app-layer first, RLS second. |
-| Background jobs | **Graphile Worker** (or pg-boss) in a long-running worker container; keep existing handlers | No Redis needed, Postgres-backed, retries and cron built in. Replaces the "cron hits an API route" design that only made sense on Vercel. |
+| Authorization | Postgres RLS unchanged (`auth.uid()` now reads PostgREST's `request.jwt.claims`), plus app-layer checks in routes | The policies were already written; keeping them cost nothing. |
+| Background jobs | The existing Postgres job table, polled by a long-running **worker container** (`src/worker.ts`); Graphile Worker later if the queue needs priorities or cron | Smallest change that removes the "cron hits an API route" design. |
 | File storage | Storage adapter with **local-disk** and **S3** backends; local on m70q | Removes the R2 dependency; the S3 backend remains for a future VPS. Serve via signed app URLs, never a public directory. |
 | Realtime | Small **WebSocket service** (y-websocket or excalidraw-room) proxied by Caddy | Needed only for the session room; keep it separate so the web container stays stateless. |
 | Email | Transactional provider (Resend or Postmark) with SMTP fallback | Deliverability from a residential IP is poor; don't send from m70q directly. |
@@ -108,18 +116,20 @@ m70q is fine for development, staging, Oscar's own tutoring and a beta with frie
 - As soon as the restored Supabase project is up: `pg_dump` the database (roles, schema, data) and export any R2 files; store under `/srv/storage/backups/tutorassist/supabase-export-<date>/`. This is the seed for the m70q database.
 - [x] Product renamed to Mathium in UI strings, emails, prompts, README and `package.json`; fallback URLs point at `https://mathium.app`. The GitHub repository keeps its name until Oscar renames it.
 
-### WS1: Port the backend to m70q (3–4 weeks)
+### WS1: Port the backend to m70q — done 2026-10-30 except the public exposure
 
-1. Drizzle schema derived from the current SQL (tables, enums, indexes); drop `auth.users` FKs in favour of a local `users` table.
-2. Better Auth: email/password, Google sign-in, magic-link invites; organization plugin for orgs/roles.
-3. Replace Supabase client calls route by route (85 files). Order: auth → workspace → questions → assignments → attempts → sessions → jobs → materials.
-4. Graphile Worker container with the six existing job handlers.
-5. Storage adapter (local disk); materials and PDF exports moved.
-6. Compose stack at `/opt/stacks/tutorassist/` (web, worker, postgres, realtime), staging on the tailnet.
-7. Backup job and restore drill.
-8. Security review items relevant to this site (rate limiting on auth routes, security headers, non-root containers, read-only FS, pinned images), then Caddy site + DNS (`tutoring.defrancesca.com` or the product domain) with explicit approval.
+1. [x] Identity schema (`identity.users/sessions/accounts/verifications`) with Better Auth; users and bcrypt hashes migrated from `auth.users`; all 25 application foreign keys re-pointed (`db/migrations/0001_identity.sql`).
+2. [x] Better Auth: email/password, password reset, email verification (off by default), Google sign-in when configured. Organisation plugin deferred to WS4.
+3. [x] Data access through PostgREST with session-minted JWTs; `@supabase/*` packages removed; every auth call site (28 files) rewritten; RLS verified (anonymous sees nothing, a new workspace sees only its own rows).
+4. [x] Worker container polling the jobs table.
+5. [x] Storage adapter (local disk, served by `/api/files/<key>` with a workspace check; S3 still supported).
+6. [x] Compose stack at `/opt/stacks/mathium/` (db, postgrest, web, worker), state in `/srv/appdata/mathium/`, bound to the tailnet at `100.88.107.120:3100`; dump restored into it.
+7. [x] `deploy/backup.sh` (nightly pg_dump + file sync to `/srv/storage/backups/server/mathium/`, 14-day retention). **Cron entry still to be added by Oscar** (`15 3 * * * /opt/stacks/mathium/backup.sh`); restore drill done for the Supabase dump, repeat for the first nightly dump.
+8. [ ] Security review, secret rotation, DNS record for `mathium.app`, Caddy site, rebuild with the public URL (`deploy/README.md` → Going public). Needs an explicit go.
 
-Exit criterion: Oscar can tutor a real student on staging for two weeks without touching Supabase or Vercel.
+Verified locally: typecheck, lint (0 errors), 370 tests, `next build`, and an HTTP walk through sign-up → onboarding → every tutor page and API (all 200), anonymous redirect to login, sign-in.
+
+Exit criterion unchanged: Oscar tutors a real student on staging for two weeks without touching Supabase or Vercel. Then delete the Supabase and Vercel projects.
 
 ### WS2: Question engine v2 (4–6 weeks)
 
