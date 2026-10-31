@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 // Mock auth
 const mockUser = { id: 'tutor-123', email: 'tutor@test.com' }
@@ -14,6 +14,14 @@ let currentContext = mockTutorContext
 jest.mock('@/lib/auth', () => ({
   requireUser: jest.fn(() => Promise.resolve(mockUser)),
   getUserContext: jest.fn(() => Promise.resolve(currentContext)),
+}))
+
+// Plan checks: tutored students have full access unless a test says otherwise
+const fullAccess = { kind: 'tutor', solo: false, plan: null, entitlement: null, features: { dailyQuestions: null, workedSolutions: true, spacedReview: true, weakAreas: true, chooseQuestions: true, sponsorMessages: false } }
+const freeAccess = { kind: 'free', solo: true, plan: 'free', entitlement: null, features: { dailyQuestions: 20, workedSolutions: false, spacedReview: false, weakAreas: false, chooseQuestions: false, sponsorMessages: true } }
+let currentAccess: typeof fullAccess | typeof freeAccess = fullAccess
+jest.mock('@/lib/student-plan', () => ({
+  studentAccess: jest.fn(() => Promise.resolve(currentAccess)),
 }))
 
 // Mock Supabase
@@ -295,6 +303,7 @@ describe('Questions API', () => {
   describe('GET /api/questions - Student Review Mode', () => {
     beforeEach(() => {
       currentContext = mockStudentContext
+      currentAccess = fullAccess
     })
 
     it('should return questions due for spaced repetition review', async () => {
@@ -334,6 +343,29 @@ describe('Questions API', () => {
 
       expect(response.status).toBe(200)
     })
+  })
+
+  describe('GET /api/questions - Free plan', () => {
+    beforeEach(() => {
+      currentContext = mockStudentContext
+      currentAccess = freeAccess
+    })
+    afterEach(() => { currentAccess = fullAccess })
+
+    it.each(['review', 'weak'])('refuses %s mode with plus_required', async mode => {
+      const request = createMockRequest('GET', undefined, { mode })
+      const { GET } = await import('@/app/api/questions/route')
+      const response = await GET(request)
+      expect(response.status).toBe(402)
+      expect((await response.json()).code).toBe('plus_required')
+    })
+
+    it('refuses browsing without a topic', async () => {
+      const request = createMockRequest('GET', undefined, { limit: '200' })
+      const { GET } = await import('@/app/api/questions/route')
+      expect((await GET(request)).status).toBe(402)
+    })
+
   })
 
   describe('POST /api/questions', () => {

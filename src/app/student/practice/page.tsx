@@ -15,9 +15,19 @@ import { AnswerDisplay } from '@/components/answer-display'
 import { compareMathAnswers, compareNumericAnswers, formatMathForDisplay } from '@/lib/math-utils'
 import { useSounds } from '@/lib/sounds'
 import { useConfetti } from '@/lib/confetti'
+import { SponsorSlot } from '@/components/sponsor-slot'
+import type { Features } from '@/lib/plans'
+
+interface PlanState {
+  solo: boolean
+  features: Features | null
+  allowance: { limit: number | null; used: number; left: number | null } | null
+}
 
 interface Question {
   parts_json?: unknown[] | null
+  /** Set when a Free plan hides this question's worked solution. */
+  has_worked_solution?: boolean
   prompt_image_r2_key?: string | null
   figure_json?: Record<string, unknown> | null
   id: string
@@ -152,6 +162,8 @@ export default function PracticePage() {
   }, [sounds])
   
   const [mode, setMode] = useState<PracticeMode>(modeParam || 'select')
+  const [plan, setPlan] = useState<PlanState | null>(null)
+  const [limitReached, setLimitReached] = useState(false)
   const [loading, setLoading] = useState(true)
   // Students don't choose program - we use their assigned one
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>('')
@@ -205,6 +217,10 @@ export default function PracticePage() {
     async function fetchData() {
       setLoading(true)
       try {
+        fetch('/api/plan').then(r => r.json()).then((p: PlanState) => {
+          setPlan(p)
+          if (p.allowance?.left === 0) setLimitReached(true)
+        }).catch(() => {})
         // Fetch student profile to get their program/grade
         const profileRes = await fetch('/api/students/profile')
         const profileData = await profileRes.json()
@@ -597,10 +613,16 @@ export default function PracticePage() {
         }),
       })
       data = await response.json()
+      if (response.status === 402) {
+        setChecking(false)
+        setLimitReached(true)
+        return
+      }
     } catch (error) {
       console.error('Failed to record attempt:', error)
     }
     setChecking(false)
+    setPlan(p => (p?.allowance && p.allowance.left !== null ? { ...p, allowance: { ...p.allowance, used: p.allowance.used + 1, left: Math.max(0, p.allowance.left - 1) } } : p))
 
     if (typeof data.attempt?.is_correct === 'boolean') correct = data.attempt.is_correct
     const serverParts = data.attempt?.context_json?.validation?.parts
@@ -745,6 +767,9 @@ export default function PracticePage() {
     
     const topicsWithQuestions = filteredTopics.filter(t => (t.questions?.[0]?.count || 0) > 0)
     
+    const locked = (f: 'spacedReview' | 'weakAreas' | 'chooseQuestions') => !!plan?.features && !plan.features[f]
+    const toPlan = () => router.push('/student/plan')
+    const allowance = plan?.allowance
     const Practice = Icons.practice
     const Book = Icons.book
     const Clock = Icons.clock
@@ -759,6 +784,9 @@ export default function PracticePage() {
             <h1 className="page-title">Practice</h1>
             <p className="page-subtitle">
               Choose a topic, or a mode that picks the questions for you.
+              {allowance?.limit != null && (
+                <> <span className="font-semibold text-ink">{allowance.left === 0 ? `You've done today's ${allowance.limit} questions.` : `${allowance.left} of ${allowance.limit} questions left today.`}</span></>
+              )}
             </p>
           </div>
 
@@ -774,29 +802,32 @@ export default function PracticePage() {
               icon={<Clock className="h-6 w-6" />}
               title="Review"
               tip="Questions you missed or haven’t seen for a while come back on a schedule so they stay learned."
-              body={totalPracticed > 0 ? 'Questions due to come back' : 'Answer a few questions first'}
-              disabled={totalPracticed === 0}
-              onClick={() => startPractice('review')}
+              body={locked('spacedReview') ? 'Comes with Plus' : totalPracticed > 0 ? 'Questions due to come back' : 'Answer a few questions first'}
+              locked={locked('spacedReview')}
+              disabled={!locked('spacedReview') && totalPracticed === 0}
+              onClick={() => (locked('spacedReview') ? toPlan() : startPractice('review'))}
             />
             <ModeTile
               icon={<Target className="h-6 w-6" />}
               title="Weak spots"
               tip="Topics where your accuracy is under 60%, plus questions you got wrong."
-              body={hasWeakTopics
+              body={locked('weakAreas') ? 'Comes with Plus' : hasWeakTopics
                 ? `${weakTopics.length} topic${weakTopics.length > 1 ? 's' : ''} need work`
                 : improvementTopics.length > 0
                 ? `${improvementTopics.length} topic${improvementTopics.length > 1 ? 's' : ''} to tighten up`
                 : totalWrongAnswers > 0
                 ? `${totalWrongAnswers} missed question${totalWrongAnswers > 1 ? 's' : ''}`
                 : 'Nothing flagged yet'}
-              disabled={!hasSomethingToWorkOn}
-              onClick={() => hasSomethingToWorkOn && startPractice('weak')}
+              locked={locked('weakAreas')}
+              disabled={!locked('weakAreas') && !hasSomethingToWorkOn}
+              onClick={() => (locked('weakAreas') ? toPlan() : hasSomethingToWorkOn && startPractice('weak'))}
             />
             <ModeTile
               icon={<Book className="h-6 w-6" />}
               title="Pick questions"
-              body="Browse and choose your own"
-              onClick={() => { setMode('browse'); fetchBrowseQuestions() }}
+              body={locked('chooseQuestions') ? 'Comes with Plus' : 'Browse and choose your own'}
+              locked={locked('chooseQuestions')}
+              onClick={() => (locked('chooseQuestions') ? toPlan() : (setMode('browse'), fetchBrowseQuestions()))}
             />
           </div>
         </section>
@@ -855,7 +886,7 @@ export default function PracticePage() {
               <div className="py-12 text-center">
                 <p className="font-bold text-ink">No topics here yet</p>
                 <p className="mt-1 text-sm text-gray-500">
-                  {selectedGradeLevel ? 'Try “All years”.' : 'Your tutor will add topics soon.'}
+                  {selectedGradeLevel ? 'Try “All years”.' : plan?.solo ? 'New questions for your course are on the way.' : 'Your tutor will add topics soon.'}
                 </p>
               </div>
             )}
@@ -879,6 +910,8 @@ export default function PracticePage() {
             </ul>
           </section>
         )}
+
+        <SponsorSlot className="mt-6" />
       </div>
     )
   }
@@ -989,6 +1022,27 @@ export default function PracticePage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // Free plan: today's questions are used up
+  if (limitReached && plan?.allowance?.limit != null) {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 py-6">
+        <div className="card p-6 sm:p-8">
+          <p className="numeral text-5xl text-ink">{plan.allowance.limit}<span className="text-2xl text-gray-400">/{plan.allowance.limit}</span></p>
+          <h1 className="page-title mt-4">That&apos;s today&apos;s practice done</h1>
+          <p className="mt-2 text-base leading-relaxed text-gray-600">
+            {sessionStats.total > 0 ? `You got ${sessionStats.correct} of ${sessionStats.total} right this session. ` : ''}
+            Free gives you {plan.allowance.limit} new questions a day; more arrive tomorrow. Plus has no daily limit.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/student/plan" className="btn btn-primary">See Plus</Link>
+            <Link href="/student/progress" className="btn btn-secondary">See your progress</Link>
+          </div>
+        </div>
+        <SponsorSlot house={false} />
       </div>
     )
   }
@@ -1197,6 +1251,13 @@ export default function PracticePage() {
           {submitted && question.solution_steps_json && (
             <SolutionPanel steps={question.solution_steps_json} open={showSolution} onOpen={() => setShowSolution(true)} />
           )}
+
+          {submitted && question.has_worked_solution && (
+            <p className="flex items-center gap-2 text-sm text-gray-600">
+              <Icons.lock className="h-4 w-4 text-gray-400" />
+              <span>Step-by-step worked solutions come with <Link href="/student/plan" className="font-semibold text-brand-700 hover:underline">Plus</Link>.</span>
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-line bg-paper px-5 py-4">
@@ -1227,10 +1288,13 @@ export default function PracticePage() {
   )
 }
 
-function ModeTile({ icon, title, body, onClick, disabled, primary, tip }: { icon: React.ReactNode; title: string; body: string; onClick: () => void; disabled?: boolean; primary?: boolean; tip?: string }) {
+function ModeTile({ icon, title, body, onClick, disabled, primary, tip, locked }: { icon: React.ReactNode; title: string; body: string; onClick: () => void; disabled?: boolean; primary?: boolean; tip?: string; locked?: boolean }) {
+  const Lock = Icons.lock
   return (
     <span className="relative block h-full">
-    {tip && <span className="absolute right-3 top-3 z-10 text-gray-500"><InfoTip text={tip} /></span>}
+    {locked ? (
+      <span className="absolute right-3 top-3 z-10 text-gray-400"><Lock className="h-4 w-4" /></span>
+    ) : tip && <span className="absolute right-3 top-3 z-10 text-gray-500"><InfoTip text={tip} /></span>}
     <button
       type="button"
       onClick={onClick}

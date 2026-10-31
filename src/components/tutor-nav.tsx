@@ -16,8 +16,12 @@ const items: NavItem[] = [
   { href: '/tutor/settings', label: 'Settings', icon: 'settings', primary: true },
 ]
 
-// Platform owners also manage AI limits for everyone
-const ownerItems: NavItem[] = [{ href: '/tutor/admin/ai', label: 'AI usage', icon: 'progress' }]
+// Platform owners also manage plans, sponsor messages and AI limits for everyone
+const ownerItems: NavItem[] = [
+  { href: '/tutor/admin/plans', label: 'Plans', icon: 'star' },
+  { href: '/tutor/admin/sponsors', label: 'Sponsors', icon: 'notes' },
+  { href: '/tutor/admin/ai', label: 'AI usage', icon: 'progress' },
+]
 
 export function TutorNav({ userName, workspaceName, isOwner = false, children }: { userName: string; workspaceName?: string | null; isOwner?: boolean; children: React.ReactNode }) {
   return (

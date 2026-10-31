@@ -4,6 +4,9 @@ import { getUser } from '@/lib/auth'
 import { getUserWorkspaceMembership } from '@/lib/workspace'
 import { LogoMark } from '@/components/ui/brand'
 import { Icons } from '@/components/ui/icons'
+import { PLAN_COPY, PLUS_PRICES } from '@/lib/plans'
+import { billingEnabled } from '@/lib/billing'
+import { soloOpen } from '@/lib/solo'
 
 export default async function HomePage() {
   const user = await getUser()
@@ -14,6 +17,7 @@ export default async function HomePage() {
   }
 
   const Check = Icons.check
+  const [open, selling] = [await soloOpen().catch(err => { console.error('[landing] soloOpen failed', err); return false }), billingEnabled()]
 
   return (
     <div className="book-page min-h-screen">
@@ -94,9 +98,39 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-5 py-20 text-center sm:px-8">
+        {/* Plans for students without a tutor */}
+        <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8" aria-labelledby="plans-title">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:items-start">
+            <div>
+              <h2 id="plans-title" className="font-display text-[2.25rem] font-semibold leading-tight tracking-[-0.015em] text-ink">Practising on your own?</h2>
+              <p className="mt-4 max-w-md text-gray-600">
+                {open ? 'Start free, no card needed. Students under 16 start once a parent or guardian agrees by email.' : 'Self-study plans open soon, once the first courses are fully checked.'}
+              </p>
+              <p className="mt-4 max-w-md text-gray-600">With a tutor or school? Their invite gives you everything, free while Mathium is in beta.</p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              {(['free', 'plus'] as const).map(id => (
+                <div key={id} className={`card flex flex-col p-6 ${id === 'plus' ? 'border-ink' : ''}`}>
+                  <h3 className="card-title text-2xl">{PLAN_COPY[id].name}</h3>
+                  <p className="mt-3">
+                    <span className="numeral text-4xl text-ink">CHF {id === 'free' ? 0 : PLUS_PRICES.month}</span>
+                    <span className="text-sm text-gray-600">{id === 'free' ? ' forever' : ` a month, or ${PLUS_PRICES.year} a year`}</span>
+                  </p>
+                  <ul className="mt-5 flex-1 space-y-2 text-sm text-gray-700">
+                    {PLAN_COPY[id].includes.map(item => (
+                      <li key={item} className="flex gap-2.5"><Check className={`mt-0.5 h-4 w-4 shrink-0 ${id === 'plus' ? 'text-brand-600' : 'text-gray-400'}`} />{item}</li>
+                    ))}
+                  </ul>
+                  {id === 'plus' && !selling && <p className="mt-5 text-sm font-semibold text-gray-500">Coming soon</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-5 pb-20 text-center sm:px-8">
           <h2 className="font-display text-[2.25rem] font-semibold tracking-[-0.015em] text-ink">Ready when you are.</h2>
-          <p className="mx-auto mt-3 max-w-md text-gray-600">Free while Mathium is in beta. Tutors set up a workspace in a minute and invite their students.</p>
+          <p className="mx-auto mt-3 max-w-md text-gray-600">Tutors set up a workspace in a minute and invite their students{open ? '. Students can start on their own too.' : '.'}</p>
           <div className="mt-8 flex justify-center gap-3">
             <Link href="/signup" className="btn btn-primary btn-lg">Create an account</Link>
             <Link href="/login" className="btn btn-secondary btn-lg">Sign in</Link>

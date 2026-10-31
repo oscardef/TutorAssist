@@ -3,6 +3,9 @@ import { parseFigure } from '@/lib/figures'
 import { parseParts } from '@/lib/parts'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { studentAccess } from '@/lib/student-plan'
+import { withoutSolutions } from '@/lib/plans'
+
 
 // Get questions (with optional filtering)
 export async function GET(request: Request) {
@@ -18,6 +21,15 @@ export async function GET(request: Request) {
   
   const { searchParams } = new URL(request.url)
   const supabase = await createServerClient()
+  const access = context.role === 'student' ? await studentAccess(user.id, context.workspaceId) : null
+  const shape = <T extends Record<string, unknown>>(qs: T[] | null) => (access && !access.features.workedSolutions ? withoutSolutions(qs) : qs)
+  const plusOnly = (error: string) => NextResponse.json({ error, code: 'plus_required' }, { status: 402 })
+  if (access?.solo) {
+    const m = searchParams.get('mode')
+    if (m === 'review' && !access.features.spacedReview) return plusOnly('Spaced review comes with Plus.')
+    if (m === 'weak' && !access.features.weakAreas) return plusOnly('Weak-area practice comes with Plus.')
+    if (!m && !searchParams.get('id') && !searchParams.get('topicId') && !access.features.chooseQuestions) return plusOnly('Choosing your own questions comes with Plus.')
+  }
   
   // Single question fetch by ID (for edit page)
   const id = searchParams.get('id')
@@ -39,7 +51,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     
-    return NextResponse.json({ question })
+    return NextResponse.json({ question: shape([question])?.[0] ?? null })
   }
   
   const topicId = searchParams.get('topicId')
@@ -82,7 +94,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     
-    return NextResponse.json({ questions, total: questions?.length || 0 })
+    return NextResponse.json({ questions: shape(questions), total: questions?.length || 0 })
   }
   
   // Special mode: get questions from topics where student is weakest
@@ -155,7 +167,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
     
-    return NextResponse.json({ questions, total: questions?.length || 0 })
+    return NextResponse.json({ questions: shape(questions), total: questions?.length || 0 })
   }
   
   // If filtering by program or grade, we need to include questions that either:
@@ -246,7 +258,7 @@ export async function GET(request: Request) {
   }
   
   return NextResponse.json({
-    questions,
+    questions: shape(questions),
     total: count,
     limit,
     offset,

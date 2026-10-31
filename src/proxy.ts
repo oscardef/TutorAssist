@@ -11,7 +11,7 @@ import { getSessionCookie } from 'better-auth/cookies'
  * against every page on 2026-10-30); CSP_MODE=report-only only reports, as
  * an escape hatch if a new feature trips it.
  */
-const publicPrefixes = ['/privacy', '/terms', '/login', '/signup', '/reset-password', '/forgot-password', '/invite', '/auth', '/api', '/_next', '/favicon.ico']
+const publicPrefixes = ['/privacy', '/terms', '/consent', '/login', '/signup', '/reset-password', '/forgot-password', '/invite', '/auth', '/api', '/_next', '/favicon.ico']
 
 function contentSecurityPolicy(nonce: string) {
   return [

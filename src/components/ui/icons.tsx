@@ -89,6 +89,12 @@ export const Icons = {
   notes: ({ className }: IconProps) => (
     <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="M8 4h8l4 4v12H4V4h4Zm8 0v4h4M8 12h8M8 16h5" /></svg>
   ),
+  star: ({ className }: IconProps) => (
+    <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" /></svg>
+  ),
+  lock: ({ className }: IconProps) => (
+    <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V8a5 5 0 0 1 10 0v3M5.5 11h13v9.5h-13V11Z" /></svg>
+  ),
   search: ({ className }: IconProps) => (
     <svg {...base(className)}><path strokeLinecap="round" strokeLinejoin="round" d="m20 20-4.2-4.2M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" /></svg>
   ),

@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 // Type definitions for mock data
 interface MockQuestion {
@@ -128,6 +128,12 @@ const mockSupabaseClient = {
   rpc: jest.fn().mockResolvedValue({ error: null }),
 }
 
+let mockLimitHit: { limit: number } | null = null
+jest.mock('@/lib/student-plan', () => ({
+  dailyLimitHit: jest.fn(() => Promise.resolve(mockLimitHit)),
+}))
+jest.mock('@/lib/tz', () => ({ userTimeZone: jest.fn(() => Promise.resolve('Europe/Zurich')) }))
+
 jest.mock('@/lib/supabase/server', () => ({
   createServerClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
 }))
@@ -217,6 +223,20 @@ describe('Attempts API - Server-Side Answer Validation Security', () => {
       expect(context?.clientClaimedCorrect).toBe(true)
       expect(context?.serverValidated).toBe(true)
       expect(insertedAttempt?.is_correct).toBe(false)
+    })
+  })
+
+  describe('Free plan daily limit', () => {
+    afterEach(() => { mockLimitHit = null })
+
+    it('refuses a new practice question once the day is used up, without recording it', async () => {
+      mockLimitHit = { limit: 20 }
+      mockQuestionData = { id: 'q-123', workspace_id: 'workspace-123', answer_type: 'numeric', correct_answer_json: { value: 5 } }
+      const { POST } = await import('@/app/api/attempts/route')
+      const response = await POST(createMockRequest({ questionId: 'q-123', answerLatex: '5' }))
+      expect(response.status).toBe(402)
+      expect((await response.json()).code).toBe('daily_limit')
+      expect(insertedAttempt).toBeNull()
     })
   })
 

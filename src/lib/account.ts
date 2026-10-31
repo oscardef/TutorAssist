@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getUserById } from '@/lib/users'
 import { deleteWorkspaceFiles, copyFile } from '@/lib/storage'
+import { soloWorkspacesOf } from '@/lib/solo'
+import { cancelSubscriptionFor } from '@/lib/billing'
 
 /**
  * Self-service data export and account deletion (privacy policy). Both run
@@ -42,11 +44,23 @@ export async function exportAccount(userId: string) {
 export type DeleteResult = { ok: true; deletedWorkspaces: string[] } | { ok: false; blocked: { workspace_id: string; members: number }[] }
 
 export async function deleteAccount(userId: string, deleteSoleWorkspaces: boolean): Promise<DeleteResult> {
+  // A student practising on their own: their practice space and any Plus
+  // subscription go with the account
+  const solo = await soloWorkspacesOf(userId)
+  try { await cancelSubscriptionFor(userId) } catch (err) {
+    console.error('[account] could not cancel subscription', err)
+    throw new Error('Could not stop your Plus subscription. Try again, or write to us.')
+  }
   const rows = await db.execute(sql`select public.delete_user_account(${userId}::uuid, ${deleteSoleWorkspaces}) as result`)
   type Archived = { archive: string | null; images: { id: string; key: string }[] }
   const result = (rows as unknown as { result: { ok: boolean; blocked?: { workspace_id: string; members: number }[]; deleted_workspaces?: string[]; archived?: Archived[] } }[])[0]?.result
   if (!result?.ok) return { ok: false, blocked: result?.blocked ?? [] }
   const deletedWorkspaces = result.deleted_workspaces ?? []
+  if (solo.length) {
+    const admin = await createAdminClient()
+    await admin.from('workspaces').delete().in('id', solo)
+    deletedWorkspaces.push(...solo)
+  }
   // Questions moved to the platform archive keep their images: copy each into
   // the archive's folder before the old workspace's files go
   const admin = await createAdminClient()

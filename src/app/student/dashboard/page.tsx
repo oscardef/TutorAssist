@@ -9,6 +9,8 @@ import { isPast } from 'date-fns'
 import { userTimeZone, zoned } from '@/lib/tz'
 import { dayStreak } from '@/lib/streak'
 import { getUserById } from '@/lib/users'
+import { practiceAllowance, studentAccess } from '@/lib/student-plan'
+import { SponsorSlot } from '@/components/sponsor-slot'
 
 interface AssignmentWithItems {
   id: string
@@ -29,6 +31,9 @@ export default async function StudentDashboard() {
   // Times and day boundaries in the student's own time zone
   const tz = await userTimeZone()
   const { fmt, isToday, isTomorrow, hour } = zoned(tz)
+  const access = context ? await studentAccess(user.id, context.workspaceId) : null
+  const allowance = access?.solo && context ? await practiceAllowance(access, user.id, context.workspaceId, tz) : null
+  const canReview = access?.features.spacedReview !== false
   
   // Performance: Fetch all independent data in parallel (Phase 1)
   const [
@@ -281,7 +286,7 @@ export default async function StudentDashboard() {
               <p className="mt-4 max-w-md text-gray-600">
                 {nextUp
                   ? <>Pick up <span className="font-bold text-ink">{nextUp.title}</span>{nextUp.due ? (nextUp.overdue ? `. It was due ${nextUp.due}` : `, due ${nextUp.due}`) : ''}.</>
-                  : dueItems && dueItems.length > 0
+                  : canReview && dueItems && dueItems.length > 0
                   ? <>{dueItems.length} {dueItems.length === 1 ? 'question is' : 'questions are'} ready to review before they fade.</>
                   : <>Nothing is due. A short practice keeps the streak alive.</>}
               </p>
@@ -292,7 +297,7 @@ export default async function StudentDashboard() {
               ) : (
                 <Link href="/student/practice" className="btn btn-primary btn-lg"><Practice className="h-5 w-5" /> Practise</Link>
               )}
-              {dueItems && dueItems.length > 0 && (
+              {canReview && dueItems && dueItems.length > 0 && (
                 <span className="inline-flex items-center gap-2">
                   <Link href="/student/practice?mode=review" className="btn btn-spark btn-lg"><Clock className="h-5 w-5" /> Review {dueItems.length}</Link>
                   <InfoTip text="Questions you got wrong or answered a while ago come back on a schedule, so they stick." label="What is review?" className="text-gray-500" />
@@ -322,8 +327,23 @@ export default async function StudentDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {access?.solo && (
+            <section className="card flex flex-wrap items-center gap-4 p-5">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-gray-500">Your plan</p>
+                <p className="text-lg font-extrabold text-ink">{access.plan === 'plus' ? 'Plus' : 'Free'}</p>
+                <p className="text-sm text-gray-600">
+                  {allowance?.limit != null
+                    ? allowance.left === 0 ? `Today's ${allowance.limit} questions are done. More tomorrow.` : `${allowance.left} of ${allowance.limit} practice questions left today.`
+                    : 'Unlimited practice, worked solutions and review.'}
+                </p>
+              </div>
+              <Link href="/student/plan" className="btn btn-secondary btn-sm">{access.plan === 'plus' ? 'Manage' : 'See Plus'}</Link>
+            </section>
+          )}
+
           {/* Assignments */}
-          <section className="card">
+          {!access?.solo && <section className="card">
             <div className="card-header">
               <h2 className="card-title">Assignments</h2>
               <Link href="/student/assignments" className="btn btn-ghost btn-sm">See all</Link>
@@ -386,7 +406,7 @@ export default async function StudentDashboard() {
                 <Link href="/student/practice" className="btn btn-primary mt-5"><Practice className="h-4 w-4" /> Practise</Link>
               </div>
             )}
-          </section>
+          </section>}
 
           {/* Recent activity */}
           <section className="card">
@@ -500,6 +520,8 @@ export default async function StudentDashboard() {
           </section>
         </div>
       </div>
+
+      <SponsorSlot />
     </div>
   )
 }

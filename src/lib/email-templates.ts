@@ -1013,3 +1013,24 @@ export function inactivityEmail(params: { name: string; deleteOn: string; url: s
   `
   return emailWrapper(content, 'Your Mathium account will be deleted soon')
 }
+
+/** Asks a parent or guardian to confirm that a child under 16 may use Mathium. */
+export function parentConsentEmail(params: { childName: string; childEmail: string; url: string; privacyUrl: string; contact: string }): string {
+  const child = esc(params.childName?.split(' ')[0] || 'Your child')
+  const content = `
+    ${emailHeader('Please confirm for your child', `${child} wants to practise maths on Mathium`, '🧮')}
+    <div class="content" style="padding: 32px 40px;">
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">Hello,</p>
+      <p style="margin: 0 0 16px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
+        ${child} (${esc(params.childEmail)}) has signed up to Mathium to practise maths and gave this address as a parent or guardian. Because they are under 16, they can only start once you agree.
+      </p>
+      <p style="margin: 0 0 24px; color: ${BRAND.gray[700]}; font-size: 16px; line-height: 1.6;">
+        The Free plan costs nothing. It shows a small sponsor message that we choose ourselves; there is no tracking and nothing is personalised. Paying for Plus is always your decision.
+      </p>
+      ${emailButton('Review and agree', params.url)}
+      ${infoBox(`If you don't agree, ignore this email and the account stays locked. You can read how we handle children's data in our <a href="${esc(params.privacyUrl)}">privacy policy</a>, or write to ${esc(params.contact)} to have the account deleted.`, 'ℹ️')}
+    </div>
+    ${emailFooter()}
+  `
+  return emailWrapper(content, `Please confirm ${child}'s Mathium account`)
+}

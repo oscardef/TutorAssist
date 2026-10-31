@@ -4,6 +4,8 @@ import { AccountDataCard } from '@/components/account-data-card'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserById } from '@/lib/users'
 import { StudentSettingsForms } from '@/components/student-settings-forms'
+import { isSoloWorkspace } from '@/lib/student-plan'
+import { CourseCard } from './CourseCard'
 
 export default async function StudentSettingsPage({
   searchParams,
@@ -51,6 +53,10 @@ export default async function StudentSettingsPage({
     tutorEmail = tutorUser ? (tutorUser.name ? `${tutorUser.name} (${tutorUser.email})` : tutorUser.email) : null
   }
 
+  const solo = context ? await isSoloWorkspace(context.workspaceId) : false
+  const prog = Array.isArray(studentProfile?.study_program) ? studentProfile?.study_program[0] : studentProfile?.study_program
+  const grade = Array.isArray(studentProfile?.grade_level) ? studentProfile?.grade_level[0] : studentProfile?.grade_level
+
   const success = params?.success
   const error = params?.error
   
@@ -59,28 +65,18 @@ export default async function StudentSettingsPage({
     <div className="space-y-6">
       <div>
         <h1 className="page-title">Settings</h1>
-        <p className="text-gray-500 mt-1">
-          Manage your profile and integrations
-        </p>
+        <p className="page-subtitle">{solo ? 'Your profile, course and account.' : 'Your profile, calendar and account.'}</p>
       </div>
       
       {success === 'google_connected' && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-          Google Calendar connected successfully!
-        </div>
+        <div className="alert-success" role="status">Google calendar connected.</div>
       )}
       
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Failed to connect Google Calendar. Please try again.
-        </div>
+        <div className="alert-error" role="alert">Google calendar didn&apos;t connect. Try again.</div>
       )}
+
+      {solo && <CourseCard program={(prog as { code: string } | null)?.code ?? null} grade={(grade as { code: string } | null)?.code ?? null} />}
 
       <StudentSettingsForms
         workspace={workspace}
@@ -91,6 +87,7 @@ export default async function StudentSettingsPage({
         }}
         role={context?.role || 'student'}
         tutorEmail={tutorEmail}
+        solo={solo}
         studentProfile={studentProfile ? {
           name: studentProfile.name,
           study_program: (() => {
@@ -106,8 +103,8 @@ export default async function StudentSettingsPage({
         } : null}
       />
       <div className="mt-6">
-        <CalendarFeedCard />
-        <div className="mt-6"><AccountDataCard email={user.email} isTutor={false} /></div>
+        {!solo && <CalendarFeedCard />}
+        <div className={solo ? '' : 'mt-6'}><AccountDataCard email={user.email} isTutor={false} /></div>
       </div>
     </div>
   )

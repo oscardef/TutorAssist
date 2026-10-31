@@ -184,6 +184,8 @@ The current model is "one prompt, one answer". IB-style assessment needs more.
 
 ### WS4: Roles, classes and solo mode (4–6 weeks)
 
+**Built 2026-10-31 (solo students):** onboarding offers "practising on my own" next to the invite code. Each solo student gets their own workspace (`workspaces.kind = 'solo'`) filled from the approved shared library for their course and kept in step by `syncSoloLibrary` (new, edited and withdrawn questions, at most every 10 minutes). Courses without approved questions show as "Coming soon"; with no approved questions at all, solo sign-up says it opens soon. Under 16: a parent or guardian confirms by an emailed link before the student can start (`parental_consents`). Students change their own course in Settings. Open: study plan, exam countdown, mock papers.
+
 - Organizations, multi-workspace membership, admin console (seats, teachers, classes, CSV roster import, Google Classroom roster import later).
 - Teacher views: class list, assignment with per-student status, question-level heatmap, mark export (CSV, later Google Sheets).
 - Solo student: self sign-up, pick course + exam session, auto-generated study plan (syllabus coverage × exam date), daily review queue, exam countdown, "mock paper" mode with timer and calculator rules.
@@ -210,6 +212,8 @@ The current model is "one prompt, one answer". IB-style assessment needs more.
 - Cal.com was evaluated: its core LICENSE file is MIT today and it self-hosts, but it is a ~900 MB-RAM app with its own user model, so embedding it means a second identity system. Build native; keep Cal.com as the fallback if the native booking page isn't enough.
 
 ### WS7: Monetisation and compliance (3–4 weeks, parallel with WS4+)
+
+**Built 2026-10-31 (student plans):** Free (20 new practice questions a day, every topic of the course, hints and marking, progress; no worked solutions, spaced review, weak-area or pick-your-own modes; a sponsor message) and Plus (CHF 9/month or 69/year: everything, no sponsor messages), defined in `lib/plans.ts` and enforced on the server (`/api/questions`, `/api/attempts`). Students with a tutor are never limited. Stripe Checkout, Customer Portal and a signed webhook write `entitlements`; billing stays off until the four `STRIPE_*` variables are set, and a platform owner can give Plus by hand at /tutor/admin/plans. Deleting an account cancels the subscription. **Ads decision:** no ad network. Sponsor messages are text-only, written and switched on by a platform owner at /tutor/admin/sponsors, shown only to Free students on Home, Practice and the daily-limit screen (never during a question), with total views and clicks counted and nothing per person; without an active sponsor a note about Plus shows instead. Reason: networks that serve children (e.g. AdSense with child-directed tagging) still load third-party scripts and cookies, need a consent banner in the EU and Switzerland, and give no control over the creative. A third tier is not built. Terms and privacy policy updated the same day.
 
 - **Plans (proposal, CHF, to be validated)**:
 

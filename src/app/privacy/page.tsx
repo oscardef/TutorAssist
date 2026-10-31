@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'What Mathium collects, why, who processes it, how long it is kept, and your rights.',
 }
 
-const UPDATED = '30 Oct 2026'
+const UPDATED = '31 Oct 2026'
 
 /**
  * Plain-language privacy policy. Keep it true to what the code does: update
@@ -20,8 +20,8 @@ export default function PrivacyPage() {
           <Section title="In short">
             <ul>
               <li>We collect what Mathium needs to work: your account, your learning and tutoring activity, and the files and boards you create.</li>
-              <li>We don&apos;t sell data, show ads or use tracking or analytics cookies.</li>
-              <li>Mathium runs on our own server in Switzerland. A few services help us run it (AI, Google, email); they are listed below.</li>
+              <li>We don&apos;t sell data or use tracking or analytics cookies. Students on the Free plan see short sponsor messages that we choose ourselves; they are not personalised and nobody is tracked.</li>
+              <li>Mathium runs on our own server in Switzerland. A few services help us run it (AI, Google, email, payments); they are listed below.</li>
               <li>You can download your data or delete your account yourself in Settings, or write to <a href={`mailto:${contact}`}>{contact}</a>.</li>
             </ul>
           </Section>
@@ -35,6 +35,10 @@ export default function PrivacyPage() {
             <dl>
               <dt>Account</dt>
               <dd>Name, email address and a securely hashed password. If you sign in with Google: your Google account&apos;s name, email address and profile picture.</dd>
+              <dt>Practising on your own</dt>
+              <dd>Your course and year, whether you are 16 or older and, if not, your parent or guardian&apos;s email address and when they agreed.</dd>
+              <dt>Plan and payments</dt>
+              <dd>Your plan (Free or Plus), its status and renewal date, and the reference numbers Stripe gives the customer and subscription. Card details go straight to Stripe; we never see or store them.</dd>
               <dt>Learning and tutoring</dt>
               <dd>Your answers, scores, progress, practice history and review schedule; assignments; questions you write or flag; booked and past sessions; notes your tutor shares with you. Tutors&apos; private notes are visible only to tutors.</dd>
               <dt>Session rooms</dt>
@@ -53,6 +57,8 @@ export default function PrivacyPage() {
               <li>To provide Mathium: accounts, practice, assignments, grading, progress, session rooms and booking (performance of our agreement with you).</li>
               <li>To keep Mathium secure and working, and to prevent abuse (legitimate interest).</li>
               <li>To send emails you need, such as password resets, booking confirmations and new assignments (performance of our agreement).</li>
+              <li>To ask a parent or guardian to agree before a student under 16 starts on their own, and to keep a record that they did (legal obligation and legitimate interest).</li>
+              <li>To run the Plus plan: take payments through Stripe, switch features on and off, and keep the records accounting law requires (performance of our agreement, legal obligation).</li>
               <li>To improve questions: answers are used in aggregate to adjust question difficulty and find mistakes in questions (legitimate interest).</li>
             </ul>
           </Section>
@@ -67,12 +73,18 @@ export default function PrivacyPage() {
               <dd>Sign-in with Google, and Google Calendar and Meet links for tutors who connect their calendar.</dd>
               <dt>Email</dt>
               <dd>Our email provider delivers the emails described above.</dd>
+              <dt>Stripe</dt>
+              <dd>Stripe takes payments for Plus on its own checkout and billing pages. It receives the email address and payment details entered there and handles them under its own privacy policy. It tells us whether a subscription is active and when it renews.</dd>
             </dl>
             <p>Some of these providers are in the United States. Transfers rely on the safeguards the law requires, such as the EU Standard Contractual Clauses and the Swiss–US and EU–US data privacy frameworks.</p>
           </Section>
 
           <Section title="Cookies">
-            <p>We use two cookies, both needed for Mathium to work: a sign-in cookie that keeps you logged in, and a <code>tz</code> cookie with your time zone so times are shown correctly. No advertising, analytics or third-party tracking cookies.</p>
+            <p>We use two cookies, both needed for Mathium to work: a sign-in cookie that keeps you logged in, and a <code>tz</code> cookie with your time zone so times are shown correctly. No advertising, analytics or third-party tracking cookies. Stripe&apos;s checkout and billing pages are on Stripe&apos;s own website and use Stripe&apos;s cookies there.</p>
+          </Section>
+
+          <Section title="Sponsor messages">
+            <p>Students on the Free plan see one short text message from a sponsor on some pages, never during a question. We choose the sponsors ourselves and only accept ones suitable for children. The messages are plain text served by Mathium: no images, scripts or cookies from the sponsor, and nothing is chosen based on who you are. We count how often each message is shown and clicked in total, never per person, and sponsors receive no data about you. A click opens the sponsor&apos;s website in a new tab, where its own privacy policy applies.</p>
           </Section>
 
           <Section title="How long we keep it">
@@ -80,12 +92,14 @@ export default function PrivacyPage() {
               <li>Account and learning data: while your account exists. Deleting your account (Settings → Your data) removes it straight away, and from backups within 14 days.</li>
               <li>Accounts not used for 24 months are deleted. We email you 30 days before, and signing in keeps your account.</li>
               <li>Session rooms and files: as long as the session or question they belong to exists.</li>
+              <li>A parent or guardian&apos;s agreement: as long as the student&apos;s account exists.</li>
+              <li>Payments: deleting your account cancels Plus. Payment records and invoices stay in our Stripe account for as long as Swiss accounting law requires (up to 10 years).</li>
               <li>Questions and other teaching material you create stay on Mathium after you leave, without your name, so the students and tutors using them keep them. They may be offered to others through the shared library after review.</li>
             </ul>
           </Section>
 
           <Section title="Children">
-            <p>Many Mathium students are under 18. Students usually join through an invitation from their tutor or school. If you are under 16, a parent or guardian must agree before you use Mathium; tutors and schools inviting younger students are responsible for getting that agreement. Parents and guardians can contact us at any time to see, export or delete their child&apos;s data.</p>
+            <p>Many Mathium students are under 18. If you are under 16, a parent or guardian must agree before you use Mathium. Tutors and schools inviting younger students are responsible for getting that agreement. Students who sign up on their own are asked whether they are 16 or older; if not, we email the parent or guardian they name, and the student can start only once that person agrees. Paying for Plus is for a parent or guardian to decide. Parents and guardians can contact us at any time to see, export or delete their child&apos;s data.</p>
           </Section>
 
           <Section title="Your rights">

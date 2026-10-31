@@ -3,6 +3,8 @@ import { parseParts, gradeParts, type PartResult } from '@/lib/parts'
 import { casMatchesAny, type AnswerForm } from '@/lib/grading/cas'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { dailyLimitHit } from '@/lib/student-plan'
+import { userTimeZone } from '@/lib/tz'
 import { 
   validateAnswer, 
   compareMathAnswers, 
@@ -55,6 +57,14 @@ export async function POST(request: Request) {
     
     if (questionError || !question) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+    }
+
+    // Free plan: a daily number of practice questions (assignments never count)
+    if (context.role === 'student' && !assignmentId) {
+      const hit = await dailyLimitHit(user.id, context.workspaceId, questionId, await userTimeZone())
+      if (hit) {
+        return NextResponse.json({ error: `You've answered today's ${hit.limit} questions. More tomorrow, or get Plus for unlimited practice.`, code: 'daily_limit' }, { status: 402 })
+      }
     }
     
     // SERVER-SIDE ANSWER VALIDATION

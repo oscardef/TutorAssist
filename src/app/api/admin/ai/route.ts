@@ -20,7 +20,7 @@ export async function GET() {
   const [limits, members, workspaces, usage, ops] = await Promise.all([
     admin.from('ai_limits').select('scope, subject, ai_enabled, daily_requests, monthly_requests, monthly_cost_usd, note, updated_at'),
     admin.from('workspace_members').select('user_id, role, workspace_id'),
-    admin.from('workspaces').select('id, name, slug'),
+    admin.from('workspaces').select('id, name, slug, kind'),
     db.execute(sql`SELECT user_id, workspace_id,
         count(*) FILTER (WHERE created_at > now() - interval '1 day')::int AS day,
         count(*)::int AS month,
@@ -36,7 +36,7 @@ export async function GET() {
   return NextResponse.json({
     monthStart: since.toISOString(),
     limits: limits.data ?? [],
-    workspaces: (workspaces.data ?? []).filter(w => w.slug !== 'mathium-archive'),
+    workspaces: (workspaces.data ?? []).filter(w => w.kind === 'tutor'),
     people: memberRows.map(m => ({ ...m, name: users.get(m.user_id)?.name ?? null, email: users.get(m.user_id)?.email ?? null })),
     usage,
     operations: ops,

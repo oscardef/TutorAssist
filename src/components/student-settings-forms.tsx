@@ -17,6 +17,8 @@ interface StudentSettingsFormsProps {
     name: string
   } | null
   tutorEmail: string | null
+  /** Practising without a tutor: no workspace or calendar cards. */
+  solo?: boolean
   studentProfile?: {
     name: string | null
     study_program?: { code: string; name: string } | null
@@ -30,6 +32,7 @@ export function StudentSettingsForms({
   role, 
   workspace, 
   tutorEmail,
+  solo = false,
   studentProfile 
 }: StudentSettingsFormsProps) {
   const router = useRouter()
@@ -180,7 +183,7 @@ export function StudentSettingsForms({
         </div>
 
         {/* Workspace Card */}
-        <div className="card overflow-hidden">
+        {!solo && <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="card-title">Workspace</h2>
             <p className="text-sm text-gray-500">Your tutoring workspace</p>
@@ -207,10 +210,10 @@ export function StudentSettingsForms({
               </div>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Google Calendar Card */}
-        <div className="card overflow-hidden">
+        {!solo && <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="card-title">Google calendar</h2>
             <p className="text-sm text-gray-500">Sync sessions with your calendar</p>
@@ -272,7 +275,7 @@ export function StudentSettingsForms({
               )}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Account Card */}
         <div className="card overflow-hidden">

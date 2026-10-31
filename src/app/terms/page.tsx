@@ -12,8 +12,9 @@ const UPDATED = '31 Oct 2026'
 /**
  * Terms of use (decisions Oscar 2026-10-31): broad licence for content
  * people create, incl. beyond Mathium; Swiss law, no court named; free beta
- * with 30 days' notice before paid plans; uploads people don't own only for
- * private teaching use. Keep in line with the privacy policy.
+ * for tutors and invited students; Free and Plus plans for students on their
+ * own (2026-10-31); uploads people don't own only for private teaching use.
+ * Keep in line with the privacy policy and lib/plans.ts.
  */
 export default function TermsPage() {
   const contact = legalContact()
@@ -26,7 +27,7 @@ export default function TermsPage() {
       <Section title="Your account">
         <ul>
           <li>Give accurate details and keep your password to yourself. One account per person; don&apos;t share it.</li>
-          <li>If you are under 16, a parent or guardian must agree to you using Mathium. Tutors and schools who invite younger students are responsible for getting that agreement.</li>
+          <li>If you are under 16, a parent or guardian must agree to you using Mathium. Tutors and schools who invite younger students are responsible for getting that agreement; if you sign up on your own, we ask your parent or guardian by email.</li>
           <li>You can stop using Mathium at any time and delete your account in Settings.</li>
         </ul>
       </Section>
@@ -60,8 +61,19 @@ export default function TermsPage() {
         <p>Mathium supports learning and teaching; it doesn&apos;t guarantee grades or exam results, and it doesn&apos;t replace a teacher&apos;s judgement. Mathium is independent: it is not affiliated with or endorsed by any exam board, school programme or curriculum provider. Course and syllabus names belong to their owners and are used only to describe what material covers.</p>
       </Section>
 
-      <Section title="Price">
-        <p>Mathium is free while it is in beta. If we introduce paid plans, we will announce them at least 30 days in advance, and nothing is charged unless you sign up to a plan.</p>
+      <Section title="Plans and payments">
+        <ul>
+          <li>Tutors, and students who join through a tutor or school, use Mathium for free while it is in beta. If that changes, we tell you at least 30 days in advance, and nothing is charged unless you choose a paid plan.</li>
+          <li>Students practising on their own start on the Free plan. It has a daily number of practice questions and shows sponsor messages. We may change what Free includes.</li>
+          <li>Plus is a subscription, monthly or yearly, at the price shown before you pay. It renews automatically until cancelled. You can cancel at any time on the Plan page; Plus then runs until the end of the period already paid, and periods already started are not refunded unless the law requires it.</li>
+          <li>If you are under 18, a parent or guardian must agree to the purchase and should be the one who pays.</li>
+          <li>Stripe processes payments. We tell subscribers at least 30 days before a price change, and you can cancel before it applies.</li>
+          <li>Deleting your account cancels Plus.</li>
+        </ul>
+      </Section>
+
+      <Section title="Sponsor messages">
+        <p>The Free plan shows short messages from sponsors that we choose and check ourselves. A sponsor&apos;s offer and website are its own responsibility, under its own terms.</p>
       </Section>
 
       <Section title="Availability and changes">
