@@ -175,10 +175,10 @@ export default function NewSyllabusPage() {
       {step === 'input' && (
         <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-describe-what-you-want-to-teach" className="block text-sm font-medium text-gray-700 mb-2">
               Describe what you want to teach
             </label>
-            <textarea
+            <textarea id="f-describe-what-you-want-to-teach"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={4}
@@ -189,10 +189,10 @@ export default function NewSyllabusPage() {
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="f-curriculum-optional" className="block text-sm font-medium text-gray-700 mb-2">
                 Curriculum (optional)
               </label>
-              <select
+              <select id="f-curriculum-optional"
                 value={curriculum}
                 onChange={(e) => setCurriculum(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -205,10 +205,10 @@ export default function NewSyllabusPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="f-grade-level" className="block text-sm font-medium text-gray-700 mb-2">
                 Grade level
               </label>
-              <input
+              <input id="f-grade-level"
                 type="text"
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}
@@ -220,10 +220,10 @@ export default function NewSyllabusPage() {
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="f-duration" className="block text-sm font-medium text-gray-700 mb-2">
                 Duration
               </label>
-              <select
+              <select id="f-duration"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -236,10 +236,10 @@ export default function NewSyllabusPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="f-questions-per-topic" className="block text-sm font-medium text-gray-700 mb-2">
                 Questions per Topic
               </label>
-              <input
+              <input id="f-questions-per-topic"
                 type="number"
                 value={questionsPerTopic}
                 onChange={(e) => setQuestionsPerTopic(parseInt(e.target.value) || 5)}

@@ -614,10 +614,10 @@ export default function GeneratePage() {
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="f-study-program" className="block text-sm font-medium text-gray-700 mb-1">
                 Study program
               </label>
-              <select
+              <select id="f-study-program"
                 value={selectedProgram}
                 onChange={(e) => {
                   setSelectedProgram(e.target.value)
@@ -636,10 +636,10 @@ export default function GeneratePage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="f-grade-level" className="block text-sm font-medium text-gray-700 mb-1">
                 Grade level {generationType === 'topics' && <span className="text-red-500">*</span>}
               </label>
-              <select
+              <select id="f-grade-level"
                 value={selectedGradeLevel}
                 onChange={(e) => {
                   setSelectedGradeLevel(e.target.value)
@@ -717,10 +717,10 @@ export default function GeneratePage() {
               
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="f-number-of-questions" className="block text-sm font-medium text-gray-700 mb-2">
                     Number of questions
                   </label>
-                  <NumberInput
+                  <NumberInput id="f-number-of-questions"
                     value={questionCount}
                     onChange={(val) => setQuestionCount(val ?? 5)}
                     min={1}
@@ -882,10 +882,10 @@ export default function GeneratePage() {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-name" className="block text-sm font-medium text-gray-700 mb-1">
                     Name <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="f-name"
                     type="text"
                     value={syllabusName}
                     onChange={(e) => setSyllabusName(e.target.value)}
@@ -896,10 +896,10 @@ export default function GeneratePage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-description" className="block text-sm font-medium text-gray-700 mb-1">
                     Description
                   </label>
-                  <textarea
+                  <textarea id="f-description"
                     value={syllabusDescription}
                     onChange={(e) => setSyllabusDescription(e.target.value)}
                     placeholder="Describe the scope and goals of this syllabus..."
@@ -910,10 +910,10 @@ export default function GeneratePage() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-number-of-units-optional" className="block text-sm font-medium text-gray-700 mb-1">
                       Number of Units (optional)
                     </label>
-                    <NumberInput
+                    <NumberInput id="f-number-of-units-optional"
                       value={syllabusTopicCount}
                       onChange={(val) => setSyllabusTopicCount(val)}
                       min={1}
@@ -926,10 +926,10 @@ export default function GeneratePage() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-detail-level" className="block text-sm font-medium text-gray-700 mb-1">
                       Detail level
                     </label>
-                    <select
+                    <select id="f-detail-level"
                       value={syllabusDepth}
                       onChange={(e) => setSyllabusDepth(e.target.value as 'overview' | 'standard' | 'detailed')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -978,10 +978,10 @@ export default function GeneratePage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-source-program" className="block text-sm font-medium text-gray-700 mb-1">
                     Source program
                   </label>
-                  <select
+                  <select id="f-source-program"
                     value={sourceProgram}
                     onChange={(e) => {
                       setSourceProgram(e.target.value)
@@ -1000,10 +1000,10 @@ export default function GeneratePage() {
                 
                 {sourceProgram && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-source-grade-level" className="block text-sm font-medium text-gray-700 mb-1">
                       Source grade level
                     </label>
-                    <select
+                    <select id="f-source-grade-level"
                       value={sourceGradeLevel}
                       onChange={(e) => setSourceGradeLevel(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1159,10 +1159,10 @@ Or add specific requirements like:
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-title" className="block text-sm font-medium text-gray-700 mb-1">
                     Title
                   </label>
-                  <input
+                  <input id="f-title"
                     type="text"
                     value={assignmentTitle}
                     onChange={(e) => setAssignmentTitle(e.target.value)}
@@ -1173,10 +1173,10 @@ Or add specific requirements like:
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-number-of-questions-2" className="block text-sm font-medium text-gray-700 mb-1">
                       Number of questions
                     </label>
-                    <NumberInput
+                    <NumberInput id="f-number-of-questions-2"
                       value={assignmentQuestionCount}
                       onChange={(val) => setAssignmentQuestionCount(val ?? 10)}
                       min={1}
@@ -1186,10 +1186,10 @@ Or add specific requirements like:
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-difficulty" className="block text-sm font-medium text-gray-700 mb-1">
                       Difficulty
                     </label>
-                    <select
+                    <select id="f-difficulty"
                       value={assignmentDifficulty}
                       onChange={(e) => setAssignmentDifficulty(e.target.value as 'easy' | 'medium' | 'hard' | 'mixed' | 'adaptive')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1205,10 +1205,10 @@ Or add specific requirements like:
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-due-date" className="block text-sm font-medium text-gray-700 mb-1">
                       Due date
                     </label>
-                    <input
+                    <input id="f-due-date"
                       type="datetime-local"
                       value={assignmentDueDate}
                       onChange={(e) => setAssignmentDueDate(e.target.value)}
@@ -1217,10 +1217,10 @@ Or add specific requirements like:
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-time-limit-minutes" className="block text-sm font-medium text-gray-700 mb-1">
                       Time Limit (minutes)
                     </label>
-                    <NumberInput
+                    <NumberInput id="f-time-limit-minutes"
                       value={timeLimit}
                       onChange={(val) => setTimeLimit(val)}
                       min={5}
@@ -1233,10 +1233,10 @@ Or add specific requirements like:
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-instructions-for-students" className="block text-sm font-medium text-gray-700 mb-1">
                     Instructions for students
                   </label>
-                  <textarea
+                  <textarea id="f-instructions-for-students"
                     value={assignmentInstructions}
                     onChange={(e) => setAssignmentInstructions(e.target.value)}
                     placeholder="Any special instructions..."
@@ -1338,10 +1338,10 @@ Or add specific requirements like:
                     
                     {splitIntoSubAssignments && (
                       <div className="mt-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                        <label htmlFor="f-questions-per-sub-assignment" className="block text-xs font-medium text-gray-600 mb-1">
                           Questions per sub-assignment
                         </label>
-                        <NumberInput
+                        <NumberInput id="f-questions-per-sub-assignment"
                           value={questionsPerSubAssignment}
                           onChange={(val) => setQuestionsPerSubAssignment(val ?? 5)}
                           min={3}

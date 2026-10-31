@@ -551,6 +551,7 @@ export default function NewStudentPage() {
               ) : (
                 <div className="flex gap-2">
                   <select
+                    aria-label="Study programme"
                     value={formData.study_program_id}
                     onChange={(e) => setFormData({ 
                       ...formData, 
@@ -624,6 +625,7 @@ export default function NewStudentPage() {
                 ) : (
                   <div className="flex gap-2">
                     <select
+                      aria-label="Grade level"
                       value={formData.grade_level_id}
                       onChange={(e) => setFormData({ ...formData, grade_level_id: e.target.value })}
                       className="flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -649,10 +651,10 @@ export default function NewStudentPage() {
 
             {/* Grade Rollover Month */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="f-grade-rollover-month" className="block text-sm font-medium text-gray-700 mb-1">
                 Grade rollover month
               </label>
-              <select
+              <select id="f-grade-rollover-month"
                 value={formData.grade_rollover_month}
                 onChange={(e) => setFormData({ ...formData, grade_rollover_month: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -679,6 +681,7 @@ export default function NewStudentPage() {
         <div className="border-t pt-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Assigned tutor</h3>
           <select
+            aria-label="Assigned tutor"
             value={formData.assigned_tutor_id}
             onChange={(e) => setFormData({ ...formData, assigned_tutor_id: e.target.value })}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"

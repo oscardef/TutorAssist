@@ -341,10 +341,10 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
               {inviteInfo?.expectedEmail && (
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label htmlFor="f-email" className="block text-sm font-medium text-gray-700 mb-1.5">
                     Email
                   </label>
-                  <input
+                  <input id="f-email"
                     type="email"
                     value={inviteInfo.expectedEmail}
                     disabled

@@ -449,8 +449,8 @@ export default function QuestionBankClient({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Topics Multi-Select */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Topics</label>
-              <SearchableSelect
+              <label htmlFor="f-topics" className="block text-sm font-medium text-gray-700 mb-1">Topics</label>
+              <SearchableSelect id="f-topics"
                 options={topicOptions}
                 selected={selectedTopics}
                 onChange={setSelectedTopics}
@@ -462,8 +462,8 @@ export default function QuestionBankClient({
             
             {/* Program Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Program</label>
-              <select
+              <label htmlFor="f-program" className="block text-sm font-medium text-gray-700 mb-1">Program</label>
+              <select id="f-program"
                 value={selectedProgram}
                 onChange={(e) => {
                   setSelectedProgram(e.target.value)
@@ -480,8 +480,8 @@ export default function QuestionBankClient({
             
             {/* Grade Level Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Grade level</label>
-              <select
+              <label htmlFor="f-grade-level" className="block text-sm font-medium text-gray-700 mb-1">Grade level</label>
+              <select id="f-grade-level"
                 value={selectedGradeLevel}
                 onChange={(e) => setSelectedGradeLevel(e.target.value)}
                 disabled={!selectedProgram}

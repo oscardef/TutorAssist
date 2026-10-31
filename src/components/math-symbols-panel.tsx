@@ -266,7 +266,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
           onMouseDown={(e) => e.preventDefault()} // Prevent focus stealing
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 bg-blue-500 text-white">
+          <div className="flex items-center justify-between px-3 py-2 bg-brand-600 text-white">
             <span className="text-sm font-medium">Math symbols</span>
             <button
               onClick={() => setIsOpen(false)}
@@ -304,7 +304,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
                 onClick={() => setActiveCategory(idx)}
                 className={`px-2 py-1 text-xs font-medium rounded transition-all whitespace-nowrap ${
                   activeCategory === idx
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 title={category.name}

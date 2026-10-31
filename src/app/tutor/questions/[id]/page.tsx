@@ -300,10 +300,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
           {/* Topic Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-topic" className="block text-sm font-medium text-gray-700 mb-2">
               Topic
             </label>
-            <select
+            <select id="f-topic"
               value={topicId}
               onChange={(e) => setTopicId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -317,10 +317,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           
           {/* Question Text */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-question-text" className="block text-sm font-medium text-gray-700 mb-2">
               Question Text *
             </label>
-            <textarea
+            <textarea id="f-question-text"
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
               rows={3}
@@ -332,10 +332,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           
           {/* LaTeX */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-latex-expression-optional" className="block text-sm font-medium text-gray-700 mb-2">
               LaTeX Expression (optional)
             </label>
-            <textarea
+            <textarea id="f-latex-expression-optional"
               value={promptLatex}
               onChange={(e) => setPromptLatex(e.target.value)}
               rows={2}
@@ -378,6 +378,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
                     <input
                       type="radio"
                       name="correctOption"
+                      aria-label={`Option ${index + 1} is correct`}
                       checked={correctOption === index}
                       onChange={() => setCorrectOption(index)}
                       className="h-4 w-4 text-blue-600"
@@ -401,10 +402,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="f-correct-answer" className="block text-sm font-medium text-gray-700 mb-2">
                     Correct Answer *
                   </label>
-                  <input
+                  <input id="f-correct-answer"
                     type={answerType === 'numeric' ? 'number' : 'text'}
                     value={answerValue}
                     onChange={(e) => setAnswerValue(e.target.value)}
@@ -415,10 +416,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
                 </div>
                 {answerType === 'numeric' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="f-tolerance" className="block text-sm font-medium text-gray-700 mb-2">
                       Tolerance (±)
                     </label>
-                    <input
+                    <input id="f-tolerance"
                       type="number"
                       value={tolerance}
                       onChange={(e) => setTolerance(parseFloat(e.target.value) || 0)}
@@ -490,10 +491,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           
           {/* Difficulty */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-difficulty" className="block text-sm font-medium text-gray-700 mb-2">
               Difficulty: {['Easy', 'Medium-Easy', 'Medium', 'Medium-Hard', 'Hard'][difficulty - 1]}
             </label>
-            <input
+            <input id="f-difficulty"
               type="range"
               min="1"
               max="5"
@@ -505,10 +506,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           
           {/* Grade Level */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-grade-level" className="block text-sm font-medium text-gray-700 mb-2">
               Grade level
             </label>
-            <select
+            <select id="f-grade-level"
               value={gradeLevel || ''}
               onChange={(e) => setGradeLevel(e.target.value ? parseInt(e.target.value) : null)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -549,10 +550,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           {/* Study Program & Grade Level */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="f-study-program" className="block text-sm font-medium text-gray-700 mb-2">
                 Study program
               </label>
-              <select
+              <select id="f-study-program"
                 value={primaryProgramId}
                 onChange={(e) => {
                   setPrimaryProgramId(e.target.value)
@@ -569,10 +570,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="f-program-grade-level" className="block text-sm font-medium text-gray-700 mb-2">
                 Program grade level
               </label>
-              <select
+              <select id="f-program-grade-level"
                 value={primaryGradeLevelId}
                 onChange={(e) => setPrimaryGradeLevelId(e.target.value)}
                 disabled={!primaryProgramId}
@@ -590,10 +591,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-status" className="block text-sm font-medium text-gray-700 mb-2">
               Status
             </label>
-            <select
+            <select id="f-status"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -701,10 +702,10 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="f-tags-comma-separated" className="block text-sm font-medium text-gray-700 mb-2">
               Tags (comma separated)
             </label>
-            <input
+            <input id="f-tags-comma-separated"
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}

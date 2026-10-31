@@ -273,10 +273,10 @@ export default function NewAssignmentPage() {
           <h2 className="card-title">Assignment details</h2>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="f-title" className="block text-sm font-medium text-gray-700 mb-1">
               Title *
             </label>
-            <input
+            <input id="f-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -287,10 +287,10 @@ export default function NewAssignmentPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="f-description" className="block text-sm font-medium text-gray-700 mb-1">
               Description
             </label>
-            <textarea
+            <textarea id="f-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -301,10 +301,10 @@ export default function NewAssignmentPage() {
           
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="f-assign-to" className="block text-sm font-medium text-gray-700 mb-1">
                 Assign to
               </label>
-              <SearchableSelect
+              <SearchableSelect id="f-assign-to"
                 options={studentOptions}
                 selected={studentId ? [studentId] : ['']}
                 onChange={(ids) => setStudentId(ids[0] || '')}
@@ -315,10 +315,10 @@ export default function NewAssignmentPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="f-due-date" className="block text-sm font-medium text-gray-700 mb-1">
                 Due date
               </label>
-              <input
+              <input id="f-due-date"
                 type="datetime-local"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
@@ -380,6 +380,7 @@ export default function NewAssignmentPage() {
                   
                   {/* Difficulty Filter */}
                   <select
+                    aria-label="Difficulty"
                     value={selectedDifficulty}
                     onChange={(e) => setSelectedDifficulty(e.target.value ? Number(e.target.value) : '')}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -392,6 +393,7 @@ export default function NewAssignmentPage() {
                   
                   {/* Origin Filter */}
                   <select
+                    aria-label="Origin"
                     value={selectedOrigin}
                     onChange={(e) => setSelectedOrigin(e.target.value)}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

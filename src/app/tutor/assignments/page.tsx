@@ -279,7 +279,7 @@ function StudentAssignmentGroup({ group, collapsed = false, tz }: { group: Stude
     <div className="card overflow-hidden">
       {/* Student Header */}
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
+        <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-bold">
           {initials}
         </div>
         <div className="flex-1">

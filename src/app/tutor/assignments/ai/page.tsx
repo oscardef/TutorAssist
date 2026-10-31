@@ -490,10 +490,10 @@ export default function AIAssignmentPage() {
                 </h2>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-student-optional" className="block text-sm font-medium text-gray-700 mb-1">
                     Student (Optional)
                   </label>
-                  <select
+                  <select id="f-student-optional"
                     value={selectedStudent}
                     onChange={(e) => setSelectedStudent(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -511,10 +511,10 @@ export default function AIAssignmentPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-what-kind-of-assignment-do-you-w" className="block text-sm font-medium text-gray-700 mb-1">
                     What kind of assignment do you want? *
                   </label>
-                  <textarea
+                  <textarea id="f-what-kind-of-assignment-do-you-w"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -526,10 +526,10 @@ export default function AIAssignmentPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-number-of-questions" className="block text-sm font-medium text-gray-700 mb-1">
                       Number of questions
                     </label>
-                    <select
+                    <select id="f-number-of-questions"
                       value={questionCount}
                       onChange={(e) => {
                         const val = parseInt(e.target.value)
@@ -565,10 +565,10 @@ export default function AIAssignmentPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="f-difficulty" className="block text-sm font-medium text-gray-700 mb-1">
                       Difficulty
                     </label>
-                    <select
+                    <select id="f-difficulty"
                       value={difficulty}
                       onChange={(e) => setDifficulty(e.target.value as typeof difficulty)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -651,10 +651,10 @@ export default function AIAssignmentPage() {
 
                     {splitIntoSubAssignments && (
                       <div>
-                        <label className="block text-sm text-blue-700 mb-1">
+                        <label htmlFor="f-questions-per-sub-assignment" className="block text-sm text-blue-700 mb-1">
                           Questions per sub-assignment:
                         </label>
-                        <select
+                        <select id="f-questions-per-sub-assignment"
                           value={questionsPerChunk}
                           onChange={(e) => setQuestionsPerChunk(parseInt(e.target.value))}
                           className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -955,8 +955,8 @@ export default function AIAssignmentPage() {
           <div className="card p-6">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
-                <input
+                <label htmlFor="f-due-date" className="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+                <input id="f-due-date"
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}

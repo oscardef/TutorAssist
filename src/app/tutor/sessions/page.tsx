@@ -374,10 +374,10 @@ export default function SessionsPage() {
             
             <form onSubmit={handleCreateSession} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-student" className="block text-sm font-medium text-gray-700 mb-1">
                   Student
                 </label>
-                <select
+                <select id="f-student"
                   value={formData.studentId}
                   onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
@@ -393,10 +393,10 @@ export default function SessionsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-date-time" className="block text-sm font-medium text-gray-700 mb-1">
                   Date & Time
                 </label>
-                <input
+                <input id="f-date-time"
                   type="datetime-local"
                   value={formData.scheduledAt}
                   onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
@@ -406,10 +406,10 @@ export default function SessionsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-duration-minutes" className="block text-sm font-medium text-gray-700 mb-1">
                   Duration (minutes)
                 </label>
-                <select
+                <select id="f-duration-minutes"
                   value={formData.durationMinutes}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
@@ -423,10 +423,10 @@ export default function SessionsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-location-optional" className="block text-sm font-medium text-gray-700 mb-1">
                   Location (optional)
                 </label>
-                <input
+                <input id="f-location-optional"
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -436,10 +436,10 @@ export default function SessionsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-notes-optional" className="block text-sm font-medium text-gray-700 mb-1">
                   Notes (optional)
                 </label>
-                <textarea
+                <textarea id="f-notes-optional"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Session agenda, topics to cover..."

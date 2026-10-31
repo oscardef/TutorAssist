@@ -424,6 +424,7 @@ export default function EditStudentPage({
               </label>
               <div className="flex gap-2">
                 <select
+                  aria-label="Study programme"
                   value={formData.study_program_id}
                   onChange={(e) => setFormData({ ...formData, study_program_id: e.target.value, grade_level_id: '' })}
                   className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -451,6 +452,7 @@ export default function EditStudentPage({
               </label>
               <div className="flex gap-2">
                 <select
+                  aria-label="Grade level"
                   value={formData.grade_level_id}
                   onChange={(e) => setFormData({ ...formData, grade_level_id: e.target.value })}
                   disabled={!formData.study_program_id}
@@ -475,10 +477,10 @@ export default function EditStudentPage({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="f-grade-rollover-month" className="block text-sm font-medium text-gray-700">
                 Grade rollover month
               </label>
-                <select
+                <select id="f-grade-rollover-month"
                   value={formData.grade_rollover_month}
                   onChange={(e) => setFormData({ ...formData, grade_rollover_month: e.target.value })}
                   className="input mt-1"
@@ -502,6 +504,7 @@ export default function EditStudentPage({
           </div>
           <div className="p-6">
             <select
+              aria-label="Assigned tutor"
               value={formData.assigned_tutor_id}
               onChange={(e) => setFormData({ ...formData, assigned_tutor_id: e.target.value })}
               className="input"
@@ -694,8 +697,8 @@ export default function EditStudentPage({
             
             <div className="mt-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Code</label>
-                <input
+                <label htmlFor="f-code" className="block text-sm font-medium text-gray-700">Code</label>
+                <input id="f-code"
                   type="text"
                   value={newProgramCode}
                   onChange={(e) => setNewProgramCode(e.target.value.toUpperCase())}
@@ -704,8 +707,8 @@ export default function EditStudentPage({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
+                <label htmlFor="f-name" className="block text-sm font-medium text-gray-700">Name</label>
+                <input id="f-name"
                   type="text"
                   value={newProgramName}
                   onChange={(e) => setNewProgramName(e.target.value)}
@@ -745,8 +748,8 @@ export default function EditStudentPage({
             
             <div className="mt-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Code</label>
-                <input
+                <label htmlFor="f-code-2" className="block text-sm font-medium text-gray-700">Code</label>
+                <input id="f-code-2"
                   type="text"
                   value={newGradeCode}
                   onChange={(e) => setNewGradeCode(e.target.value)}
@@ -755,8 +758,8 @@ export default function EditStudentPage({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
+                <label htmlFor="f-name-2" className="block text-sm font-medium text-gray-700">Name</label>
+                <input id="f-name-2"
                   type="text"
                   value={newGradeName}
                   onChange={(e) => setNewGradeName(e.target.value)}

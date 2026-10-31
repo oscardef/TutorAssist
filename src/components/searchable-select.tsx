@@ -35,6 +35,8 @@ export interface SearchableSelectProps<T extends SearchableSelectOption> {
   maxDisplayed?: number
   /** Disabled state */
   disabled?: boolean
+  /** id for the search input, so a <label htmlFor> can name it */
+  id?: string
   /** Class name for container */
   className?: string
   /** Empty state message */
@@ -58,6 +60,7 @@ export function SearchableSelect<T extends SearchableSelectOption>({
   className = '',
   emptyMessage = 'No results found',
   groupBy = false,
+  id,
 }: SearchableSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -212,6 +215,7 @@ export function SearchableSelect<T extends SearchableSelectOption>({
           e.stopPropagation()
           handleRemove(option.id)
         }}
+        aria-label={`Remove ${option.label}`}
         className="hover:text-blue-600"
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -254,6 +258,7 @@ export function SearchableSelect<T extends SearchableSelectOption>({
         {/* Search input */}
         <input
           ref={inputRef}
+          id={id}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

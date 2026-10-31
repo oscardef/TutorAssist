@@ -271,6 +271,7 @@ export default function NewQuestionPage() {
           
           {topics.length > 0 ? (
             <select
+              aria-label="Topic"
               value={selectedTopic}
               onChange={(e) => setSelectedTopic(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -302,10 +303,10 @@ export default function NewQuestionPage() {
           <h2 className="card-title">Question content</h2>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="f-question-text" className="block text-sm font-medium text-gray-700 mb-1">
               Question Text *
             </label>
-            <textarea
+            <textarea id="f-question-text"
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -316,10 +317,10 @@ export default function NewQuestionPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="f-latex-optional" className="block text-sm font-medium text-gray-700 mb-1">
               LaTeX (optional)
             </label>
-            <textarea
+            <textarea id="f-latex-optional"
               value={questionLatex}
               onChange={(e) => setQuestionLatex(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
@@ -388,10 +389,10 @@ export default function NewQuestionPage() {
           ) : (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-correct-answer" className="block text-sm font-medium text-gray-700 mb-1">
                   Correct Answer *
                 </label>
-                <input
+                <input id="f-correct-answer"
                   type={answerType === 'numeric' ? 'number' : 'text'}
                   step={answerType === 'numeric' ? 'any' : undefined}
                   value={answer}
@@ -404,10 +405,10 @@ export default function NewQuestionPage() {
               
               {answerType === 'numeric' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="f-tolerance-optional" className="block text-sm font-medium text-gray-700 mb-1">
                     Tolerance (optional)
                   </label>
-                  <input
+                  <input id="f-tolerance-optional"
                     type="number"
                     step="any"
                     value={answerTolerance}
@@ -442,6 +443,7 @@ export default function NewQuestionPage() {
               <div className="flex items-center gap-4">
                 <input
                   type="range"
+                  aria-label="Difficulty"
                   min="1"
                   max="5"
                   value={difficulty}
@@ -464,6 +466,7 @@ export default function NewQuestionPage() {
             <div>
               <h2 className="card-title mb-4">Grade level</h2>
               <select
+                aria-label="Grade level"
                 value={gradeLevel || ''}
                 onChange={(e) => setGradeLevel(e.target.value ? parseInt(e.target.value) : null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -634,10 +637,10 @@ export default function NewQuestionPage() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-topic-name" className="block text-sm font-medium text-gray-700 mb-1">
                   Topic Name *
                 </label>
-                <input
+                <input id="f-topic-name"
                   type="text"
                   value={newTopicName}
                   onChange={(e) => setNewTopicName(e.target.value)}
@@ -647,10 +650,10 @@ export default function NewQuestionPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="f-description-optional" className="block text-sm font-medium text-gray-700 mb-1">
                   Description (optional)
                 </label>
-                <textarea
+                <textarea id="f-description-optional"
                   value={newTopicDescription}
                   onChange={(e) => setNewTopicDescription(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

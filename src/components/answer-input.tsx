@@ -103,10 +103,10 @@ export function AnswerInput({
   if (answerType === 'long_answer') {
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="f-your-answer" className="block text-sm font-medium text-gray-700 mb-2">
           Your answer
         </label>
-        <textarea
+        <textarea id="f-your-answer"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}

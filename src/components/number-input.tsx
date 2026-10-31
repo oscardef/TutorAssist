@@ -11,6 +11,8 @@ interface NumberInputProps {
   className?: string
   allowNull?: boolean
   disabled?: boolean
+  id?: string
+  'aria-label'?: string
 }
 
 export function NumberInput({
@@ -22,6 +24,8 @@ export function NumberInput({
   className = '',
   allowNull = false,
   disabled = false,
+  id,
+  'aria-label': ariaLabel,
 }: NumberInputProps) {
   // Track whether user is actively editing
   const [isEditing, setIsEditing] = useState(false)
@@ -99,6 +103,8 @@ export function NumberInput({
   return (
     <div>
       <input
+        id={id}
+        aria-label={ariaLabel}
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"

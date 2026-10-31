@@ -586,10 +586,10 @@ export default function TopicsPage() {
                   <div className="space-y-4">
                     {/* Program Selection */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="f-study-program" className="block text-sm font-medium text-gray-700 mb-1">
                         Study program
                       </label>
-                      <select
+                      <select id="f-study-program"
                         value={formProgramId}
                         onChange={(e) => {
                           setFormProgramId(e.target.value)
@@ -609,10 +609,10 @@ export default function TopicsPage() {
                     {/* Grade Level Selection */}
                     {formProgramId && formGradeLevels.length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="f-grade-level" className="block text-sm font-medium text-gray-700 mb-1">
                           Grade level
                         </label>
-                        <select
+                        <select id="f-grade-level"
                           value={formGradeLevelId}
                           onChange={(e) => setFormGradeLevelId(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -628,10 +628,10 @@ export default function TopicsPage() {
                     )}
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="f-topic-name" className="block text-sm font-medium text-gray-700 mb-1">
                         Topic Name *
                       </label>
-                      <input
+                      <input id="f-topic-name"
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -648,10 +648,10 @@ export default function TopicsPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="f-description" className="block text-sm font-medium text-gray-700 mb-1">
                         Description
                       </label>
-                      <textarea
+                      <textarea id="f-description"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         rows={3}
@@ -661,10 +661,10 @@ export default function TopicsPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="f-parent-topic" className="block text-sm font-medium text-gray-700 mb-1">
                         Parent topic
                       </label>
-                      <select
+                      <select id="f-parent-topic"
                         value={parentId}
                         onChange={(e) => setParentId(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
