@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { AiStatusBanner } from '@/components/ai-status-banner'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import NumberInput from '@/components/number-input'
@@ -542,11 +543,12 @@ export default function GeneratePage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="page-title">AI Generation Studio</h1>
-        <p className="text-gray-600 mt-1">
-          Generate questions, topics, syllabi, and assignments with AI
-        </p>
+      <div className="mb-8 space-y-4">
+        <div>
+          <h1 className="page-title">Generate</h1>
+          <p className="page-subtitle">Create questions, topics and assignments with AI. Everything it makes is reviewed before it reaches the shared library.</p>
+        </div>
+        <AiStatusBanner />
       </div>
       
       {/* Alerts */}

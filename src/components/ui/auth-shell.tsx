@@ -26,7 +26,7 @@ export function AuthShell({ children, aside }: { children: React.ReactNode; asid
             </>
           )}
         </div>
-        <p className="text-sm text-gray-500">Built for IB, GCSE, A-level and more.</p>
+        <p className="text-sm text-gray-500">School maths from primary to pre-university.</p>
       </aside>
 
       <div className="flex min-h-screen flex-col lg:min-h-0">

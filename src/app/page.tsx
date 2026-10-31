@@ -38,15 +38,15 @@ export default async function HomePage() {
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-600">
                 Every question is tagged to the exact topic you are studying, checked the moment you answer, and brought back
-                for review before it fades. Tutors get the tools to run it: assignments, sessions, progress and a question bank
-                that writes itself.
+                for review before it fades. Tutors get the tools to run it: assignments, live sessions, booking, progress and a
+                shared question bank.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link href="/signup" className="btn btn-primary btn-lg">Start practising free</Link>
-                <Link href="/login" className="btn btn-secondary btn-lg">I have an invite</Link>
+                <Link href="/signup" className="btn btn-primary btn-lg">Get started free</Link>
+                <Link href="/login" className="btn btn-secondary btn-lg">Sign in</Link>
               </div>
               <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-gray-600">
-                {['IB MYP and DP', 'GCSE and A-level', 'AP'].map(item => (
+                {['PYP, MYP and DP maths', 'SL and HL, standard and extended', 'More curricula on the way'].map(item => (
                   <li key={item} className="inline-flex items-center gap-2">
                     <Check className="h-4 w-4 text-brand-600" /> {item}
                   </li>
@@ -88,7 +88,7 @@ export default async function HomePage() {
         {/* How it works */}
         <section className="border-y border-line bg-white">
           <div className="mx-auto grid max-w-6xl gap-10 px-5 py-20 sm:px-8 lg:grid-cols-3">
-            <Step n={1} title="Choose the course" body="IB AA or AI, SL or HL, MYP year, GCSE tier. Topics follow the official syllabus down to the sub-point." />
+            <Step n={1} title="Choose the course" body="DP AA or AI at SL or HL, MYP standard or extended, or a PYP phase. Questions are tagged to the syllabus down to the individual point." />
             <Step n={2} title="Practise and get checked" body="Type the answer in real maths notation. Equivalent forms count. Wrong answers get a hint, then a worked solution." />
             <Step n={3} title="Review before it fades" body="Spaced repetition schedules what to revisit. Streaks and accuracy show the trend; the tutor sees the same picture." />
           </div>
@@ -96,7 +96,7 @@ export default async function HomePage() {
 
         <section className="mx-auto max-w-6xl px-5 py-20 text-center sm:px-8">
           <h2 className="text-3xl font-extrabold tracking-tight text-ink">Ready when you are.</h2>
-          <p className="mx-auto mt-3 max-w-md text-gray-600">Free for students while Mathium is in beta. Tutors and schools can ask for an invite.</p>
+          <p className="mx-auto mt-3 max-w-md text-gray-600">Free while Mathium is in beta. Tutors set up a workspace in a minute and invite their students.</p>
           <div className="mt-8 flex justify-center gap-3">
             <Link href="/signup" className="btn btn-primary btn-lg">Create an account</Link>
             <Link href="/login" className="btn btn-secondary btn-lg">Sign in</Link>
