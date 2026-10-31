@@ -6,7 +6,7 @@ import LatexRenderer from '@/components/latex-renderer'
 import { Icons } from '@/components/ui/icons'
 import { InfoTip } from '@/components/ui/info-tip'
 import { DifficultyDots, IconButton } from '@/components/question-player'
-import { useCurricula, type Curriculum } from '@/components/syllabus-picker'
+import { useCurricula, levelTag, type Curriculum } from '@/components/syllabus-picker'
 
 interface LibraryQuestion {
   id: string
@@ -334,9 +334,16 @@ function CoverageView({ curricula, coverage, onPick }: {
   onPick: (courseId: string, nodeId: string) => void
 }) {
   const [courseId, setCourseId] = useState('')
+  const [baseOnly, setBaseOnly] = useState(false)
   const course = curricula.find(c => c.id === courseId) ?? curricula[0]
   if (!course || !coverage) return <div className="space-y-3"><div className="h-12 skeleton" /><div className="h-64 skeleton" /></div>
-  const points = course.nodes.filter(n => n.depth > 0)
+  // SL vs HL (DP) or standard vs extended (MYP): the base level leaves out
+  // HL-only and extended-only points
+  const hasHL = course.nodes.some(n => n.level === 'AHL')
+  const hasExt = course.nodes.some(n => n.level === 'EXT')
+  const levelNames = hasHL ? ['SL', 'HL'] : hasExt ? ['Standard', 'Extended'] : null
+  const inView = (n: Curriculum['nodes'][number]) => !(baseOnly && levelNames) || (n.level !== 'AHL' && n.level !== 'EXT')
+  const points = course.nodes.filter(n => n.depth > 0 && inView(n))
   const covered = points.filter(n => (coverage[n.id]?.library ?? 0) >= COVERAGE_TARGET).length
   const started = points.filter(n => (coverage[n.id]?.library ?? 0) > 0).length
 
@@ -348,6 +355,12 @@ function CoverageView({ curricula, coverage, onPick }: {
             <button key={c.id} type="button" role="tab" aria-selected={c.id === course.id} onClick={() => setCourseId(c.id)} className={`chip ${c.id === course.id ? 'chip-brand' : ''}`}>{c.framework} {c.short_name}</button>
           ))}
         </div>
+        {levelNames && (
+          <div className="inline-flex rounded-full bg-paper p-0.5 text-xs font-bold" role="group" aria-label="Level">
+            <button type="button" aria-pressed={baseOnly} onClick={() => setBaseOnly(true)} className={`rounded-full px-3 py-1 ${baseOnly ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}>{levelNames[0]}</button>
+            <button type="button" aria-pressed={!baseOnly} onClick={() => setBaseOnly(false)} className={`rounded-full px-3 py-1 ${!baseOnly ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}>{levelNames[1]}</button>
+          </div>
+        )}
         <p className="inline-flex items-center gap-1.5 text-sm text-gray-600">
           <span className="font-bold text-ink tnum">{covered}</span> of <span className="tnum">{points.length}</span> points covered · <span className="tnum">{started}</span> started
           <InfoTip text={`A syllabus point counts as covered at ${COVERAGE_TARGET} reviewed library questions. ${course.status === 'draft' ? 'This syllabus outline is still a draft: ' + (course.source_note || '') : ''}`} className="text-gray-500" />
@@ -358,14 +371,14 @@ function CoverageView({ curricula, coverage, onPick }: {
           <div key={h.id}>
             <div className="bg-paper px-4 py-2 text-sm font-extrabold text-ink">{h.code} · {h.title}</div>
             <ul>
-              {course.nodes.filter(n => n.parent_id === h.id).map(n => {
+              {course.nodes.filter(n => n.parent_id === h.id && inView(n)).map(n => {
                 const c = coverage[n.id] ?? { library: 0, workspace: 0 }
                 const pct = Math.min(100, Math.round((c.library / COVERAGE_TARGET) * 100))
                 return (
                   <li key={n.id}>
                     <button type="button" onClick={() => onPick(course.id, n.id)} className="grid w-full grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-left hover:bg-paper sm:grid-cols-[4.5rem_1fr_9rem_5rem]">
                       <span className="text-sm font-bold text-ink tnum">{n.code}</span>
-                      <span className="min-w-0 truncate text-sm text-gray-700">{n.title}{n.level === 'AHL' && <span className="chip ml-2 !py-0 text-[11px]">HL</span>}</span>
+                      <span className="min-w-0 truncate text-sm text-gray-700">{n.title}{levelTag(n.level) && <span className="chip ml-2 !py-0 text-[11px]">{levelTag(n.level)}</span>}</span>
                       <span className="hidden items-center gap-2 sm:flex" aria-label={`${c.library} of ${COVERAGE_TARGET} library questions`}>
                         <span className="h-2 flex-1 overflow-hidden rounded-full bg-line"><span className={`block h-full rounded-full ${pct >= 100 ? 'bg-[#2f855a]' : pct > 0 ? 'bg-brand-500' : ''}`} style={{ width: `${pct}%` }} /></span>
                         <span className="w-8 text-right text-xs text-gray-500 tnum">{c.library}</span>

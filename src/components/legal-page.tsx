@@ -20,7 +20,7 @@ export function LegalPage({ title, updated, children }: { title: string; updated
           <span className="flex flex-wrap gap-x-4 gap-y-1">
             <Link href="/privacy" className="hover:text-ink hover:underline">Privacy</Link>
             <Link href="/terms" className="hover:text-ink hover:underline">Terms</Link>
-            <span>Not affiliated with or endorsed by the International Baccalaureate.</span>
+            <span>Independent: not affiliated with or endorsed by any exam board or curriculum provider.</span>
           </span>
         </div>
       </footer>

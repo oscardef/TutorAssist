@@ -57,7 +57,7 @@ export default function TermsPage() {
       </Section>
 
       <Section title="What Mathium is and isn't">
-        <p>Mathium supports learning and teaching; it doesn&apos;t guarantee grades or exam results, and it doesn&apos;t replace a teacher&apos;s judgement. Mathium is not affiliated with or endorsed by the International Baccalaureate; course and syllabus names are used only to describe what material covers.</p>
+        <p>Mathium supports learning and teaching; it doesn&apos;t guarantee grades or exam results, and it doesn&apos;t replace a teacher&apos;s judgement. Mathium is independent: it is not affiliated with or endorsed by any exam board, school programme or curriculum provider. Course and syllabus names belong to their owners and are used only to describe what material covers.</p>
       </Section>
 
       <Section title="Price">

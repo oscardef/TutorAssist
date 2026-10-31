@@ -19,7 +19,7 @@ export async function syllabusContext(supabase: Client, nodeId: string | null | 
     .maybeSingle()
   if (!node) return null
   const c = Array.isArray(node.curricula) ? node.curricula[0] : node.curricula
-  const level = node.level === 'AHL' ? 'HL only' : node.level === 'SL' ? 'SL and HL' : ''
+  const level = node.level === 'AHL' ? 'HL only' : node.level === 'EXT' ? 'extended mathematics only' : node.level === 'SL' && c?.framework === 'IB DP' ? 'SL and HL' : ''
   return {
     nodeId: node.id,
     line: `${c ? `${c.framework} ${c.short_name} (${c.version}) ` : ''}${node.code} ${node.title}${level ? `, ${level}` : ''}`,

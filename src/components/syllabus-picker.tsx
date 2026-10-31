@@ -18,6 +18,11 @@ export function useCurricula() {
   return curricula
 }
 
+/** Short tag for a syllabus point's level: HL-only (DP) or extended (MYP). */
+export function levelTag(level: string | null | undefined): string | null {
+  return level === 'AHL' ? 'HL' : level === 'EXT' ? 'Extended' : null
+}
+
 export function nodeLabel(node: CurriculumNode) {
   return `${node.code} ${node.title}`
 }
@@ -50,7 +55,7 @@ export function SyllabusPicker({ value, onChange }: { value: string | null; onCh
           <option value="">{current ? 'Choose a syllabus point…' : 'Choose a course first'}</option>
           {groups.map(g => (
             <optgroup key={g.heading.id} label={`${g.heading.code} ${g.heading.title}`}>
-              {g.items.map(n => <option key={n.id} value={n.id}>{n.code} {n.title}{n.level === 'AHL' ? ' (HL)' : ''}</option>)}
+              {g.items.map(n => <option key={n.id} value={n.id}>{n.code} {n.title}{levelTag(n.level) ? ` (${levelTag(n.level)})` : ''}</option>)}
             </optgroup>
           ))}
         </select>

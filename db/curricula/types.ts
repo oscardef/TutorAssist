@@ -43,10 +43,11 @@ export function parseOutline(outline: string): NodeSeed[] {
       nodes.push({ code, title, level: null, depth: 0, orderIndex: order, parentCode: null })
     } else {
       // SL…/AHL… codes carry their level; other codes are SL unless the
-      // title ends in "(HL only)"
+      // title ends in "(HL only)" (AHL) or "(Extended)" (EXT, MYP extended)
       const hlOnly = /\(HL only\)$/.test(title)
-      const level = code.startsWith('AHL') || hlOnly ? 'AHL' : 'SL'
-      nodes.push({ code, title: title.replace(/\s*\(HL only\)$/, ''), level, depth: 1, orderIndex: order, parentCode: heading })
+      const extended = /\(Extended\)$/.test(title)
+      const level = code.startsWith('AHL') || hlOnly ? 'AHL' : extended ? 'EXT' : 'SL'
+      nodes.push({ code, title: title.replace(/\s*\((HL only|Extended)\)$/, ''), level, depth: 1, orderIndex: order, parentCode: heading })
     }
   }
   return nodes
