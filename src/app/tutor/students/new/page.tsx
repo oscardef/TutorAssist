@@ -121,7 +121,7 @@ export default function NewStudentPage() {
       
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to create program')
+        throw new Error(data.error || 'Failed to create programme')
       }
       
       const data = await response.json()
@@ -131,7 +131,7 @@ export default function NewStudentPage() {
       setNewProgramName('')
       setNewProgramCode('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create program')
+      setError(err instanceof Error ? err.message : 'Failed to create programme')
     } finally {
       setCreatingProgram(false)
     }
@@ -514,7 +514,7 @@ export default function NewStudentPage() {
                 <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
                   <input
                     type="text"
-                    placeholder="Program name (e.g., International Baccalaureate)"
+                    placeholder="Programme name (e.g., International Baccalaureate)"
                     value={newProgramName}
                     onChange={(e) => setNewProgramName(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
@@ -533,7 +533,7 @@ export default function NewStudentPage() {
                       disabled={creatingProgram || !newProgramName.trim() || !newProgramCode.trim()}
                       className="btn btn-primary btn-sm flex-1"
                     >
-                      {creatingProgram ? 'Creating…' : 'Create program'}
+                      {creatingProgram ? 'Creating…' : 'Create programme'}
                     </button>
                     <button
                       type="button"
@@ -555,7 +555,7 @@ export default function NewStudentPage() {
                     onChange={(e) => setFormData({ 
                       ...formData, 
                       study_program_id: e.target.value,
-                      grade_level_id: '' // Reset grade level when program changes
+                      grade_level_id: '' // Reset grade level when programme changes
                     })}
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >

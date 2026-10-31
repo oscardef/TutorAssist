@@ -466,7 +466,7 @@ export default function AIAssignmentPage() {
           </span>
         </h1>
         <p className="text-gray-600 mt-1">
-          Describe what you want and let AI create a personalized assignment
+          Describe what you want and let AI create a personalised assignment
         </p>
       </div>
 

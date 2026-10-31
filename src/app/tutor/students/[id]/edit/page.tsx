@@ -239,7 +239,7 @@ export default function EditStudentPage({
         setNewProgramName('')
       }
     } catch {
-      setError('Failed to create program')
+      setError('Failed to create programme')
     } finally {
       setCreatingProgram(false)
     }
@@ -456,7 +456,7 @@ export default function EditStudentPage({
                   disabled={!formData.study_program_id}
                   className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
                 >
-                  <option value="">{formData.study_program_id ? 'Select grade level…' : 'Select a program first'}</option>
+                  <option value="">{formData.study_program_id ? 'Select grade level…' : 'Select a programme first'}</option>
                   {availableGrades.map(grade => (
                     <option key={grade.id} value={grade.id}>
                       {grade.name} ({grade.code})
@@ -689,8 +689,8 @@ export default function EditStudentPage({
       {showNewProgramModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Create new program</h3>
-            <p className="mt-1 text-sm text-gray-500">Add a new study program (e.g., IB, GCSE, A-Level)</p>
+            <h3 className="text-lg font-semibold text-gray-900">Create new programme</h3>
+            <p className="mt-1 text-sm text-gray-500">Add a new study programme (e.g., IB, GCSE, A-Level)</p>
             
             <div className="mt-4 space-y-4">
               <div>
@@ -729,7 +729,7 @@ export default function EditStudentPage({
                 disabled={creatingProgram || !newProgramCode.trim() || !newProgramName.trim()}
                 className="btn btn-primary btn-sm"
               >
-                {creatingProgram ? 'Creating…' : 'Create program'}
+                {creatingProgram ? 'Creating…' : 'Create programme'}
               </button>
             </div>
           </div>
@@ -741,7 +741,7 @@ export default function EditStudentPage({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-gray-900">Create new grade level</h3>
-            <p className="mt-1 text-sm text-gray-500">Add a grade level to the selected program</p>
+            <p className="mt-1 text-sm text-gray-500">Add a grade level to the selected programme</p>
             
             <div className="mt-4 space-y-4">
               <div>

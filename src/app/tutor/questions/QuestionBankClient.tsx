@@ -95,7 +95,7 @@ export default function QuestionBankClient({
           setPrograms(data.programs)
         }
       } catch (error) {
-        console.error('Failed to fetch programs:', error)
+        console.error('Failed to fetch programmes:', error)
       }
     }
     fetchPrograms()

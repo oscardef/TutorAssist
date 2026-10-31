@@ -46,6 +46,7 @@ export default function SessionsPage() {
   const [showModal, setShowModal] = useState(false)
   const [students, setStudents] = useState<Student[]>([])
   const [isCalendarConnected, setIsCalendarConnected] = useState(false)
+  const [calendarError, setCalendarError] = useState<'reconnect' | 'unavailable' | null>(null)
   const [syncingCalendar, setSyncingCalendar] = useState(false)
   const [formData, setFormData] = useState({
     studentId: '',
@@ -78,6 +79,7 @@ export default function SessionsPage() {
       
       setStudents(studentsData.students || [])
       setIsCalendarConnected(calendarData.connected)
+      setCalendarError(calendarData.error ?? null)
       
       if (calendarData.events) {
         setCalendarEvents(calendarData.events)
@@ -262,27 +264,27 @@ export default function SessionsPage() {
         </div>
       )}
       
-      {isCalendarConnected && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <div>
-                <h3 className="font-medium text-green-800">Google calendar connected</h3>
-                <p className="text-sm text-green-700">
-                  Your calendar events are synced. Sessions with matching student emails appear below.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => fetchData()}
-              className="text-sm text-green-700 hover:text-green-800 underline"
-            >
-              Refresh
-            </button>
+      {isCalendarConnected && (calendarError ? (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-r-lg border border-l-4 border-line border-l-spark-400 bg-white p-4" role="status">
+          <div>
+            <p className="font-bold text-ink">Google calendar isn’t syncing</p>
+            <p className="text-sm text-gray-600">
+              {calendarError === 'reconnect'
+                ? 'Mathium lost access to your calendar. Reconnect it in Settings to see calendar sessions here.'
+                : 'Your calendar couldn’t be reached just now. Sessions booked in Mathium still show below.'}
+            </p>
           </div>
+          {calendarError === 'reconnect'
+            ? <Link href="/tutor/settings" className="btn btn-secondary btn-sm">Open settings</Link>
+            : <button type="button" onClick={() => fetchData()} className="btn btn-secondary btn-sm">Try again</button>}
         </div>
-      )}
+      ) : (
+        <p className="mb-6 flex flex-wrap items-center gap-2 text-sm text-gray-600" role="status">
+          <span className="h-2 w-2 rounded-full bg-[#2e8b57]" aria-hidden="true" />
+          Google calendar connected. Events with a student’s email show up here.
+          <button type="button" onClick={() => fetchData()} className="font-semibold text-brand-700 hover:underline">Refresh</button>
+        </p>
+      ))}
       
       {/* Sessions List */}
       {sessions.length > 0 ? (

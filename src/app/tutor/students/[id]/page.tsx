@@ -151,7 +151,7 @@ export default async function StudentDetailPage({
   // Get topic breakdown
   const topicStats: Record<string, { total: number; correct: number }> = {}
   attempts?.forEach(attempt => {
-    const topicName = attempt.questions?.topics?.name || 'Uncategorized'
+    const topicName = attempt.questions?.topics?.name || 'No topic'
     if (!topicStats[topicName]) {
       topicStats[topicName] = { total: 0, correct: 0 }
     }

@@ -165,7 +165,7 @@ export function getAnswerTypeLabel(answerType: string): string {
     'multiple_choice': 'Multiple choice',
     'short_answer': 'Short answer',
     'long_answer': 'Long answer',
-    'true_false': 'True/False',
+    'true_false': 'True or false',
     'fill_blank': 'Fill in the blank',
     'matching': 'Matching',
   }

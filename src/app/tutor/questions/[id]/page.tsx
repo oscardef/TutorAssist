@@ -556,7 +556,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
                 value={primaryProgramId}
                 onChange={(e) => {
                   setPrimaryProgramId(e.target.value)
-                  setPrimaryGradeLevelId('') // Reset grade level when program changes
+                  setPrimaryGradeLevelId('') // Reset grade level when programme changes
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >

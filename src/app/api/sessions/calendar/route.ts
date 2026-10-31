@@ -49,11 +49,16 @@ export async function GET() {
       }))
     })
   } catch (error) {
-    console.error('Failed to fetch calendar events:', error)
+    // invalid_grant: the user revoked access or the token expired, so they
+    // need to reconnect. Anything else (including invalid_client, a server
+    // configuration problem) is reported as temporarily unavailable.
+    const code = (error as { response?: { data?: { error?: string } } })?.response?.data?.error
+      || (error instanceof Error ? error.message : 'unknown')
+    console.error(`Failed to fetch calendar events: ${code}`)
     return NextResponse.json({
       connected: true,
       events: [],
-      error: 'Failed to fetch calendar events'
+      error: code === 'invalid_grant' ? 'reconnect' : 'unavailable',
     })
   }
 }

@@ -112,7 +112,7 @@ export default function TopicsPage() {
         }
       }
     } catch {
-      console.error('Failed to load programs')
+      console.error('Failed to load programmes')
     }
   }, [programsLoaded])
   
@@ -155,7 +155,7 @@ export default function TopicsPage() {
       setAnalysis(data)
       setShowAnalysis(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to analyze topics')
+      setError(err instanceof Error ? err.message : 'Failed to analyse topics')
     } finally {
       setAnalyzing(false)
     }
@@ -353,7 +353,7 @@ export default function TopicsPage() {
         <div>
           <h1 className="page-title">Topics</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Organize questions by study program and grade level
+            Organise questions by study programme and grade level
           </p>
         </div>
         <div className="flex gap-3">
@@ -365,7 +365,7 @@ export default function TopicsPage() {
             {analyzing ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600" />
-                Analyzing…
+                Analysing…
               </>
             ) : (
               <>
@@ -593,7 +593,7 @@ export default function TopicsPage() {
                         value={formProgramId}
                         onChange={(e) => {
                           setFormProgramId(e.target.value)
-                          setFormGradeLevelId('') // Reset grade when program changes
+                          setFormGradeLevelId('') // Reset grade when programme changes
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
@@ -781,7 +781,7 @@ export default function TopicsPage() {
                     <svg className="mx-auto h-12 w-12 text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
-                    <p className="mt-2">No duplicate topics found! Your topics are well organized.</p>
+                    <p className="mt-2">No duplicate topics found! Your topics are well organised.</p>
                   </div>
                 )}
               </div>

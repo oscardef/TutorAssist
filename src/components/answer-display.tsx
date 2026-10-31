@@ -144,7 +144,7 @@ export function AnswerTypeBadge({ answerType }: { answerType: string }) {
     long_answer: 'Long answer',
     numeric: 'Numeric',
     expression: 'Expression',
-    true_false: 'True/False',
+    true_false: 'True or false',
     fill_blank: 'Fill in blank',
     matching: 'Matching',
     exact: 'Short answer', // Legacy

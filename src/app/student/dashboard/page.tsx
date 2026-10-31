@@ -81,9 +81,12 @@ export default async function StudentDashboard() {
         assignment_items(count)
       `)
       .eq('assigned_student_user_id', user?.id)
-      .eq('status', 'active')
+      // Completed parts are fetched too, so a multi-part assignment counts
+      // every part (the same as the Assignments page); only active
+      // top-level assignments are listed
+      .in('status', ['active', 'completed'])
       .order('due_at', { ascending: true })
-      .limit(20),
+      .limit(60),
     // Get spaced repetition items due
     supabase
       .from('spaced_repetition')
@@ -175,7 +178,7 @@ export default async function StudentDashboard() {
       const siblings = childrenByParent.get(assignment.parent_assignment_id) || []
       siblings.push(assignment)
       childrenByParent.set(assignment.parent_assignment_id, siblings)
-    } else {
+    } else if (assignment.status === 'active') {
       parentAssignments.push(assignment)
     }
   })
@@ -353,7 +356,10 @@ export default async function StudentDashboard() {
                     : assignment.due_at ? new Date(assignment.due_at) : null
                   const isOverdue = !!dueDate && isPast(dueDate) && progress < 100
                   const dueLabel = !dueDate ? null : isOverdue ? 'Overdue' : isToday(dueDate) ? 'Due today' : isTomorrow(dueDate) ? 'Due tomorrow' : `Due ${fmt(dueDate, 'd MMM')}`
-                  const targetLink = hasChildren ? `/student/assignments/${assignment.children![0].id}` : `/student/assignments/${assignment.id}`
+                  const firstOpenPart = hasChildren
+                    ? assignment.children!.find(c => (completedByAssignment.get(c.id) || 0) < ((c.assignment_items as { count: number }[])?.[0]?.count || 0)) || assignment.children![0]
+                    : null
+                  const targetLink = `/student/assignments/${(firstOpenPart || assignment).id}`
                   return (
                     <li key={assignment.id}>
                       <Link href={targetLink} className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-paper">

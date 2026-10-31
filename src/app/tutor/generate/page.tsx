@@ -585,7 +585,7 @@ export default function GeneratePage() {
         <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
           {[
             { value: 'questions', label: 'Questions', desc: 'Generate practice questions' },
-            { value: 'topics', label: 'Topics/Syllabus', desc: 'Generate curriculum topics' },
+            { value: 'topics', label: 'Topics', desc: 'Generate curriculum topics' },
             { value: 'assignment', label: 'Assignment', desc: 'Create student assignments' },
           ].map((type) => (
             <button
@@ -626,7 +626,7 @@ export default function GeneratePage() {
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">All programs</option>
+                <option value="">All programmes</option>
                 {programs.map(program => (
                   <option key={program.id} value={program.id}>
                     {program.name} ({program.code})
@@ -672,7 +672,7 @@ export default function GeneratePage() {
                     onClick={selectAllTopics}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Select All ({filteredTopics.length})
+                    Select all ({filteredTopics.length})
                   </button>
                   <span className="text-gray-300">|</span>
                   <button
@@ -698,7 +698,7 @@ export default function GeneratePage() {
                   selectedTopics={selectedTopics}
                   onChange={setSelectedTopics}
                   multiple={true}
-                  placeholder="Search topics by name, program, or grade level..."
+                  placeholder="Search topics by name, programme or year"
                   showQuestionCount={true}
                   className="w-full"
                 />
@@ -764,7 +764,7 @@ export default function GeneratePage() {
                     { value: 'multiple_choice', label: 'Multiple choice' },
                     { value: 'short_answer', label: 'Short answer' },
                     { value: 'long_answer', label: 'Long answer' },
-                    { value: 'true_false', label: 'True/False' },
+                    { value: 'true_false', label: 'True or false' },
                     { value: 'fill_blank', label: 'Fill in the blank' },
                     { value: 'matching', label: 'Matching' },
                   ].map((type) => (
@@ -964,12 +964,12 @@ export default function GeneratePage() {
                   </label>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  Topics are organized as Units (parent) → Subtopics (children). E.g., &quot;Algebra&quot; contains &quot;Equations&quot;, &quot;Formulas&quot;, etc.
+                  Topics are organised as Units (parent) → Subtopics (children). E.g., &quot;Algebra&quot; contains &quot;Equations&quot;, &quot;Formulas&quot;, etc.
                 </p>
               </div>
             </div>
             
-            {/* Map from existing program */}
+            {/* Map from existing programme */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h2 className="card-title mb-2">Map from Existing Program</h2>
               <p className="text-sm text-gray-500 mb-4">
@@ -1062,7 +1062,7 @@ Or add specific requirements like:
                     onClick={selectAllTopics}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Select All ({filteredTopics.length})
+                    Select all ({filteredTopics.length})
                   </button>
                   <span className="text-gray-300">|</span>
                   <button
@@ -1115,7 +1115,7 @@ Or add specific requirements like:
                     onClick={() => setSelectedStudents(students.map(s => s.id))}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Select All ({students.length})
+                    Select all ({students.length})
                   </button>
                   <span className="text-gray-300">|</span>
                   <button
