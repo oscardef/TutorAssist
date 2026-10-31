@@ -275,7 +275,7 @@ function SignupForm() {
       {/* Logo/Brand */}
       <div className="text-center mb-8">
         <h1 className="page-title">
-          {studentName ? `Welcome, ${studentName}!` : 'Create your account'}
+          {studentName ? `Welcome, ${studentName}` : 'Create your account'}
         </h1>
         <p className="mt-2 text-sm text-gray-500">
           {inviteToken 

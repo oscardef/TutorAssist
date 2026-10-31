@@ -207,7 +207,7 @@ export default function EditStudentPage({
         return
       }
 
-      setInviteMessage({ type: 'success', text: 'Invite email sent successfully!' })
+      setInviteMessage({ type: 'success', text: 'Invite email sent.' })
       setTimeout(() => setInviteMessage(null), 5000)
     } catch {
       setInviteMessage({ type: 'error', text: 'Failed to resend invite' })

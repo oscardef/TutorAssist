@@ -457,7 +457,7 @@ export default function StudentAssignmentDetailPage() {
       <div className="card mb-5 p-5">
         <div className="mb-3 flex items-center justify-between text-sm">
           <span className="font-bold text-ink tnum">Question {currentIndex + 1} of {items.length}</span>
-          <span className="text-gray-600 tnum">{correctCount} of {answered} right</span>
+          {answered > 0 && <span className="text-gray-600 tnum">{correctCount} of {answered} right</span>}
         </div>
         <ProgressBar value={progress} tone={progress >= 100 ? 'good' : 'brand'} label="Assignment progress" />
         <div className="mt-4">

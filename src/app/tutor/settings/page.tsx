@@ -55,21 +55,11 @@ export default async function TutorSettingsPage({
       </div>
       
       {success === 'google_connected' && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-          Google Calendar connected successfully!
-        </div>
+        <div className="alert-success" role="status">Google calendar connected.</div>
       )}
       
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Failed to connect Google Calendar. Please try again.
-        </div>
+        <div className="alert-error" role="alert">Google calendar didn&apos;t connect. Try again.</div>
       )}
 
       <SettingsForms 

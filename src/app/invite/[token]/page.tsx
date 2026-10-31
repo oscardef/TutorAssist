@@ -266,7 +266,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </svg>
           </div>
 
-          <h1 className="page-title mt-4">You&apos;re Invited!</h1>
+          <h1 className="page-title mt-4">You&apos;re invited</h1>
           
           <div className="mt-6 rounded-lg bg-gray-50 p-4">
             <p className="text-sm text-gray-600">
@@ -402,7 +402,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                     Creating Account…
                   </span>
                 ) : (
-                  'Create Account & Join'
+                  'Create account and join'
                 )}
               </button>
 
