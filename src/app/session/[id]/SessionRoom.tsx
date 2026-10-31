@@ -30,7 +30,11 @@ function useClock(startIso: string | null) {
   const start = startIso ? new Date(startIso).getTime() : null
   if (!start) return null
   const s = Math.max(0, Math.floor((now - start) / 1000))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = String(s % 60).padStart(2, '0')
+  // "12:05" under an hour, "1:12:05" after
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
 }
 
 export default function SessionRoom(props: {
@@ -306,7 +310,7 @@ export default function SessionRoom(props: {
             <div className="pointer-events-none absolute inset-x-0 top-16 z-10 flex justify-center px-3">
               <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-line bg-white/95 shadow-lg backdrop-blur">
                 <div className="flex items-center justify-between gap-2 px-4 py-2">
-                  <span className="text-xs font-bold uppercase tracking-wide text-brand-700">Question</span>
+                  <span className="text-sm font-bold text-brand-700">Question</span>
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => setQuestionOpen(o => !o)} className="btn btn-ghost btn-sm !min-h-8">{questionOpen ? 'Minimise' : 'Show'}</button>
                     {isTutor && <button type="button" onClick={() => { setQuestion(null); void post({ type: 'question', questionId: null }) }} className="btn btn-ghost btn-sm !min-h-8" aria-label="Stop showing the question"><Icons.x className="h-4 w-4" /></button>}

@@ -27,6 +27,7 @@ export default async function StudentSettingsPage({
     .from('student_profiles')
     .select(`
       name,
+      assigned_tutor_id,
       study_program:study_programs(code, name),
       grade_level:grade_levels(code, name)
     `)
@@ -42,19 +43,12 @@ export default async function StudentSettingsPage({
     .eq('provider', 'google')
     .maybeSingle()
   
-  // Get tutor info - first get the tutor's user_id
-  const { data: tutorMember } = await supabase
-    .from('workspace_members')
-    .select('user_id')
-    .eq('workspace_id', context?.workspaceId)
-    .eq('role', 'tutor')
-    .maybeSingle()
-  
-  // Get tutor email using admin client (to access auth.users)
+  // The assigned tutor, from the user directory (students can't read other
+  // members through RLS)
   let tutorEmail: string | null = null
-  if (tutorMember?.user_id) {
-    const tutorUser = await getUserById(tutorMember.user_id)
-    tutorEmail = tutorUser?.email || null
+  if (studentProfile?.assigned_tutor_id) {
+    const tutorUser = await getUserById(studentProfile.assigned_tutor_id)
+    tutorEmail = tutorUser ? (tutorUser.name ? `${tutorUser.name} (${tutorUser.email})` : tutorUser.email) : null
   }
 
   const success = params?.success

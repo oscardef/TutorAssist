@@ -8,6 +8,7 @@ import LatexRenderer from '@/components/latex-renderer'
 import { isPast } from 'date-fns'
 import { userTimeZone, zoned } from '@/lib/tz'
 import { dayStreak } from '@/lib/streak'
+import { getUserById } from '@/lib/users'
 
 interface AssignmentWithItems {
   id: string
@@ -151,16 +152,12 @@ export default async function StudentDashboard() {
   const streakData = streakDataResult.data
 
   // Get assigned tutor info (conditional on profile having assigned_tutor_id)
-  let assignedTutor = null
+  // Students can't read other members through RLS, so the tutor's name and
+  // email come from the user directory
+  let assignedTutor: { user_id: string; name: string; email: string } | null = null
   if (profile?.assigned_tutor_id) {
-    const { data: tutorMember } = await supabase
-      .from('workspace_members')
-      .select('user_id, role')
-      .eq('user_id', profile.assigned_tutor_id)
-      .single()
-    if (tutorMember) {
-      assignedTutor = { user_id: tutorMember.user_id, name: 'Tutor', email: '' }
-    }
+    const tutor = await getUserById(profile.assigned_tutor_id)
+    if (tutor) assignedTutor = { user_id: tutor.id, name: tutor.name || 'Your tutor', email: tutor.email }
   }
   
   const firstName = 
@@ -259,6 +256,7 @@ export default async function StudentDashboard() {
       ? `/student/assignments/${(nextUpAssignment.children.find(c => (completedByAssignment.get(c.id) || 0) < ((c.assignment_items as { count: number }[])?.[0]?.count || 0)) || nextUpAssignment.children[0]).id}`
       : `/student/assignments/${nextUpAssignment.id}`,
     due: nextUpAssignment.due_at ? (isToday(new Date(nextUpAssignment.due_at)) ? 'today' : isTomorrow(new Date(nextUpAssignment.due_at)) ? 'tomorrow' : fmt(new Date(nextUpAssignment.due_at), 'd MMM')) : null,
+    overdue: !!nextUpAssignment.due_at && isPast(new Date(nextUpAssignment.due_at)) && !isToday(new Date(nextUpAssignment.due_at)),
   } : null
   
   const Practice = Icons.practice
@@ -282,7 +280,7 @@ export default async function StudentDashboard() {
               </div>
               <p className="mt-4 max-w-md text-gray-600">
                 {nextUp
-                  ? <>Pick up <span className="font-bold text-ink">{nextUp.title}</span>{nextUp.due ? `, due ${nextUp.due}` : ''}.</>
+                  ? <>Pick up <span className="font-bold text-ink">{nextUp.title}</span>{nextUp.due ? (nextUp.overdue ? `. It was due ${nextUp.due}` : `, due ${nextUp.due}`) : ''}.</>
                   : dueItems && dueItems.length > 0
                   ? <>{dueItems.length} {dueItems.length === 1 ? 'question is' : 'questions are'} ready to review before they fade.</>
                   : <>Nothing is due. A short practice keeps the streak alive.</>}
