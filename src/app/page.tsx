@@ -16,7 +16,7 @@ export default async function HomePage() {
   const Check = Icons.check
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="book-page min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
         <Link href="/" className="inline-flex items-center gap-2.5" aria-label="Mathium home">
           <LogoMark size={36} />
@@ -33,7 +33,7 @@ export default async function HomePage() {
         <section className="bg-graph-fade">
           <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-10 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:pt-16">
             <div className="animate-rise">
-              <h1 className="text-[2.5rem] font-extrabold leading-[1.05] tracking-tight text-ink sm:text-[3.5rem]">
+              <h1 className="font-display text-[2.75rem] font-semibold leading-[1.05] tracking-[-0.02em] text-ink sm:text-[4rem]">
                 Maths practice that matches the syllabus.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-600">
@@ -60,13 +60,13 @@ export default async function HomePage() {
 
         {/* Three audiences, one product */}
         <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-          <h2 className="max-w-2xl text-3xl font-extrabold tracking-tight text-ink">
-            One place for the student, the tutor and the class.
+          <h2 className="max-w-2xl font-display text-[2.25rem] font-semibold leading-tight tracking-[-0.015em] text-ink">
+            One place for the student, the tutor and the questions.
           </h2>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             <Audience
               title="Students"
-              lead="Practise on your own, at your level."
+              lead="Practise between lessons, at your level."
               points={['Pick a topic, get the right difficulty', 'Hints that nudge, solutions that teach', 'Review comes back before you forget']}
               icon="practice"
             />
@@ -77,16 +77,16 @@ export default async function HomePage() {
               icon="students"
             />
             <Audience
-              title="Teachers"
-              lead="A class, a syllabus, a term plan."
-              points={['Question bank per course and paper', 'Printable worksheets with answer keys', 'Class heatmaps by topic']}
+              title="Questions"
+              lead="A bank you can trust, mapped to the syllabus."
+              points={['A shared library of reviewed questions', 'Coverage of every syllabus point at a glance', 'Printable worksheets with answer keys']}
               icon="assignments"
             />
           </div>
         </section>
 
         {/* How it works */}
-        <section className="border-y border-line bg-white">
+        <section className="border-y border-line bg-white/90">
           <div className="mx-auto grid max-w-6xl gap-10 px-5 py-20 sm:px-8 lg:grid-cols-3">
             <Step n={1} title="Choose the course" body="DP AA or AI at SL or HL, MYP standard or extended, or a PYP phase. Questions are tagged to the syllabus down to the individual point." />
             <Step n={2} title="Practise and get checked" body="Type the answer in real maths notation. Equivalent forms count. Wrong answers get a hint, then a worked solution." />
@@ -95,7 +95,7 @@ export default async function HomePage() {
         </section>
 
         <section className="mx-auto max-w-6xl px-5 py-20 text-center sm:px-8">
-          <h2 className="text-3xl font-extrabold tracking-tight text-ink">Ready when you are.</h2>
+          <h2 className="font-display text-[2.25rem] font-semibold tracking-[-0.015em] text-ink">Ready when you are.</h2>
           <p className="mx-auto mt-3 max-w-md text-gray-600">Free while Mathium is in beta. Tutors set up a workspace in a minute and invite their students.</p>
           <div className="mt-8 flex justify-center gap-3">
             <Link href="/signup" className="btn btn-primary btn-lg">Create an account</Link>
@@ -119,8 +119,8 @@ function QuestionCard() {
     <div className="animate-rise-2 relative mx-auto w-full max-w-md">
       <div className="card p-6 shadow-lg">
         <div className="flex items-center justify-between">
-          <span className="chip chip-brand">AA SL · Functions 2.6</span>
-          <span className="chip">Paper 1 · no calculator</span>
+          <span className="chip chip-brand">AA SL 2.6, quadratic functions</span>
+          <span className="chip">No calculator</span>
         </div>
         <p className="mt-5 text-lg font-semibold text-ink">
           The function <em>f</em> is defined by <em>f</em>(<em>x</em>) = 2<em>x</em>² − 8<em>x</em> + 5.
@@ -150,7 +150,7 @@ function Audience({ title, lead, points, icon }: { title: string; lead: string; 
       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
         <Icon className="h-5 w-5" />
       </div>
-      <h3 className="mt-4 text-xl font-extrabold text-ink">{title}</h3>
+      <h3 className="card-title mt-4 text-[1.375rem] leading-7">{title}</h3>
       <p className="mt-1 text-gray-600">{lead}</p>
       <ul className="mt-4 space-y-2 text-sm text-gray-700">
         {points.map(p => (
@@ -167,8 +167,8 @@ function Audience({ title, lead, points, icon }: { title: string; lead: string; 
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
     <div>
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-base font-extrabold text-white tnum">{n}</div>
-      <h3 className="mt-4 text-lg font-extrabold text-ink">{title}</h3>
+      <div className="numeral text-[3rem] leading-none text-brand-600" aria-hidden="true">{n}</div>
+      <h3 className="card-title mt-3 text-[1.375rem] leading-7"><span className="sr-only">Step {n}: </span>{title}</h3>
       <p className="mt-2 text-gray-600">{body}</p>
     </div>
   )
