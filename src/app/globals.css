@@ -53,8 +53,9 @@
   --color-gray-100: #eaeeed;
   --color-gray-200: #dde3e2;
   --color-gray-300: #c4cccb;
-  --color-gray-400: #8d9897;
-  --color-gray-500: #64706f;
+  /* 400 and up meet 4.5:1 text contrast on white and on paper */
+  --color-gray-400: #687372;
+  --color-gray-500: #5a6564;
   --color-gray-600: #4a5554;
   --color-gray-700: #343e3e;
   --color-gray-800: #232b2b;

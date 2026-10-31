@@ -547,6 +547,7 @@ export default function QuestionBankClient({
               type="checkbox"
               checked={selectedQuestions.size === filteredQuestions.length && filteredQuestions.length > 0}
               onChange={selectAll}
+              aria-label="Select all shown questions"
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm font-semibold text-gray-500">Select all</span>
@@ -573,6 +574,7 @@ export default function QuestionBankClient({
                       type="checkbox"
                       checked={selectedQuestions.has(question.id)}
                       onChange={() => toggleSelection(question.id)}
+                      aria-label="Select this question"
                       className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     
@@ -682,7 +684,7 @@ export default function QuestionBankClient({
                       {/* Bottom row: stats + expand toggle */}
                       <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
                         {successRate !== null && (
-                          <span className={successRate >= 70 ? 'text-green-600' : successRate >= 40 ? 'text-yellow-600' : 'text-red-600'}>
+                          <span className={`font-semibold ${successRate >= 70 ? 'text-[#1f6b43]' : successRate >= 40 ? 'text-spark-700' : 'text-[#9b2c2c]'}`}>
                             {successRate}% ({question.times_correct}/{question.times_attempted})
                           </span>
                         )}

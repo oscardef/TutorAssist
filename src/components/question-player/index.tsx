@@ -71,9 +71,9 @@ export function ProgressTrail({ total, current, results }: { total: number; curr
   )
 }
 
-export function ProgressBar({ value, tone = 'brand' }: { value: number; tone?: 'brand' | 'good' }) {
+export function ProgressBar({ value, tone = 'brand', label = 'Progress' }: { value: number; tone?: 'brand' | 'good'; label?: string }) {
   return (
-    <div className="h-2.5 w-full overflow-hidden rounded-full bg-paper-deep" role="progressbar" aria-valuenow={Math.round(value)} aria-valuemin={0} aria-valuemax={100}>
+    <div className="h-2.5 w-full overflow-hidden rounded-full bg-paper-deep" role="progressbar" aria-label={label} aria-valuenow={Math.round(value)} aria-valuemin={0} aria-valuemax={100}>
       <div className={`h-full rounded-full transition-[width] duration-500 ${tone === 'good' ? 'bg-[#2e8b57]' : 'bg-brand-500'}`} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
     </div>
   )

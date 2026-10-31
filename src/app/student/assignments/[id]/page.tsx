@@ -459,7 +459,7 @@ export default function StudentAssignmentDetailPage() {
           <span className="font-bold text-ink tnum">Question {currentIndex + 1} of {items.length}</span>
           <span className="text-gray-600 tnum">{correctCount} of {answered} right</span>
         </div>
-        <ProgressBar value={progress} tone={progress >= 100 ? 'good' : 'brand'} />
+        <ProgressBar value={progress} tone={progress >= 100 ? 'good' : 'brand'} label="Assignment progress" />
         <div className="mt-4">
           <ProgressTrail total={items.length} current={currentIndex} results={results} />
         </div>

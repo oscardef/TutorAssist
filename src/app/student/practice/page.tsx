@@ -872,7 +872,7 @@ export default function PracticePage() {
               {topicStats.slice(0, 5).map(stats => (
                 <li key={stats.topicId} className="flex items-center gap-4 px-5 py-3">
                   <span className="w-40 truncate text-sm font-semibold text-ink">{stats.topicName}</span>
-                  <div className="flex-1"><ProgressBar value={stats.accuracy} tone={stats.accuracy >= 80 ? 'good' : 'brand'} /></div>
+                  <div className="flex-1"><ProgressBar value={stats.accuracy} tone={stats.accuracy >= 80 ? 'good' : 'brand'} label={`${stats.topicName} accuracy`} /></div>
                   <span className="w-12 text-right text-sm font-bold text-ink tnum">{stats.accuracy}%</span>
                 </li>
               ))}
@@ -1117,7 +1117,7 @@ export default function PracticePage() {
       </div>
 
       <div className="mb-5">
-        <ProgressBar value={((currentQuestionIndex + 1) / Math.max(questions.length, 1)) * 100} />
+        <ProgressBar value={((currentQuestionIndex + 1) / Math.max(questions.length, 1)) * 100} label="Questions done this session" />
       </div>
 
       <div className="card overflow-hidden">
@@ -1242,7 +1242,7 @@ function ModeTile({ icon, title, body, onClick, disabled, primary, tip }: { icon
       <span className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${primary ? 'bg-white/15 text-white' : 'bg-brand-100 text-brand-700'}`}>{icon}</span>
       <span className="min-w-0">
         <span className="block font-extrabold">{title}</span>
-        <span className={`block text-sm ${primary ? 'text-white/85' : 'text-gray-500'}`}>{body}</span>
+        <span className={`block text-sm ${primary ? 'text-white' : 'text-gray-500'}`}>{body}</span>
       </span>
     </button>
     </span>

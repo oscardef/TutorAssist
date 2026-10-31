@@ -428,7 +428,7 @@ export default function FlagsPage() {
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter flags">
           {filters.map(f => (
             <button key={f.key} type="button" onClick={() => setFilter(f.key)} className={`chip ${filter === f.key ? 'chip-brand' : ''}`} aria-pressed={filter === f.key}>
-              {f.label} <span className="tnum opacity-70">{f.count}</span>
+              {f.label} <span className="tnum font-normal">{f.count}</span>
             </button>
           ))}
         </div>

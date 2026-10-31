@@ -297,7 +297,7 @@ export default function SessionsPage() {
             const time = (d: Date) => formatTime(d)
 
             return (
-              <li key={session.id} className={`card flex flex-wrap items-center gap-4 p-4 sm:p-5 ${cancelled ? 'opacity-60' : ''}`}>
+              <li key={session.id} className={`card flex flex-wrap items-center gap-4 p-4 sm:p-5 ${cancelled ? 'bg-paper text-gray-500 [&_.font-extrabold]:text-gray-600' : ''}`}>
                 <div className={`flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-2xl ${cancelled ? 'bg-paper text-gray-500' : 'bg-brand-50 text-brand-700'}`} aria-hidden>
                   <span className="text-[11px] font-bold uppercase">{formatDay(date).split(' ')[0]}</span>
                   <span className="text-xl font-extrabold leading-none tnum">{date.getDate()}</span>

@@ -411,7 +411,7 @@ export default async function StudentDashboard() {
                         </div>
                       </div>
                       {question?.difficulty && (
-                        <div className="flex gap-0.5" aria-label={`Difficulty ${question.difficulty} of 5`}>
+                        <div className="flex gap-0.5" role="img" aria-label={`Difficulty ${question.difficulty} of 5`}>
                           {Array.from({ length: 5 }).map((_, i) => (
                             <div key={i} className={`h-4 w-1.5 rounded-full ${i < question.difficulty! ? 'bg-brand-500' : 'bg-paper-deep'}`} />
                           ))}

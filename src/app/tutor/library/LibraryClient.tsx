@@ -164,7 +164,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
       <div className="flex flex-wrap gap-1.5" role="tablist">
         {tabs.map(t => (
           <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`chip ${tab === t.key ? 'chip-brand' : ''}`}>
-            {t.label}{t.count !== undefined && <span className="tnum opacity-70">{t.count}</span>}
+            {t.label}{t.count !== undefined && <span className="tnum font-normal">{t.count}</span>}
           </button>
         ))}
       </div>
