@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import LatexRenderer from '@/components/latex-renderer'
+import LatexRenderer, { asMath } from '@/components/latex-renderer'
 import { Icons } from '@/components/ui/icons'
 import { IconButton } from '@/components/question-player'
 
@@ -473,7 +473,7 @@ export default function FlagsPage() {
                     <p className="mt-2 text-ink"><LatexRenderer content={flag.questions?.prompt_latex || flag.questions?.prompt_text || ''} /></p>
                     <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                       {flag.student_answer && (
-                        <div><dt className="text-xs font-semibold text-gray-500">Student answered</dt><dd className="font-semibold text-ink"><LatexRenderer content={flag.student_answer} /></dd></div>
+                        <div><dt className="text-xs font-semibold text-gray-500">Student answered</dt><dd className="font-semibold text-ink"><LatexRenderer content={asMath(flag.student_answer)} /></dd></div>
                       )}
                       {expected !== undefined && expected !== null && (
                         <div><dt className="text-xs font-semibold text-gray-500">Expected</dt><dd className="font-semibold text-[#1f6b43]"><LatexRenderer content={String(expected)} /></dd></div>
@@ -526,7 +526,7 @@ export default function FlagsPage() {
             <p className="text-ink"><LatexRenderer content={reviewingFlag.questions?.prompt_latex || reviewingFlag.questions?.prompt_text || ''} /></p>
             {reviewingFlag.student_answer && (
               <div className="mt-3 rounded-xl bg-paper px-3 py-2 text-sm">
-                <span className="text-gray-500">Student answered </span><span className="font-semibold text-ink"><LatexRenderer content={reviewingFlag.student_answer} /></span>
+                <span className="text-gray-500">Student answered </span><span className="font-semibold text-ink"><LatexRenderer content={asMath(reviewingFlag.student_answer)} /></span>
                 {reviewingFlag.questions?.correct_answer_json?.value !== undefined && (
                   <><span className="text-gray-500">, expected </span><span className="font-semibold text-[#1f6b43]"><LatexRenderer content={String(reviewingFlag.questions.correct_answer_json.value)} /></span></>
                 )}

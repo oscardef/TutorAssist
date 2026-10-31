@@ -44,3 +44,14 @@ export function renderMixedContent(content: unknown): string {
   }
   return out + escapeHtml(text.slice(last))
 }
+
+/**
+ * Student answers arrive from the maths input as bare LaTeX ("\frac{2}{3}",
+ * "\text{North}"). Wrap them in inline delimiters so LatexRenderer typesets
+ * them; plain text and already-delimited content pass through unchanged.
+ */
+export function asMath(answer: string | null | undefined): string {
+  const s = (answer ?? '').trim()
+  if (!s || /\$|\\\(|\\\[/.test(s)) return s
+  return /\\[a-zA-Z]+|[\^_{}]/.test(s) ? `$${s}$` : s
+}

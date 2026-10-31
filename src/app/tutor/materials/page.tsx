@@ -246,10 +246,10 @@ export default function MaterialsPage() {
       
       {/* Tips Section */}
       <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="font-medium text-gray-900 mb-3"> Supported File Types</h3>
+        <h3 className="font-medium text-gray-900 mb-3">Supported file types</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <h4 className="text-sm font-medium text-gray-700">PDF Documents</h4>
+            <h4 className="text-sm font-medium text-gray-700">PDF documents</h4>
             <p className="text-xs text-gray-500 mt-1">
               Textbooks, worksheets, exam papers
             </p>

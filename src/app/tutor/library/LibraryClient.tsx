@@ -206,7 +206,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
                         {meta.libraryTopic && <span className="chip chip-brand">{meta.libraryTopic}</span>}
                         {meta.libraryProgram && <span className="chip">{meta.libraryProgram}{meta.libraryGrade ? `, ${meta.libraryGrade}` : ''}</span>}
                         <DifficultyDots level={q.difficulty} />
-                        <span className="text-gray-500">{q.answer_type.replace('_', ' ')}</span>
+                        <span className="text-gray-500">{answerTypeLabel(q.answer_type)}</span>
                       </div>
                       <p className="mt-2 text-ink"><LatexRenderer content={q.prompt_latex || q.prompt_text} /></p>
                       {q.attribution && <p className="mt-1 text-xs text-gray-500">{q.attribution}</p>}
@@ -286,7 +286,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
                     <span className="chip">{q.workspaces?.name || 'Workspace'}</span>
                     {q.topics?.name && <span className="chip chip-brand">{q.topics.name}</span>}
                     <DifficultyDots level={q.difficulty} />
-                    <span className="text-gray-500">{q.answer_type.replace('_', ' ')}</span>
+                    <span className="text-gray-500">{answerTypeLabel(q.answer_type)}</span>
                   </div>
                   <p className="mt-3 text-lg text-ink"><LatexRenderer content={q.prompt_latex || q.prompt_text} /></p>
                   <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
@@ -394,4 +394,13 @@ function CoverageView({ curricula, coverage, onPick }: {
       </div>
     </section>
   )
+}
+
+const ANSWER_TYPE_LABELS: Record<string, string> = {
+  exact: 'short answer', short_answer: 'short answer', numeric: 'number', expression: 'expression',
+  multiple_choice: 'multiple choice', long_answer: 'long answer', true_false: 'true or false',
+  fill_blank: 'fill in the blank', matching: 'matching',
+}
+function answerTypeLabel(type: string): string {
+  return ANSWER_TYPE_LABELS[type] || type.replace(/_/g, ' ')
 }

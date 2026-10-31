@@ -64,3 +64,6 @@ export function PureLatex({ latex, displayMode = false, className = '' }: { late
 
 export const LatexRenderer = memo(LatexRendererComponent)
 export default LatexRenderer
+
+
+export { asMath } from '@/lib/latex-html'

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LatexRenderer } from '@/components/latex-renderer'
+import { LatexRenderer, asMath } from '@/components/latex-renderer'
 import { formatDate } from '@/lib/dates'
 import { Ledger, LedgerItem } from '@/components/ui/ledger'
 
@@ -424,7 +424,7 @@ export default function TutorAssignmentDetailPage() {
                       </span>
                       <span className="text-gray-400">•</span>
                       <span className="text-gray-600">
-                        Answer: <LatexRenderer content={attempt.answer_raw} className="inline" />
+                        Answer: <LatexRenderer content={asMath(attempt.answer_raw)} className="inline" />
                       </span>
                       {attempt.hints_viewed > 0 && (
                         <>
