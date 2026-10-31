@@ -688,8 +688,8 @@ export default function GeneratePage() {
               {filteredTopics.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>No topics found for the selected filters.</p>
-                  <Link href="/tutor/topics" className="text-blue-600 hover:underline mt-2 inline-block">
-                    Create topics first
+                  <Link href="/tutor/topics?start=syllabus" className="btn btn-secondary btn-sm mt-3">
+                    Set up topics from a syllabus
                   </Link>
                 </div>
               ) : (

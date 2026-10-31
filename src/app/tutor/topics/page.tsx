@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { StartFromSyllabus } from '@/components/start-from-syllabus'
+import { useSearchParams } from 'next/navigation'
 import { SyllabusLinkHelper, SyllabusSuggestions } from '@/components/syllabus-link-helper'
 import { SyllabusPicker } from '@/components/syllabus-picker'
 import { InfoTip } from '@/components/ui/info-tip'
@@ -75,6 +77,8 @@ export default function TopicsPage() {
   
   // Modal state
   const [showModal, setShowModal] = useState(false)
+  const searchParams = useSearchParams()
+  const [showSyllabus, setShowSyllabus] = useState(searchParams.get('start') === 'syllabus')
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null)
   const [saving, setSaving] = useState(false)
   
@@ -373,6 +377,13 @@ export default function TopicsPage() {
             )}
           </button>
           <button
+            onClick={() => setShowSyllabus(v => !v)}
+            className="btn btn-secondary btn-sm"
+            aria-expanded={showSyllabus}
+          >
+            From a syllabus
+          </button>
+          <button
             onClick={openCreateModal}
             className="btn btn-primary btn-sm"
           >
@@ -380,6 +391,8 @@ export default function TopicsPage() {
           </button>
         </div>
       </div>
+
+      {(showSyllabus || (!loading && topics.length === 0)) && <StartFromSyllabus onDone={() => { void fetchTopics() }} />}
 
       <SyllabusLinkHelper topics={topics} onLinked={fetchTopics} />
       
@@ -533,7 +546,7 @@ export default function TopicsPage() {
             No topics yet
           </h3>
           <p className="mt-2 text-sm text-gray-500 max-w-sm mx-auto">
-            Create your first topic to organize questions by subject area. Try using the AI Generation Studio to create a full curriculum.
+            Start from a syllabus above, or create topics yourself.
           </p>
           <div className="mt-6 flex gap-3 justify-center">
             <button
