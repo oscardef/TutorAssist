@@ -233,12 +233,12 @@ function SignupForm() {
               </p>
             </div>
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="alert-error" role="alert">
                 <p className="text-sm text-red-700">{error}</p>
               </div>
             )}
             {resendSuccess && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="alert-success" role="status">
                 <p className="text-sm text-green-700">Confirmation email sent! Check your inbox.</p>
               </div>
             )}

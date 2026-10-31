@@ -166,7 +166,7 @@ export default function NewSyllabusPage() {
       </div>
       
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+        <div className="alert-error" role="alert">
           {error}
         </div>
       )}

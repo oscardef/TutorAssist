@@ -553,7 +553,7 @@ export default function GeneratePage() {
       
       {/* Alerts */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex justify-between items-start">
+        <div className="mb-6 flex justify-between items-start alert-error" role="alert">
           <div className="flex gap-3">
             <span className="text-red-500 flex-shrink-0"></span>
             <div>
@@ -566,7 +566,7 @@ export default function GeneratePage() {
       )}
       
       {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex justify-between items-start">
+        <div className="mb-6 flex justify-between items-start alert-success" role="status">
           <div className="flex gap-3">
             <span className="text-green-500 flex-shrink-0"></span>
             <div>

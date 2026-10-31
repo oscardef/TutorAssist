@@ -397,7 +397,7 @@ export default function TopicsPage() {
       <SyllabusLinkHelper topics={topics} onLinked={fetchTopics} />
       
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-700">
+        <div className="alert-error" role="alert">
           {error}
           <button onClick={() => setError(null)} className="ml-2 underline">Dismiss</button>
         </div>
