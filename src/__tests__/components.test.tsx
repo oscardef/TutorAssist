@@ -42,7 +42,7 @@ describe('MathSymbolsPanel Component', () => {
     fireEvent.click(button)
     
     // Check that Quick Access section is visible
-    expect(screen.getByText('Quick Access')).toBeInTheDocument()
+    expect(screen.getByText('Quick access')).toBeInTheDocument()
   })
 
   it('should have frequently used symbols', () => {
@@ -101,7 +101,7 @@ describe('MathSymbolsPanel Component', () => {
     fireEvent.click(piButton)
     
     // Panel should still be open
-    expect(screen.getByText('Quick Access')).toBeInTheDocument()
+    expect(screen.getByText('Quick access')).toBeInTheDocument()
   })
 })
 

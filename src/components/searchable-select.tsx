@@ -47,7 +47,7 @@ export function SearchableSelect<T extends SearchableSelectOption>({
   options,
   selected,
   onChange,
-  placeholder = 'Search...',
+  placeholder = 'Search…',
   multiple = true,
   searchConfig,
   renderOption,
@@ -289,7 +289,7 @@ export function SearchableSelect<T extends SearchableSelectOption>({
         >
           {results.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500 text-center">
-              {isSearching ? emptyMessage : 'Type to search...'}
+              {isSearching ? emptyMessage : 'Type to search…'}
             </div>
           ) : groupBy ? (
             // Grouped rendering

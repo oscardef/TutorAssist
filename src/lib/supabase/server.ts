@@ -27,7 +27,9 @@ const jwtSecret = () => {
 async function mintToken(claims: { role: 'anon' | 'authenticated' | 'service_role'; sub?: string; email?: string }) {
   return new SignJWT({ ...claims })
     .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
+    // Backdated a minute: PostgREST rejects tokens "issued in the future"
+    // when its clock runs slightly behind the app's
+    .setIssuedAt(Math.floor(Date.now() / 1000) - 60)
     .setExpirationTime('1h')
     .sign(jwtSecret())
 }

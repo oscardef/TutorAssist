@@ -204,7 +204,7 @@ export default function LibraryClient({ isOwner, initialMine }: { isOwner: boole
                           return <span className="chip chip-spark" title={`${c.short_name}: ${node.title}`}>{c.short_name} {node.code}</span>
                         })()}
                         {meta.libraryTopic && <span className="chip chip-brand">{meta.libraryTopic}</span>}
-                        {meta.libraryProgram && <span className="chip">{meta.libraryProgram}{meta.libraryGrade ? ` · ${meta.libraryGrade}` : ''}</span>}
+                        {meta.libraryProgram && <span className="chip">{meta.libraryProgram}{meta.libraryGrade ? `, ${meta.libraryGrade}` : ''}</span>}
                         <DifficultyDots level={q.difficulty} />
                         <span className="text-gray-500">{q.answer_type.replace('_', ' ')}</span>
                       </div>
@@ -362,14 +362,14 @@ function CoverageView({ curricula, coverage, onPick }: {
           </div>
         )}
         <p className="inline-flex items-center gap-1.5 text-sm text-gray-600">
-          <span className="font-bold text-ink tnum">{covered}</span> of <span className="tnum">{points.length}</span> points covered · <span className="tnum">{started}</span> started
+          <span className="font-bold text-ink tnum">{covered}</span> of <span className="tnum">{points.length}</span> points covered, <span className="tnum">{started}</span> started
           <InfoTip text={`A syllabus point counts as covered at ${COVERAGE_TARGET} reviewed library questions. ${course.status === 'draft' ? 'This syllabus outline is still a draft: ' + (course.source_note || '') : ''}`} className="text-gray-500" />
         </p>
       </div>
       <div className="card divide-y divide-line">
         {course.nodes.filter(n => n.depth === 0).map(h => (
           <div key={h.id}>
-            <div className="bg-paper px-4 py-2 text-sm font-extrabold text-ink">{h.code} · {h.title}</div>
+            <div className="bg-paper px-4 py-2 text-sm font-extrabold text-ink"><span className="mr-2 text-gray-500 tnum">{h.code}</span>{h.title}</div>
             <ul>
               {course.nodes.filter(n => n.parent_id === h.id && inView(n)).map(n => {
                 const c = coverage[n.id] ?? { library: 0, workspace: 0 }

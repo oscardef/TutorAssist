@@ -134,7 +134,7 @@ export default async function StudentsPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="page-title">Students</h1>
-          <p className="page-subtitle tnum">{students?.length || 0} student{students?.length === 1 ? '' : 's'}{pending > 0 ? ` · ${pending} not signed up yet` : ''}</p>
+          <p className="page-subtitle tnum">{students?.length || 0} student{students?.length === 1 ? '' : 's'}{pending > 0 ? `, ${pending} not signed up yet` : ''}</p>
         </div>
         <Link href="/tutor/students/new" className="btn btn-primary"><Plus className="h-4 w-4" /> Add student</Link>
       </div>

@@ -55,7 +55,7 @@ export default function BookPage() {
     return (
       <div className="mx-auto max-w-lg py-10 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#e3f4ea] text-[#1f6b43]"><Check className="h-8 w-8" /></div>
-        <h1 className="mt-5 text-2xl font-extrabold text-ink">You’re booked</h1>
+        <h1 className="page-title mt-5">You’re booked</h1>
         <p className="mt-2 text-gray-600">{fmtDay(done)} at {fmtTime(done)}{tutorName ? ` with ${tutorName}` : ''}. You’ll find it on your dashboard, and you’ll get an email.</p>
         <Link href="/student/dashboard" className="btn btn-primary mt-6">Back to home</Link>
       </div>
@@ -111,7 +111,7 @@ export default function BookPage() {
           <div className="card flex flex-wrap items-center gap-3 border-brand-200 p-4 shadow-lg">
             <div className="min-w-0 flex-1">
               <p className="font-extrabold text-ink">{fmtDay(picked)}, {fmtTime(picked)}</p>
-              <p className="text-sm text-gray-500">{data?.slotMinutes} minutes{tutorName ? ` with ${tutorName}` : ''}{data?.cancelNoticeHours ? ` · cancel up to ${data.cancelNoticeHours} h before` : ''}</p>
+              <p className="text-sm text-gray-500">{data?.slotMinutes} minutes{tutorName ? ` with ${tutorName}` : ''}{data?.cancelNoticeHours ? `, cancel up to ${data.cancelNoticeHours} h before` : ''}</p>
               {error && <p className="mt-1 text-sm font-semibold text-[#9b2c2c]" role="alert">{error}</p>}
             </div>
             <button type="button" onClick={book} disabled={booking} className="btn btn-primary">{booking ? 'Booking…' : 'Book this time'}</button>

@@ -29,10 +29,7 @@ export async function POST(request: Request) {
 
     if (membershipError) {
       console.error('Error checking membership:', membershipError)
-      return NextResponse.json({ 
-        error: 'Database error - ensure migrations have been run', 
-        details: membershipError.message 
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Could not check your account. Try again in a moment.' }, { status: 503 })
     }
 
     if (existingMembership) {

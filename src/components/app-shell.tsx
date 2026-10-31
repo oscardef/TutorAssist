@@ -65,22 +65,22 @@ export function AppShell({ items, homeHref, roleLabel, userName, workspaceName, 
   const mobileItems = items.filter(i => i.primary).slice(0, 5)
 
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div className="flex min-h-screen bg-cover">
       {/* Sidebar (md and up) */}
       <aside
-        className={`sticky top-0 hidden h-screen flex-shrink-0 flex-col border-r border-line bg-white/70 backdrop-blur md:flex transition-[width] duration-200 ${collapsed ? 'w-[4.5rem]' : 'w-64'}`}
+        className={`sticky top-0 hidden h-screen flex-shrink-0 flex-col bg-cover text-cover-text md:flex transition-[width] duration-200 ${collapsed ? 'w-[4.5rem]' : 'w-64'}`}
         aria-label="Primary"
       >
         <div className={`flex h-16 items-center ${collapsed ? 'justify-center' : 'justify-between pl-4 pr-2'}`}>
           <Link href={homeHref} className="flex items-center gap-2.5 rounded-lg" aria-label="Mathium home">
             <LogoMark size={32} />
-            {!collapsed && <span className="text-lg font-extrabold tracking-tight text-ink">Mathium</span>}
+            {!collapsed && <span className="text-lg font-extrabold tracking-tight text-white">Mathium</span>}
           </Link>
           {!collapsed && (
             <button
               type="button"
               onClick={() => writeCollapsed(true)}
-              className="rounded-lg p-2 text-gray-400 hover:bg-paper-deep hover:text-ink"
+              className="rounded-lg p-2 text-cover-text/70 hover:bg-cover-raised hover:text-white"
               aria-label="Collapse sidebar"
             >
               <Chevron className="h-5 w-5" />
@@ -89,13 +89,13 @@ export function AppShell({ items, homeHref, roleLabel, userName, workspaceName, 
         </div>
 
         {!collapsed && workspaceName && (
-          <div className="mx-3 mb-2 rounded-xl bg-paper px-3 py-2">
-            <p className="text-[11px] font-semibold text-gray-500">{roleLabel}</p>
-            <p className="truncate text-sm font-bold text-ink">{workspaceName}</p>
+          <div className="mx-3 mb-3 border-l-2 border-spark-400 px-3 py-1">
+            <p className="truncate text-sm font-bold text-white">{workspaceName}</p>
+            <p className="text-xs text-cover-text/70">{roleLabel}</p>
           </div>
         )}
 
-        <nav className="flex-1 overflow-y-auto px-3 py-2">
+        <nav className={`flex-1 overflow-y-auto py-2 ${collapsed ? 'px-3' : 'pl-3'}`}>
           <ul className="space-y-1">
             {items.map(item => {
               const Icon = Icons[item.icon]
@@ -106,11 +106,16 @@ export function AppShell({ items, homeHref, roleLabel, userName, workspaceName, 
                     href={item.href}
                     title={collapsed ? item.label : undefined}
                     aria-current={active ? 'page' : undefined}
-                    className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-semibold transition-colors ${
-                      active ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-paper-deep hover:text-ink'
-                    } ${collapsed ? 'justify-center px-0' : ''}`}
+                    className={`group relative flex items-center gap-3 py-2.5 text-[0.9375rem] font-semibold transition-colors ${
+                      collapsed
+                        ? `justify-center rounded-lg ${active ? 'bg-paper text-ink' : 'hover:bg-cover-raised hover:text-white'}`
+                        : active
+                          // Index tab: the page's paper reaching into the cover
+                          ? 'rounded-l-lg bg-paper pl-3 pr-4 text-ink'
+                          : 'mr-3 rounded-lg px-3 hover:bg-cover-raised hover:text-white'
+                    }`}
                   >
-                    <Icon className={`h-5 w-5 flex-shrink-0 ${active ? 'text-white' : 'text-gray-400 group-hover:text-ink'}`} />
+                    <Icon className={`h-5 w-5 flex-shrink-0 ${active ? 'text-brand-600' : 'text-cover-text/60 group-hover:text-white'}`} />
                     {!collapsed && <span className="truncate">{item.label}</span>}
                   </Link>
                 </li>
@@ -119,26 +124,26 @@ export function AppShell({ items, homeHref, roleLabel, userName, workspaceName, 
           </ul>
         </nav>
 
-        <div className="border-t border-line p-3">
+        <div className="border-t border-white/10 p-3">
           {collapsed ? (
             <div className="flex flex-col items-center gap-2">
-              <button type="button" onClick={() => writeCollapsed(false)} className="rounded-lg p-2 text-gray-400 hover:bg-paper-deep hover:text-ink" aria-label="Expand sidebar">
+              <button type="button" onClick={() => writeCollapsed(false)} className="rounded-lg p-2 text-cover-text/70 hover:bg-cover-raised hover:text-white" aria-label="Expand sidebar">
                 <Chevron className="h-5 w-5 rotate-180" />
               </button>
-              <button type="button" onClick={signOut} className="rounded-lg p-2 text-gray-400 hover:bg-paper-deep hover:text-ink" aria-label="Sign out">
+              <button type="button" onClick={signOut} className="rounded-lg p-2 text-cover-text/70 hover:bg-cover-raised hover:text-white" aria-label="Sign out">
                 <SignOut className="h-5 w-5" />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-3 rounded-xl px-2 py-1.5">
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-spark-100 text-sm font-extrabold text-spark-700" aria-hidden="true">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-spark-400 text-sm font-extrabold text-cover" aria-hidden="true">
                 {initials(userName)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-ink">{userName}</p>
-                <p className="truncate text-xs text-gray-500">{roleLabel}</p>
+                <p className="truncate text-sm font-bold text-white">{userName}</p>
+                <p className="truncate text-xs text-cover-text/70">{roleLabel}</p>
               </div>
-              <button type="button" onClick={signOut} className="rounded-lg p-2 text-gray-400 hover:bg-paper-deep hover:text-ink" aria-label="Sign out">
+              <button type="button" onClick={signOut} className="rounded-lg p-2 text-cover-text/70 hover:bg-cover-raised hover:text-white" aria-label="Sign out">
                 <SignOut className="h-5 w-5" />
               </button>
             </div>
@@ -147,20 +152,20 @@ export function AppShell({ items, homeHref, roleLabel, userName, workspaceName, 
       </aside>
 
       {/* Content */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col bg-paper md:rounded-l-2xl md:shadow-[-8px_0_24px_-12px_rgb(0_0_0/0.35)]">
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-paper/90 px-4 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between bg-cover px-4 md:hidden">
           <Link href={homeHref} className="flex items-center gap-2" aria-label="Mathium home">
             <LogoMark size={28} />
-            <span className="font-extrabold text-ink">Mathium</span>
+            <span className="font-extrabold text-white">Mathium</span>
           </Link>
-          <button type="button" onClick={signOut} className="rounded-lg p-2 text-gray-500" aria-label="Sign out">
+          <button type="button" onClick={signOut} className="rounded-lg p-2 text-cover-text/80 hover:text-white" aria-label="Sign out">
             <SignOut className="h-5 w-5" />
           </button>
         </header>
 
-        <main id="main" className="flex-1 pb-24 md:pb-0">
-          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main id="main" className="book-page flex-1 pb-24 md:rounded-l-2xl md:pb-0">
+          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:pl-20 lg:pr-8 lg:py-8">
             {children}
           </div>
         </main>

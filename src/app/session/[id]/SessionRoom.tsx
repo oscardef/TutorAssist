@@ -252,7 +252,7 @@ export default function SessionRoom(props: {
           <p className="flex items-center gap-2 text-xs text-gray-500">
             <span className={`inline-block h-2 w-2 rounded-full ${connected ? 'bg-[#2f855a]' : 'bg-gray-300'}`} aria-hidden />
             <span>{connected ? (online > 1 ? `${online} here` : 'Only you so far') : 'Connecting…'}</span>
-            {clock && !ended && <span className="tnum">· {clock}</span>}
+            {clock && !ended && <span className="tnum text-gray-500">{clock}</span>}
             {ended && <span className="chip chip-good !py-0">{endNote || 'Ended'}</span>}
           </p>
         </div>

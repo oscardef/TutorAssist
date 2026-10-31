@@ -255,7 +255,7 @@ export default function NewAssignmentPage() {
         <Link href="/tutor/assignments" className="text-gray-600 hover:text-gray-900 text-sm">
           ← Back to Assignments
         </Link>
-        <h1 className="page-title mt-2">Create Assignment</h1>
+        <h1 className="page-title mt-2">Create assignment</h1>
         <p className="text-gray-600 mt-1">
           Create a practice assignment for your students
         </p>
@@ -270,7 +270,7 @@ export default function NewAssignmentPage() {
       <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
         {/* Basic Info */}
         <div className="card p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Assignment Details</h2>
+          <h2 className="card-title">Assignment details</h2>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -302,7 +302,7 @@ export default function NewAssignmentPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Assign To
+                Assign to
               </label>
               <SearchableSelect
                 options={studentOptions}
@@ -316,7 +316,7 @@ export default function NewAssignmentPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Due Date
+                Due date
               </label>
               <input
                 type="datetime-local"
@@ -331,7 +331,7 @@ export default function NewAssignmentPage() {
         {/* Question Selection */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">
+            <h2 className="card-title">
               Select Questions ({selectedQuestions.length} selected)
             </h2>
             {selectedQuestions.length > 0 && (
@@ -384,7 +384,7 @@ export default function NewAssignmentPage() {
                     onChange={(e) => setSelectedDifficulty(e.target.value ? Number(e.target.value) : '')}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">All Difficulties</option>
+                    <option value="">All difficulties</option>
                     {difficultyLabels.map((label, index) => (
                       <option key={index} value={index + 1}>{label}</option>
                     ))}
@@ -396,7 +396,7 @@ export default function NewAssignmentPage() {
                     onChange={(e) => setSelectedOrigin(e.target.value)}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">All Origins</option>
+                    <option value="">All origins</option>
                     <option value="manual">Manual</option>
                     <option value="ai_generated">AI Generated</option>
                     <option value="variant">Variant</option>
@@ -544,7 +544,7 @@ export default function NewAssignmentPage() {
                 disabled={saving || selectedQuestions.length === 0}
                 className="btn btn-primary btn-sm"
               >
-                {saving ? 'Creating...' : 'Create & Activate'}
+                {saving ? 'Creating…' : 'Create & Activate'}
               </button>
             </div>
           </div>

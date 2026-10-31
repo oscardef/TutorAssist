@@ -135,7 +135,7 @@ export default function NewSyllabusPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="page-title">Generate Course Syllabus</h1>
+        <h1 className="page-title">Generate course syllabus</h1>
         <p className="mt-1 text-sm text-gray-500">
           Create a complete syllabus with topics and questions using AI
         </p>
@@ -197,7 +197,7 @@ export default function NewSyllabusPage() {
                 onChange={(e) => setCurriculum(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select curriculum...</option>
+                <option value="">Select curriculum…</option>
                 {curriculums.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -206,7 +206,7 @@ export default function NewSyllabusPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Grade Level
+                Grade level
               </label>
               <input
                 type="text"
@@ -230,7 +230,7 @@ export default function NewSyllabusPage() {
               >
                 <option value="quarter">Quarter (8-10 weeks)</option>
                 <option value="semester">Semester (15-18 weeks)</option>
-                <option value="year">Full Year</option>
+                <option value="year">Full year</option>
                 <option value="custom">Custom</option>
               </select>
             </div>
@@ -262,14 +262,14 @@ export default function NewSyllabusPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Generating...
+                  Generating…
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
                   </svg>
-                  Generate Syllabus
+                  Generate syllabus
                 </>
               )}
             </button>
@@ -281,7 +281,7 @@ export default function NewSyllabusPage() {
       {step === 'preview' && generatedSyllabus && (
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-bold text-gray-900">{generatedSyllabus.title}</h2>
+            <h2 className="card-title text-[1.375rem] leading-7">{generatedSyllabus.title}</h2>
             <p className="mt-2 text-gray-600">{generatedSyllabus.description}</p>
             <div className="mt-4 flex gap-4 text-sm text-gray-500">
               <span className="bg-gray-100 px-3 py-1 rounded-full">{generatedSyllabus.curriculum}</span>
@@ -303,7 +303,7 @@ export default function NewSyllabusPage() {
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
-                {selectedTopics.size === generatedSyllabus.topics.length ? 'Deselect All' : 'Select All'}
+                {selectedTopics.size === generatedSyllabus.topics.length ? 'Deselect all' : 'Select all'}
               </button>
             </div>
             
@@ -344,7 +344,7 @@ export default function NewSyllabusPage() {
                       )}
                     </div>
                     <div className="text-right text-sm text-gray-500">
-                      {topic.questionCount} questions
+                      {topic.questionCount} question{topic.questionCount === 1 ? '' : 's'}
                     </div>
                   </div>
                 </div>
@@ -364,7 +364,7 @@ export default function NewSyllabusPage() {
               disabled={selectedTopics.size === 0 || generatingQuestions}
               className="btn btn-primary"
             >
-              Create Syllabus & Generate {selectedTopics.size * questionsPerTopic} Questions
+              Create syllabus and generate {selectedTopics.size * questionsPerTopic} question{(selectedTopics.size * questionsPerTopic) === 1 ? '' : 's'}
             </button>
           </div>
         </div>
@@ -377,9 +377,9 @@ export default function NewSyllabusPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          <h2 className="mt-6 text-xl font-bold text-gray-900">Creating Your Syllabus</h2>
+          <h2 className="mt-6 card-title text-[1.375rem] leading-7">Creating your syllabus</h2>
           <p className="mt-2 text-gray-600">
-            Generating {selectedTopics.size} topics and {selectedTopics.size * questionsPerTopic} questions...
+            Generating {selectedTopics.size} topics and {selectedTopics.size * questionsPerTopic} questions…
           </p>
           <p className="mt-4 text-sm text-gray-500">
             This may take a minute. You&apos;ll be redirected when complete.

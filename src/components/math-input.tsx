@@ -207,7 +207,7 @@ export function MathInput({
   value,
   onChange,
   disabled = false,
-  placeholder = 'Type your answer...',
+  placeholder = 'Type your answer…',
   className = '',
   onSubmit,
   status,

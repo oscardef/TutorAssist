@@ -21,7 +21,7 @@ export async function GET() {
 
     if (membershipError) {
       console.error('Error checking membership:', membershipError)
-      return NextResponse.json({ hasWorkspace: false }, { status: 200 })
+      return NextResponse.json({ error: 'Could not check your workspace' }, { status: 503 })
     }
 
     if (membership) {
@@ -35,6 +35,6 @@ export async function GET() {
     return NextResponse.json({ hasWorkspace: false })
   } catch (error) {
     console.error('Error checking workspace:', error)
-    return NextResponse.json({ hasWorkspace: false }, { status: 200 })
+    return NextResponse.json({ error: 'Could not check your workspace' }, { status: 503 })
   }
 }

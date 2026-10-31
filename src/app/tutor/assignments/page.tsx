@@ -2,6 +2,7 @@ import { requireTutor } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { userTimeZone, zoned } from '@/lib/tz'
+import { Ledger, LedgerItem } from '@/components/ui/ledger'
 
 interface Assignment {
   id: string
@@ -131,51 +132,39 @@ export default async function AssignmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Assignments</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Create and manage practice assignments for your students
+          <p className="page-subtitle">
+            Sets of questions for a student, with a due date
           </p>
         </div>
         <div className="flex gap-3">
           <Link
             href="/tutor/assignments/new"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary"
           >
-            Manual Create
+            Choose questions
           </Link>
           <Link
             href="/tutor/assignments/ai"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
             </svg>
-            AI Generate
+            Build with AI
           </Link>
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="card p-4">
-          <div className="text-sm font-medium text-gray-500">Students</div>
-          <div className="mt-1 text-2xl font-semibold text-gray-900">{students?.length || 0}</div>
-        </div>
-        <div className="card p-4">
-          <div className="text-sm font-medium text-gray-500">Active</div>
-          <div className="mt-1 text-2xl font-semibold text-green-600">{topLevelActive.length}</div>
-        </div>
-        <div className="card p-4">
-          <div className="text-sm font-medium text-gray-500">Drafts</div>
-          <div className="mt-1 text-2xl font-semibold text-gray-600">{topLevelDraft.length}</div>
-        </div>
-        <div className="card p-4">
-          <div className="text-sm font-medium text-gray-500">Completed</div>
-          <div className="mt-1 text-2xl font-semibold text-blue-600">{topLevelCompleted.length}</div>
-        </div>
-      </div>
+      <Ledger>
+        <LedgerItem label="Students" value={students?.length || 0} />
+        <LedgerItem label="Active" value={topLevelActive.length} />
+        <LedgerItem label="Drafts" value={topLevelDraft.length} />
+        <LedgerItem label="Completed" value={topLevelCompleted.length} />
+      </Ledger>
 
       {/* Assignments List */}
       {assignments && assignments.length > 0 ? (
@@ -183,9 +172,9 @@ export default async function AssignmentsPage() {
           {/* Active Assignments - Grouped by Student */}
           {activeByStudent.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                Active Assignments
+              <h2 className="card-title mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 bg-brand-500 rounded-full"></span>
+                Active
               </h2>
               <div className="space-y-6">
                 {activeByStudent.map((group) => (
@@ -200,7 +189,7 @@ export default async function AssignmentsPage() {
           {/* Draft Assignments */}
           {draftAssignments.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <h2 className="card-title mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
                 Drafts
               </h2>
@@ -215,8 +204,8 @@ export default async function AssignmentsPage() {
           {/* Completed Assignments - Grouped by Student */}
           {completedByStudent.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <h2 className="card-title mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 bg-[#2e8b57] rounded-full"></span>
                 Completed
               </h2>
               <div className="space-y-6">
@@ -257,7 +246,7 @@ export default async function AssignmentsPage() {
                 href="/tutor/assignments/new"
                 className="btn btn-primary btn-sm inline-flex"
               >
-                Create Assignment
+                Create assignment
               </Link>
             ) : (
               <>
@@ -265,7 +254,7 @@ export default async function AssignmentsPage() {
                   href="/tutor/questions/new"
                   className="btn btn-secondary btn-sm inline-flex"
                 >
-                  Add Questions
+                  Add questions
                 </Link>
                 <Link
                   href="/tutor/generate"
@@ -330,10 +319,9 @@ function AssignmentRow({ assignment, tz }: { assignment: AssignmentWithChildren;
               </span>
             </div>
             <div className="text-sm text-gray-500 flex items-center gap-3">
-              <span>{totalQuestions} questions total</span>
+              <span>{totalQuestions} question{totalQuestions === 1 ? '' : 's'} total</span>
               {assignment.due_at && (
                 <>
-                  <span>•</span>
                   <span>Due {fmt(new Date(assignment.due_at), 'd MMM')}</span>
                 </>
               )}
@@ -359,7 +347,7 @@ function AssignmentRow({ assignment, tz }: { assignment: AssignmentWithChildren;
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-700 truncate">{child.title}</div>
                 <div className="text-xs text-gray-500">
-                  {child.assignment_items?.length || 0} questions
+                  {child.assignment_items?.length || 0} question{(child.assignment_items?.length || 0) === 1 ? '' : 's'}
                 </div>
               </div>
               <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -380,10 +368,9 @@ function AssignmentRow({ assignment, tz }: { assignment: AssignmentWithChildren;
       <div className="flex-1 min-w-0">
         <div className="font-medium text-gray-900 truncate">{assignment.title}</div>
         <div className="text-sm text-gray-500 flex items-center gap-3">
-          <span>{assignment.assignment_items?.length || 0} questions</span>
+          <span>{assignment.assignment_items?.length || 0} question{(assignment.assignment_items?.length || 0) === 1 ? '' : 's'}</span>
           {assignment.due_at && (
             <>
-              <span>•</span>
               <span>Due {fmt(new Date(assignment.due_at), 'd MMM')}</span>
             </>
           )}
@@ -424,11 +411,9 @@ function AssignmentCard({ assignment, tz }: { assignment: Assignment; tz: string
           </div>
           <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
             <span>{studentProfile?.name || 'All students'}</span>
-            <span>•</span>
-            <span>{items?.length || 0} questions</span>
+            <span>{items?.length || 0} question{(items?.length || 0) === 1 ? '' : 's'}</span>
             {assignment.due_at && (
               <>
-                <span>•</span>
                 <span>Due {fmt(new Date(assignment.due_at), 'd MMM yyyy')}</span>
               </>
             )}

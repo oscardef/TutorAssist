@@ -267,7 +267,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
         >
           {/* Header */}
           <div className="flex items-center justify-between px-3 py-2 bg-blue-500 text-white">
-            <span className="text-sm font-medium">Math Symbols</span>
+            <span className="text-sm font-medium">Math symbols</span>
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 hover:bg-white/20 rounded transition-colors"
@@ -281,7 +281,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
 
           {/* Quick Access Section */}
           <div className="p-2 border-b border-gray-100 bg-gray-50">
-            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Quick Access</div>
+            <div className="text-xs font-semibold text-gray-500 mb-1.5">Quick access</div>
             <div className="flex gap-1 flex-wrap">
               {FREQUENT_SYMBOLS.map((symbol, idx) => (
                 <button
@@ -316,7 +316,7 @@ export default function MathSymbolsPanel({ onInsert, disabled = false, buttonCla
 
           {/* Category name label */}
           <div className="px-2 pt-1.5 pb-0.5">
-            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{SYMBOL_CATEGORIES[activeCategory].name}</div>
+            <div className="text-xs font-semibold text-gray-500">{SYMBOL_CATEGORIES[activeCategory].name}</div>
           </div>
 
           {/* Symbols grid */}

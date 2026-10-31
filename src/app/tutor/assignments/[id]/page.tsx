@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LatexRenderer } from '@/components/latex-renderer'
 import { formatDate } from '@/lib/dates'
+import { Ledger, LedgerItem } from '@/components/ui/ledger'
 
 interface Question {
   id: string
@@ -241,7 +242,7 @@ export default function TutorAssignmentDetailPage() {
               <h1 className="page-title">{assignment.title}</h1>
               {isParent && (
                 <span className="chip chip-brand">
-                  Parent Assignment
+                  Parent assignment
                 </span>
               )}
             </div>
@@ -287,7 +288,7 @@ export default function TutorAssignmentDetailPage() {
                 disabled={updating}
                 className="btn btn-primary btn-sm"
               >
-                Mark Complete
+                Mark complete
               </button>
             )}
             <button
@@ -302,36 +303,12 @@ export default function TutorAssignmentDetailPage() {
 
       {/* Progress Summary */}
       {assignment.student_profiles && (
-        <div className="grid gap-4 sm:grid-cols-4 mb-6">
-          <div className="card p-4">
-            <div className="text-sm font-medium text-gray-500">Questions</div>
-            <div className="mt-1 text-2xl font-semibold text-gray-900">
-              {answeredCount}/{items.length}
-            </div>
-            <div className="text-xs text-gray-500">answered</div>
-          </div>
-          <div className="card p-4">
-            <div className="text-sm font-medium text-gray-500">Correct</div>
-            <div className="mt-1 text-2xl font-semibold text-green-600">
-              {correctCount}/{answeredCount || 1}
-            </div>
-            <div className="text-xs text-gray-500">
-              {answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0}% accuracy
-            </div>
-          </div>
-          <div className="card p-4">
-            <div className="text-sm font-medium text-gray-500">Time Spent</div>
-            <div className="mt-1 text-2xl font-semibold text-gray-900">
-              {Math.round(totalTimeSpent / 60)}
-            </div>
-            <div className="text-xs text-gray-500">minutes</div>
-          </div>
-          <div className="card p-4">
-            <div className="text-sm font-medium text-gray-500">Hints Used</div>
-            <div className="mt-1 text-2xl font-semibold text-yellow-600">{hintsUsed}</div>
-            <div className="text-xs text-gray-500">total hints</div>
-          </div>
-        </div>
+        <Ledger className="mb-6">
+          <LedgerItem label="Answered" value={<>{answeredCount}<span className="text-gray-400">/{items.length}</span></>} />
+          <LedgerItem label="Right" value={answeredCount > 0 ? `${Math.round((correctCount / answeredCount) * 100)}%` : '–'} note={answeredCount > 0 ? `${correctCount} of ${answeredCount}` : undefined} tone={answeredCount > 0 ? 'good' : undefined} />
+          <LedgerItem label="Minutes spent" value={Math.round(totalTimeSpent / 60)} />
+          <LedgerItem label="Hints used" value={hintsUsed} tone={hintsUsed > 0 ? 'spark' : undefined} />
+        </Ledger>
       )}
 
       {/* Progress Bar */}
@@ -367,7 +344,7 @@ export default function TutorAssignmentDetailPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Generating...
+                Generating…
               </>
             ) : (
               <>
@@ -430,7 +407,7 @@ export default function TutorAssignmentDetailPage() {
                         onClick={() => toggleExpanded(item.question.id)}
                         className="ml-auto text-xs text-blue-600 hover:text-blue-800"
                       >
-                        {isExpanded ? 'Hide Details' : 'Show Details'}
+                        {isExpanded ? 'Hide details' : 'Show details'}
                       </button>
                     </div>
                     
@@ -474,7 +451,7 @@ export default function TutorAssignmentDetailPage() {
                       {/* Correct Answer */}
                       {correctAnswer && (
                         <div className="bg-green-50 p-3 rounded-lg">
-                          <div className="text-xs font-medium text-green-800 mb-1">Correct Answer</div>
+                          <div className="text-xs font-medium text-green-800 mb-1">Correct answer</div>
                           <div className="text-green-900">
                             <LatexRenderer content={
                               typeof correctAnswer === 'object' && 'value' in correctAnswer 
@@ -503,7 +480,7 @@ export default function TutorAssignmentDetailPage() {
                       {/* Solution Steps */}
                       {solutionSteps.length > 0 && (
                         <div className="bg-blue-50 p-3 rounded-lg">
-                          <div className="text-xs font-medium text-blue-800 mb-2">Solution Steps</div>
+                          <div className="text-xs font-medium text-blue-800 mb-2">Solution steps</div>
                           <ol className="space-y-2">
                             {solutionSteps.map((step, stepIdx) => {
                               // Handle both string and object formats

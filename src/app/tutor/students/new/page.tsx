@@ -297,7 +297,7 @@ export default function NewStudentPage() {
           </div>
 
           <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700">Invite Link</label>
+            <label className="block text-sm font-medium text-gray-700">Invite link</label>
             <div className="mt-1 flex rounded-lg border border-gray-300 bg-gray-50">
               <input
                 type="text"
@@ -325,7 +325,7 @@ export default function NewStudentPage() {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-medium text-gray-900">Send Invite Email</h3>
+                  <h3 className="text-sm font-medium text-gray-900">Send invite email</h3>
                   <p className="mt-1 text-sm text-gray-500">Send a professional invite email to {formData.email}</p>
                   
                   {emailError && <p className="mt-2 text-sm text-red-600">{emailError}</p>}
@@ -350,14 +350,14 @@ export default function NewStudentPage() {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                           </svg>
-                          Sending...
+                          Sending…
                         </>
                       ) : (
                         <>
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                           </svg>
-                          Send Invite Email
+                          Send invite email
                         </>
                       )}
                     </button>
@@ -372,7 +372,7 @@ export default function NewStudentPage() {
               onClick={() => router.push('/tutor/students')}
               className="btn btn-secondary btn-sm flex-1"
             >
-              Back to Students
+              Back to students
             </button>
             <button
               onClick={() => {
@@ -397,7 +397,7 @@ export default function NewStudentPage() {
               }}
               className="btn btn-primary btn-sm flex-1"
             >
-              Add Another
+              Add another
             </button>
           </div>
         </div>
@@ -408,7 +408,7 @@ export default function NewStudentPage() {
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-6">
-        <h1 className="page-title">Add Student</h1>
+        <h1 className="page-title">Add student</h1>
         <p className="mt-1 text-sm text-gray-500">
           Create a student profile and generate an invite link.
         </p>
@@ -437,7 +437,7 @@ export default function NewStudentPage() {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Student Email
+            Student email
           </label>
           <input
             id="email"
@@ -466,7 +466,7 @@ export default function NewStudentPage() {
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Additional Emails
+            Additional emails
           </label>
           <p className="text-xs text-gray-500 mb-2">Add other emails to receive session invites</p>
           {formData.additional_emails.map((email, index) => (
@@ -500,13 +500,13 @@ export default function NewStudentPage() {
 
         {/* Study Program & Grade Level Section */}
         <div className="border-t pt-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Academic Information</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Academic information</h3>
           
           <div className="space-y-4">
             {/* Study Program */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Study Program
+                Study program
               </label>
               {loadingPrograms ? (
                 <div className="animate-pulse h-10 bg-gray-100 rounded-lg"></div>
@@ -533,7 +533,7 @@ export default function NewStudentPage() {
                       disabled={creatingProgram || !newProgramName.trim() || !newProgramCode.trim()}
                       className="btn btn-primary btn-sm flex-1"
                     >
-                      {creatingProgram ? 'Creating...' : 'Create Program'}
+                      {creatingProgram ? 'Creating…' : 'Create program'}
                     </button>
                     <button
                       type="button"
@@ -559,7 +559,7 @@ export default function NewStudentPage() {
                     })}
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
-                    <option value="">Select a program...</option>
+                    <option value="">Select a program…</option>
                     {programs.map(program => (
                       <option key={program.id} value={program.id}>
                         {program.name} ({program.code})
@@ -581,7 +581,7 @@ export default function NewStudentPage() {
             {formData.study_program_id && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Grade Level
+                  Grade level
                 </label>
                 {showNewGrade ? (
                   <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
@@ -606,7 +606,7 @@ export default function NewStudentPage() {
                         disabled={creatingGrade || !newGradeName.trim() || !newGradeCode.trim()}
                         className="btn btn-primary btn-sm flex-1"
                       >
-                        {creatingGrade ? 'Creating...' : 'Create Grade'}
+                        {creatingGrade ? 'Creating…' : 'Create grade'}
                       </button>
                       <button
                         type="button"
@@ -628,7 +628,7 @@ export default function NewStudentPage() {
                       onChange={(e) => setFormData({ ...formData, grade_level_id: e.target.value })}
                       className="flex-1 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      <option value="">Select a grade level...</option>
+                      <option value="">Select a grade level…</option>
                       {availableGradeLevels.map(grade => (
                         <option key={grade.id} value={grade.id}>
                           {grade.name} ({grade.code})
@@ -650,7 +650,7 @@ export default function NewStudentPage() {
             {/* Grade Rollover Month */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Grade Rollover Month
+                Grade rollover month
               </label>
               <select
                 value={formData.grade_rollover_month}
@@ -677,7 +677,7 @@ export default function NewStudentPage() {
 
         {/* Assigned Tutor Section */}
         <div className="border-t pt-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Assigned Tutor</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Assigned tutor</h3>
           <select
             value={formData.assigned_tutor_id}
             onChange={(e) => setFormData({ ...formData, assigned_tutor_id: e.target.value })}
@@ -723,7 +723,7 @@ export default function NewStudentPage() {
 
         <div>
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-            Private Notes
+            Private notes
           </label>
           <p className="text-xs text-gray-500">Only visible to you</p>
           <textarea
@@ -748,7 +748,7 @@ export default function NewStudentPage() {
             disabled={loading}
             className="btn btn-primary btn-sm flex-1"
           >
-            {loading ? 'Creating...' : 'Create & Get Invite Link'}
+            {loading ? 'Creating…' : 'Create & Get Invite Link'}
           </button>
         </div>
       </form>

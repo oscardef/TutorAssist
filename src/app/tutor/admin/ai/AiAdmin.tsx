@@ -62,7 +62,7 @@ export default function AiAdmin() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="card-title inline-flex items-center gap-1.5">Platform <InfoTip text="The switch pauses AI for everyone except platform owners. The budget is the most all AI use may cost in a calendar month." className="text-gray-400" /></h2>
-            <p className="mt-1 text-sm text-gray-500 tnum">{totals.all.day} requests today · {totals.all.month} this month · {usd(totals.all.cost)}{budget !== null ? ` of ${usd(budget)}` : ''}</p>
+            <p className="mt-1 text-sm text-gray-500 tnum">{totals.all.day} requests today, {totals.all.month} this month, {usd(totals.all.cost)}{budget !== null ? ` of ${usd(budget)}` : ''}</p>
           </div>
           <Switch on={global?.ai_enabled !== false} label="AI features on" onChange={v => save({ ...(global ?? { scope: 'global', subject: null }), scope: 'global', subject: null, ai_enabled: v })} />
         </div>
@@ -70,7 +70,7 @@ export default function AiAdmin() {
         <CapsEditor row={global} scope="global" subject={null} onSave={save} showEnabled={false} />
         {data.operations.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5 text-xs">
-            {data.operations.map(o => <span key={o.op} className="chip tnum">{o.op.replace(/_/g, ' ')} · {o.n} · {usd(o.cost)}</span>)}
+            {data.operations.map(o => <span key={o.op} className="chip tnum">{o.op.replace(/_/g, ' ')}, {o.n}, {usd(o.cost)}</span>)}
           </div>
         )}
       </section>
@@ -96,9 +96,9 @@ export default function AiAdmin() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-bold text-ink">{p.name || p.email}</p>
-                    <p className="truncate text-xs text-gray-500">{p.email} · {p.role.replace('_', ' ')} · {wsName(p.workspace_id)}{data.envAllowed.includes((p.email || '').toLowerCase()) ? ' · on via AI_ALLOWED_EMAILS' : ''}</p>
+                    <p className="truncate text-xs text-gray-500">{p.email}, {p.role.replace('_', ' ')}, {wsName(p.workspace_id)}{data.envAllowed.includes((p.email || '').toLowerCase()) ? ', on via AI_ALLOWED_EMAILS' : ''}</p>
                   </div>
-                  <p className="text-xs text-gray-500 tnum">{u ? `${u.day} today · ${u.month} this month · ${usd(u.cost)}` : 'No AI use this month'}</p>
+                  <p className="text-xs text-gray-500 tnum">{u ? `${u.day} today, ${u.month} this month, ${usd(u.cost)}` : 'No AI use this month'}</p>
                 </div>
                 <CapsEditor row={row} scope="user" subject={p.user_id} onSave={save} onClear={row ? () => clear('user', p.user_id) : undefined} tri disabled={p.role === 'platform_owner' || data.owners.includes((p.email || '').toLowerCase())} />
               </li>
@@ -117,7 +117,7 @@ export default function AiAdmin() {
               <li key={w.id} className="px-5 py-4 sm:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-bold text-ink">{w.name}</p>
-                  <p className="text-xs text-gray-500 tnum">{u ? `${u.day} today · ${u.month} this month · ${usd(u.cost)}` : 'No AI use this month'}</p>
+                  <p className="text-xs text-gray-500 tnum">{u ? `${u.day} today, ${u.month} this month, ${usd(u.cost)}` : 'No AI use this month'}</p>
                 </div>
                 <CapsEditor row={row} scope="workspace" subject={w.id} onSave={save} onClear={row ? () => clear('workspace', w.id) : undefined} tri />
               </li>

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
 import { isPast, differenceInDays } from 'date-fns'
 import { userTimeZone, zoned } from '@/lib/tz'
+import { Ledger, LedgerItem } from '@/components/ui/ledger'
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -131,12 +132,12 @@ export default async function TutorDashboard() {
             {hasActionItems ? 'A few things need your attention.' : 'Nothing is waiting on you. Nice.'}
           </p>
         </div>
-        <dl className="animate-rise-2 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Students" value={students?.length || 0} />
-          <Stat label="Active in 14 days" value={activeStudents} />
-          <Stat label="Accuracy, 14 days" value={fortnightAccuracy === null ? '–' : `${fortnightAccuracy}%`} />
-          <Stat label="Sessions today" value={todaySessions.length} />
-        </dl>
+        <Ledger className="animate-rise-2 mt-6">
+          <LedgerItem label="Students" value={students?.length || 0} />
+          <LedgerItem label="Active in 14 days" value={activeStudents} />
+          <LedgerItem label="Accuracy, 14 days" value={fortnightAccuracy === null ? '–' : `${fortnightAccuracy}%`} />
+          <LedgerItem label="Sessions today" value={todaySessions.length} />
+        </Ledger>
       </section>
 
       {/* Attention items */}
@@ -253,7 +254,7 @@ export default async function TutorDashboard() {
                       <div className="min-w-0">
                         <div className="truncate font-bold text-ink">{student.name}</div>
                         <div className="truncate text-sm text-gray-500">
-                          {[student.grade_current ? `Grade ${student.grade_current}` : null, student.school].filter(Boolean).join(' · ') || 'No details yet'}
+                          {[student.grade_current ? `Grade ${student.grade_current}` : null, student.school].filter(Boolean).join(', ') || 'No details yet'}
                         </div>
                       </div>
                     </div>
@@ -284,23 +285,15 @@ export default async function TutorDashboard() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="card px-4 py-3">
-      <dt className="text-xs font-semibold text-gray-500">{label}</dt>
-      <dd className="mt-1 text-2xl font-extrabold text-ink tnum">{value}</dd>
-    </div>
-  )
-}
-
 function Attention({ href, icon, tone, title, body }: { href: string; icon: React.ReactNode; tone: 'spark' | 'red'; title: string; body: string }) {
+  // A margin note: a white slip with a coloured edge, like a tutor's pen mark
   const tones = {
-    spark: 'border-spark-200 bg-spark-50 hover:bg-spark-100 [&_.ico]:bg-spark-200 [&_.ico]:text-spark-700',
-    red: 'border-red-200 bg-red-50 hover:bg-red-100 [&_.ico]:bg-red-200 [&_.ico]:text-red-700',
+    spark: 'border-l-spark-400 [&_.ico]:text-spark-600',
+    red: 'border-l-[#d9534f] [&_.ico]:text-[#c0392b]',
   }
   return (
-    <Link href={href} className={`flex items-center gap-3 rounded-2xl border p-4 transition-colors ${tones[tone]}`}>
-      <div className="ico flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full">{icon}</div>
+    <Link href={href} className={`flex items-center gap-3 rounded-r-lg border border-l-4 border-line bg-white p-4 transition-colors hover:bg-paper ${tones[tone]}`}>
+      <div className="ico flex-shrink-0">{icon}</div>
       <div className="min-w-0">
         <div className="font-extrabold text-ink">{title}</div>
         <div className="text-sm text-gray-600">{body}</div>

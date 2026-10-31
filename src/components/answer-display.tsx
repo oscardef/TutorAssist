@@ -139,15 +139,15 @@ export function AnswerDisplay({ answerType, correctAnswer, className = '' }: Ans
  */
 export function AnswerTypeBadge({ answerType }: { answerType: string }) {
   const typeLabels: Record<string, string> = {
-    multiple_choice: 'Multiple Choice',
-    short_answer: 'Short Answer',
-    long_answer: 'Long Answer',
+    multiple_choice: 'Multiple choice',
+    short_answer: 'Short answer',
+    long_answer: 'Long answer',
     numeric: 'Numeric',
     expression: 'Expression',
     true_false: 'True/False',
-    fill_blank: 'Fill in Blank',
+    fill_blank: 'Fill in blank',
     matching: 'Matching',
-    exact: 'Short Answer', // Legacy
+    exact: 'Short answer', // Legacy
   }
 
   const typeColors: Record<string, string> = {

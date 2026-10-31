@@ -243,7 +243,7 @@ export default function NewQuestionPage() {
         <Link href="/tutor/questions" className="text-gray-600 hover:text-gray-900 text-sm">
           ← Back to Question Bank
         </Link>
-        <h1 className="page-title mt-2">Add Question</h1>
+        <h1 className="page-title mt-2">Add question</h1>
         <p className="text-gray-600 mt-1">
           Create a new practice question manually
         </p>
@@ -259,13 +259,13 @@ export default function NewQuestionPage() {
         {/* Topic Selection */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Topic *</h2>
+            <h2 className="card-title">Topic *</h2>
             <button
               type="button"
               onClick={() => setShowCreateTopic(true)}
               className="text-sm text-blue-600 hover:text-blue-500 font-medium"
             >
-              + Create Topic
+              Create topic
             </button>
           </div>
           
@@ -276,7 +276,7 @@ export default function NewQuestionPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
-              <option value="">Select a topic...</option>
+              <option value="">Select a topic…</option>
               {topics.map((topic) => (
                 <option key={topic.id} value={topic.id}>
                   {topic.name}
@@ -299,7 +299,7 @@ export default function NewQuestionPage() {
         
         {/* Question Content */}
         <div className="card p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Question Content</h2>
+          <h2 className="card-title">Question content</h2>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -334,11 +334,11 @@ export default function NewQuestionPage() {
         
         {/* Answer Configuration */}
         <div className="card p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Answer</h2>
+          <h2 className="card-title">Answer</h2>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Answer Type
+              Answer type
             </label>
             <div className="flex gap-2">
               {(['exact', 'numeric', 'multiple_choice'] as const).map((type) => (
@@ -352,7 +352,7 @@ export default function NewQuestionPage() {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {type === 'exact' ? 'Exact Match' : type === 'numeric' ? 'Numeric' : 'Multiple Choice'}
+                  {type === 'exact' ? 'Exact match' : type === 'numeric' ? 'Numeric' : 'Multiple choice'}
                 </button>
               ))}
             </div>
@@ -361,7 +361,7 @@ export default function NewQuestionPage() {
           {answerType === 'multiple_choice' ? (
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">
-                Answer Choices
+                Answer choices
               </label>
               {multipleChoiceOptions.map((option, index) => (
                 <div key={index} className="flex items-center gap-2">
@@ -438,7 +438,7 @@ export default function NewQuestionPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Difficulty */}
             <div>
-              <h2 className="font-semibold text-gray-900 mb-4">Difficulty</h2>
+              <h2 className="card-title mb-4">Difficulty</h2>
               <div className="flex items-center gap-4">
                 <input
                   type="range"
@@ -462,7 +462,7 @@ export default function NewQuestionPage() {
             
             {/* Grade Level */}
             <div>
-              <h2 className="font-semibold text-gray-900 mb-4">Grade Level</h2>
+              <h2 className="card-title mb-4">Grade level</h2>
               <select
                 value={gradeLevel || ''}
                 onChange={(e) => setGradeLevel(e.target.value ? parseInt(e.target.value) : null)}
@@ -522,13 +522,13 @@ export default function NewQuestionPage() {
         {/* Hints */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Hints (optional)</h2>
+            <h2 className="card-title">Hints (optional)</h2>
             <button
               type="button"
               onClick={addHint}
               className="text-sm text-blue-600 hover:text-blue-500 font-medium"
             >
-              + Add Hint
+              Add hint
             </button>
           </div>
           
@@ -559,13 +559,13 @@ export default function NewQuestionPage() {
         {/* Solution Steps */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Solution Steps (optional)</h2>
+            <h2 className="card-title">Solution Steps (optional)</h2>
             <button
               type="button"
               onClick={addSolutionStep}
               className="text-sm text-blue-600 hover:text-blue-500 font-medium"
             >
-              + Add Step
+              Add step
             </button>
           </div>
           
@@ -598,7 +598,7 @@ export default function NewQuestionPage() {
         
         {/* Tags */}
         <div className="card p-6">
-          <h2 className="font-semibold text-gray-900 mb-2">Tags (optional)</h2>
+          <h2 className="card-title mb-2">Tags (optional)</h2>
           <input
             type="text"
             value={tags}
@@ -621,7 +621,7 @@ export default function NewQuestionPage() {
             disabled={saving}
             className="btn btn-primary btn-sm"
           >
-            {saving ? 'Creating...' : 'Create Question'}
+            {saving ? 'Creating…' : 'Create question'}
           </button>
         </div>
       </form>
@@ -630,7 +630,7 @@ export default function NewQuestionPage() {
       {showCreateTopic && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Topic</h2>
+            <h2 className="card-title mb-4">Create topic</h2>
             
             <div className="space-y-4">
               <div>
@@ -676,7 +676,7 @@ export default function NewQuestionPage() {
                 disabled={creatingTopic}
                 className="btn btn-primary btn-sm"
               >
-                {creatingTopic ? 'Creating...' : 'Create Topic'}
+                {creatingTopic ? 'Creating…' : 'Create topic'}
               </button>
             </div>
           </div>

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import { userTimeZone, zoned } from '@/lib/tz'
+import { Ledger, LedgerItem } from '@/components/ui/ledger'
 
 export default async function StudentDetailPage({
   params,
@@ -174,7 +175,7 @@ export default async function StudentDetailPage({
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            Back to Students
+            Back to students
           </Link>
           <h1 className="page-title mt-2">{student.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
@@ -195,10 +196,10 @@ export default async function StudentDetailPage({
               </span>
             )}
             {student.school && (
-              <span className="text-gray-500">• {student.school}</span>
+              <span className="text-gray-500">{student.school}</span>
             )}
             {student.age && (
-              <span className="text-gray-500">• Age {student.age}</span>
+              <span className="text-gray-500">Age {student.age}</span>
             )}
           </div>
         </div>
@@ -213,7 +214,7 @@ export default async function StudentDetailPage({
             href={`/tutor/assignments/new?student=${id}`}
             className="btn btn-primary btn-sm"
           >
-            Create Assignment
+            Create assignment
           </Link>
         </div>
       </div>
@@ -226,7 +227,7 @@ export default async function StudentDetailPage({
               {assignedTutor.name?.charAt(0).toUpperCase() || 'T'}
             </div>
             <div>
-              <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Assigned Tutor</p>
+              <p className="text-xs font-semibold text-brand-700">Assigned tutor</p>
               <p className="text-sm font-semibold text-gray-900">{assignedTutor.name}</p>
               <p className="text-xs text-gray-500">{assignedTutor.email}</p>
             </div>
@@ -237,11 +238,11 @@ export default async function StudentDetailPage({
       {/* Contact Information */}
       {(student.email || student.parent_email || (student.additional_emails && student.additional_emails.length > 0)) && (
         <div className="card p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Contact Information</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Contact information</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {student.email && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Student Email</p>
+                <p className="text-xs font-semibold text-gray-500">Student email</p>
                 <a href={`mailto:${student.email}`} className="text-sm text-blue-600 hover:text-blue-500">
                   {student.email}
                 </a>
@@ -249,7 +250,7 @@ export default async function StudentDetailPage({
             )}
             {student.parent_email && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Parent/Guardian Email</p>
+                <p className="text-xs font-semibold text-gray-500">Parent or guardian email</p>
                 <a href={`mailto:${student.parent_email}`} className="text-sm text-blue-600 hover:text-blue-500">
                   {student.parent_email}
                 </a>
@@ -257,7 +258,7 @@ export default async function StudentDetailPage({
             )}
             {student.additional_emails && student.additional_emails.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Additional Emails</p>
+                <p className="text-xs font-semibold text-gray-500">Other emails</p>
                 <div className="flex flex-col gap-1">
                   {student.additional_emails.map((email: string, idx: number) => (
                     <a key={idx} href={`mailto:${email}`} className="text-sm text-blue-600 hover:text-blue-500">
@@ -279,7 +280,7 @@ export default async function StudentDetailPage({
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
             </svg>
             <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-amber-800">Pending Invite</h3>
+              <h3 className="text-sm font-medium text-amber-800">Pending invite</h3>
               <p className="mt-1 text-sm text-amber-700">
                 This student hasn&apos;t joined yet. They need to sign up using their invite link.
               </p>
@@ -288,44 +289,32 @@ export default async function StudentDetailPage({
               href={`/tutor/students/${id}/edit`}
               className="ml-4 shrink-0 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-200 transition-colors"
             >
-              Resend Invite
+              Resend invite
             </Link>
           </div>
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="card p-6">
-          <div className="text-sm font-medium text-gray-500">Total Attempts</div>
-          <div className="page-title mt-2">{totalAttempts}</div>
-        </div>
-        <div className="card p-6">
-          <div className="text-sm font-medium text-gray-500">Accuracy</div>
-          <div className="page-title mt-2">{accuracy}%</div>
-        </div>
-        <div className="card p-6">
-          <div className="text-sm font-medium text-gray-500">Items Due</div>
-          <div className="page-title mt-2">{dueItems}</div>
-        </div>
-        <div className="card p-6">
-          <div className="text-sm font-medium text-gray-500">Assignments</div>
-          <div className="page-title mt-2">{assignmentProgress.length}</div>
-        </div>
-      </div>
+      <Ledger>
+        <LedgerItem label="Questions answered" value={totalAttempts} />
+        <LedgerItem label="Right" value={totalAttempts > 0 ? `${accuracy}%` : '–'} />
+        <LedgerItem label="Due for review" value={dueItems} tone={dueItems > 0 ? 'spark' : undefined} />
+        <LedgerItem label="Assignments" value={assignmentProgress.length} />
+      </Ledger>
 
       {/* Assignments Progress */}
       <div className="card overflow-hidden">
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-gray-900">Assignments</h2>
+            <h2 className="card-title">Assignments</h2>
             <p className="text-xs text-gray-500 mt-0.5">Track student progress on assigned work</p>
           </div>
           <Link
             href={`/tutor/assignments/new?student=${id}`}
             className="text-sm font-medium text-blue-600 hover:text-blue-500"
           >
-            + New Assignment
+            New assignment
           </Link>
         </div>
         {assignmentProgress.length > 0 ? (
@@ -347,7 +336,7 @@ export default async function StudentDetailPage({
                         {assignment.title}
                       </Link>
                       <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-                        <span>{assignment.totalQuestions} questions</span>
+                        <span>{assignment.totalQuestions} question{assignment.totalQuestions === 1 ? '' : 's'}</span>
                         {assignment.due_at && (
                           <span className={isDue && !assignment.isComplete ? 'text-red-600 font-medium' : ''}>
                             Due {fmt(new Date(assignment.due_at), 'd MMM yyyy')}
@@ -418,7 +407,7 @@ export default async function StudentDetailPage({
         {/* Topic Breakdown */}
         <div className="card">
           <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="font-semibold text-gray-900">Performance by Topic</h2>
+            <h2 className="card-title">Performance by topic</h2>
           </div>
           <div className="p-6">
             {Object.keys(topicStats).length > 0 ? (
@@ -452,7 +441,7 @@ export default async function StudentDetailPage({
           <div className="border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-gray-900">Private Notes</h2>
+                <h2 className="card-title">Private notes</h2>
                 <p className="text-xs text-gray-500">Only visible to tutors</p>
               </div>
               <Link
@@ -502,7 +491,7 @@ export default async function StudentDetailPage({
                       {attempt.questions?.prompt_text}
                     </div>
                     <div className="mt-1 text-xs text-gray-500">
-                      {attempt.questions?.topics?.name || 'Uncategorized'} • {fmt(new Date(attempt.created_at), 'd MMM, HH:mm')}
+                      {attempt.questions?.topics?.name || 'No topic'}, {fmt(new Date(attempt.created_at), 'd MMM, HH:mm')}
                     </div>
                     <div className="mt-2 flex items-center gap-4 text-sm">
                       <div className="flex items-center gap-1">

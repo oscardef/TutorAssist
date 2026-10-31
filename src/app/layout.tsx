@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope } from "next/font/google";
+import { Manrope, STIX_Two_Text } from "next/font/google";
 import "./globals.css";
 import { headers } from "next/headers";
 import { TimezoneCookie } from "@/components/timezone-cookie";
@@ -11,10 +11,19 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+// Display face for page titles and key numbers: the typeface of scientific
+// publishing, so headings read like a well-set textbook
+const stix = STIX_Two_Text({
+  subsets: ["latin"],
+  variable: "--font-stix",
+  display: "swap",
+  weight: ["500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: {
     default: "Mathium",
-    template: "%s · Mathium",
+    template: "%s – Mathium",
   },
   description: "Maths practice that fits the syllabus, and the tools tutors use to run it.",
 };
@@ -34,7 +43,7 @@ export default async function RootLayout({
   // put the CSP nonce from src/proxy.ts on its scripts
   await headers();
   return (
-    <html lang="en" className={manrope.variable}>
+    <html lang="en" className={`${manrope.variable} ${stix.variable}`}>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased" suppressHydrationWarning>
         <TimezoneCookie />
         <a

@@ -341,9 +341,9 @@ export default function EditStudentPage({
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
-          Back to Student
+          Back to student
         </Link>
-        <h1 className="page-title mt-2">Edit Student</h1>
+        <h1 className="page-title mt-2">Edit student</h1>
         <p className="mt-1 text-sm text-gray-500">
           Update student information and settings
         </p>
@@ -362,7 +362,7 @@ export default function EditStudentPage({
         {/* Basic Info Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Basic Information</h2>
+            <h2 className="card-title">Basic information</h2>
           </div>
           <div className="p-6 space-y-4">
             <div>
@@ -414,13 +414,13 @@ export default function EditStudentPage({
         {/* Academic Info Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Academic Information</h2>
+            <h2 className="card-title">Academic information</h2>
             <p className="text-xs text-gray-500 mt-0.5">Set the student&apos;s curriculum and grade level</p>
           </div>
           <div className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Study Program
+                Study program
               </label>
               <div className="flex gap-2">
                 <select
@@ -428,7 +428,7 @@ export default function EditStudentPage({
                   onChange={(e) => setFormData({ ...formData, study_program_id: e.target.value, grade_level_id: '' })}
                   className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="">Select program...</option>
+                  <option value="">Select program…</option>
                   {programs.map(program => (
                     <option key={program.id} value={program.id}>
                       {program.name} ({program.code})
@@ -447,7 +447,7 @@ export default function EditStudentPage({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Grade Level
+                Grade level
               </label>
               <div className="flex gap-2">
                 <select
@@ -456,7 +456,7 @@ export default function EditStudentPage({
                   disabled={!formData.study_program_id}
                   className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
                 >
-                  <option value="">{formData.study_program_id ? 'Select grade level...' : 'Select a program first'}</option>
+                  <option value="">{formData.study_program_id ? 'Select grade level…' : 'Select a program first'}</option>
                   {availableGrades.map(grade => (
                     <option key={grade.id} value={grade.id}>
                       {grade.name} ({grade.code})
@@ -476,7 +476,7 @@ export default function EditStudentPage({
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Grade Rollover Month
+                Grade rollover month
               </label>
                 <select
                   value={formData.grade_rollover_month}
@@ -497,7 +497,7 @@ export default function EditStudentPage({
         {/* Assigned Tutor Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Assigned Tutor</h2>
+            <h2 className="card-title">Assigned tutor</h2>
             <p className="text-xs text-gray-500 mt-0.5">Select the primary tutor for this student</p>
           </div>
           <div className="p-6">
@@ -522,12 +522,12 @@ export default function EditStudentPage({
         {/* Contact Info Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Contact Information</h2>
+            <h2 className="card-title">Contact information</h2>
           </div>
           <div className="p-6 space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Student Email
+                Student email
               </label>
               <input
                 id="email"
@@ -556,7 +556,7 @@ export default function EditStudentPage({
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Additional Contact Emails
+                Additional contact emails
               </label>
               <div className="mt-2 space-y-2">
                 {formData.additional_emails.map((email, index) => (
@@ -596,7 +596,7 @@ export default function EditStudentPage({
         {/* Notes Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Private Notes</h2>
+            <h2 className="card-title">Private notes</h2>
             <p className="text-xs text-gray-500 mt-0.5">Only visible to tutors</p>
           </div>
           <div className="p-6">
@@ -620,7 +620,7 @@ export default function EditStudentPage({
                   <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
                   </svg>
-                  <h3 className="text-sm font-semibold text-blue-900">Pending Invite</h3>
+                  <h3 className="text-sm font-semibold text-blue-900">Pending invite</h3>
                 </div>
                 <p className="mt-1 text-sm text-blue-700">
                   Student hasn&apos;t joined yet. Resend the invite email?
@@ -643,14 +643,14 @@ export default function EditStudentPage({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Sending...
+                    Sending…
                   </>
                 ) : (
                   <>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                     </svg>
-                    Resend Invite
+                    Resend invite
                   </>
                 )}
               </button>
@@ -665,7 +665,7 @@ export default function EditStudentPage({
             onClick={() => setShowDeleteConfirm(true)}
             className="btn btn-secondary btn-sm !text-[#9b2c2c] hover:!border-[#f3c7c7]"
           >
-            Delete Student
+            Delete student
           </button>
           <div className="flex gap-3">
             <Link
@@ -679,7 +679,7 @@ export default function EditStudentPage({
               disabled={saving}
               className="btn btn-primary"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Saving…' : 'Save changes'}
             </button>
           </div>
         </div>
@@ -689,7 +689,7 @@ export default function EditStudentPage({
       {showNewProgramModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Create New Program</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Create new program</h3>
             <p className="mt-1 text-sm text-gray-500">Add a new study program (e.g., IB, GCSE, A-Level)</p>
             
             <div className="mt-4 space-y-4">
@@ -729,7 +729,7 @@ export default function EditStudentPage({
                 disabled={creatingProgram || !newProgramCode.trim() || !newProgramName.trim()}
                 className="btn btn-primary btn-sm"
               >
-                {creatingProgram ? 'Creating...' : 'Create Program'}
+                {creatingProgram ? 'Creating…' : 'Create program'}
               </button>
             </div>
           </div>
@@ -740,7 +740,7 @@ export default function EditStudentPage({
       {showNewGradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Create New Grade Level</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Create new grade level</h3>
             <p className="mt-1 text-sm text-gray-500">Add a grade level to the selected program</p>
             
             <div className="mt-4 space-y-4">
@@ -780,7 +780,7 @@ export default function EditStudentPage({
                 disabled={creatingGrade || !newGradeCode.trim() || !newGradeName.trim()}
                 className="btn btn-primary btn-sm"
               >
-                {creatingGrade ? 'Creating...' : 'Create Grade Level'}
+                {creatingGrade ? 'Creating…' : 'Create grade level'}
               </button>
             </div>
           </div>
@@ -798,7 +798,7 @@ export default function EditStudentPage({
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900">Delete Student</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Delete student</h3>
                 <p className="mt-2 text-sm text-gray-500">
                   Are you sure you want to delete <strong>{formData.name}</strong>? This will permanently remove all their data including attempts, progress, and assignments.
                 </p>
@@ -819,7 +819,7 @@ export default function EditStudentPage({
                     disabled={deleting}
                     className="btn btn-danger btn-sm flex-1"
                   >
-                    {deleting ? 'Deleting...' : 'Delete Student'}
+                    {deleting ? 'Deleting…' : 'Delete student'}
                   </button>
                 </div>
               </div>

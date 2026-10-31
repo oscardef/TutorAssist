@@ -133,7 +133,7 @@ export default function MaterialsPage() {
   
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Materials</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -144,10 +144,10 @@ export default function MaterialsPage() {
           {uploading ? (
             <span className="flex items-center gap-2">
               <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-              Uploading...
+              Uploading…
             </span>
           ) : (
-            'Upload Material'
+            'Upload material'
           )}
           <input
             ref={fileInputRef}
@@ -230,7 +230,7 @@ export default function MaterialsPage() {
               <svg className="-ml-0.5 mr-1.5 h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
               </svg>
-              Upload First Material
+              Upload first material
               <input
                 ref={fileInputRef}
                 type="file"
@@ -261,7 +261,7 @@ export default function MaterialsPage() {
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-gray-700">Text Files</h4>
+            <h4 className="text-sm font-medium text-gray-700">Text files</h4>
             <p className="text-xs text-gray-500 mt-1">
               Plain text content, notes
             </p>

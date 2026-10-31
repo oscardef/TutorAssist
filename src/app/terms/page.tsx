@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { LegalPage, Section, legalContact } from '@/components/legal-page'
 
 export const metadata: Metadata = {
-  title: 'Terms of use · Mathium',
+  title: 'Terms of use',
   description: 'The rules for using Mathium, what you agree to, and what we may do with questions you create.',
 }
 

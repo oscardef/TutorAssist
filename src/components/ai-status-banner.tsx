@@ -38,5 +38,5 @@ export function AiStatusBanner() {
   if (s.person.monthly !== null) parts.push(`${s.usage.month} of ${s.person.monthly} this month`)
   if (parts.length === 0) return null
   const tight = (s.person.daily !== null && s.usage.day >= s.person.daily * 0.8) || (s.person.monthly !== null && s.usage.month >= s.person.monthly * 0.8)
-  return <p className={`text-sm ${tight ? 'font-semibold text-[#9b5c00]' : 'text-gray-500'}`} role="status">AI requests: {parts.join(' · ')}</p>
+  return <p className={`text-sm ${tight ? 'font-semibold text-[#9b5c00]' : 'text-gray-500'}`} role="status">AI requests: {parts.join(', ')}</p>
 }

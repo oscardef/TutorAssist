@@ -437,7 +437,7 @@ export default function GeneratePage() {
         throw new Error(data.error || 'Failed to generate syllabus')
       }
       
-      setSuccess(`Successfully generated ${data.topicsCreated} topic${data.topicsCreated !== 1 ? 's' : ''}! Redirecting...`)
+      setSuccess(`Successfully generated ${data.topicsCreated} topic${data.topicsCreated !== 1 ? 's' : ''}! Redirecting…`)
       setGenerating(false)
       
       // Redirect to topics page after a moment
@@ -503,7 +503,7 @@ export default function GeneratePage() {
         throw new Error(data.error || 'Failed to generate assignment')
       }
       
-      setSuccess(`Successfully created assignment for ${selectedStudents.length} student(s)! Redirecting...`)
+      setSuccess(`Successfully created assignment for ${selectedStudents.length} student(s)! Redirecting…`)
       setGenerating(false)
       
       setTimeout(() => {
@@ -608,14 +608,14 @@ export default function GeneratePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Common Filters */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            {generationType === 'topics' ? 'Target Curriculum' : 'Filter by Curriculum'}
+          <h2 className="card-title mb-4">
+            {generationType === 'topics' ? 'Target curriculum' : 'Filter by curriculum'}
           </h2>
           
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Study Program
+                Study program
               </label>
               <select
                 value={selectedProgram}
@@ -626,7 +626,7 @@ export default function GeneratePage() {
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">All Programs</option>
+                <option value="">All programs</option>
                 {programs.map(program => (
                   <option key={program.id} value={program.id}>
                     {program.name} ({program.code})
@@ -637,7 +637,7 @@ export default function GeneratePage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Grade Level {generationType === 'topics' && <span className="text-red-500">*</span>}
+                Grade level {generationType === 'topics' && <span className="text-red-500">*</span>}
               </label>
               <select
                 value={selectedGradeLevel}
@@ -648,7 +648,7 @@ export default function GeneratePage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required={generationType === 'topics'}
               >
-                <option value="">All Grade Levels</option>
+                <option value="">All grade levels</option>
                 {availableGradeLevels.map(grade => (
                   <option key={grade.id} value={grade.id}>
                     {grade.name} ({grade.code})
@@ -665,7 +665,7 @@ export default function GeneratePage() {
             {/* Topic Selection with Search */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Select Topics</h2>
+                <h2 className="card-title">Select topics</h2>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -713,12 +713,12 @@ export default function GeneratePage() {
             
             {/* Question Options */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Question Options</h2>
+              <h2 className="card-title mb-4">Question options</h2>
               
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of Questions
+                    Number of questions
                   </label>
                   <NumberInput
                     value={questionCount}
@@ -757,15 +757,15 @@ export default function GeneratePage() {
               
               <div className="mt-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Question Types
+                  Question types
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { value: 'multiple_choice', label: 'Multiple Choice' },
-                    { value: 'short_answer', label: 'Short Answer' },
-                    { value: 'long_answer', label: 'Long Answer' },
+                    { value: 'multiple_choice', label: 'Multiple choice' },
+                    { value: 'short_answer', label: 'Short answer' },
+                    { value: 'long_answer', label: 'Long answer' },
                     { value: 'true_false', label: 'True/False' },
-                    { value: 'fill_blank', label: 'Fill in the Blank' },
+                    { value: 'fill_blank', label: 'Fill in the blank' },
                     { value: 'matching', label: 'Matching' },
                   ].map((type) => (
                     <button
@@ -793,7 +793,7 @@ export default function GeneratePage() {
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-700">Worked Solutions</div>
+                    <div className="text-sm font-medium text-gray-700">Worked solutions</div>
                     <div className="text-xs text-gray-500">Include step-by-step solutions</div>
                   </div>
                 </label>
@@ -806,7 +806,7 @@ export default function GeneratePage() {
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-700">Include Hints</div>
+                    <div className="text-sm font-medium text-gray-700">Include hints</div>
                     <div className="text-xs text-gray-500">Add helpful hints for students</div>
                   </div>
                 </label>
@@ -832,7 +832,7 @@ export default function GeneratePage() {
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <div>
-                    <div className="text-sm font-medium text-gray-700">Exam Style</div>
+                    <div className="text-sm font-medium text-gray-700">Exam style</div>
                     <div className="text-xs text-gray-500">Format like official exams</div>
                   </div>
                 </label>
@@ -841,7 +841,7 @@ export default function GeneratePage() {
             
             {/* Custom Instructions */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Custom Instructions</h2>
+              <h2 className="card-title mb-4">Custom instructions</h2>
               <textarea
                 value={customInstructions}
                 onChange={(e) => setCustomInstructions(e.target.value)}
@@ -878,7 +878,7 @@ export default function GeneratePage() {
         {generationType === 'topics' && (
           <>
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Syllabus Details</h2>
+              <h2 className="card-title mb-4">Syllabus details</h2>
               
               <div className="space-y-4">
                 <div>
@@ -927,7 +927,7 @@ export default function GeneratePage() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Detail Level
+                      Detail level
                     </label>
                     <select
                       value={syllabusDepth}
@@ -971,7 +971,7 @@ export default function GeneratePage() {
             
             {/* Map from existing program */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Map from Existing Program</h2>
+              <h2 className="card-title mb-2">Map from Existing Program</h2>
               <p className="text-sm text-gray-500 mb-4">
                 Optionally base the new syllabus on topics from an existing program/grade level
               </p>
@@ -979,7 +979,7 @@ export default function GeneratePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Source Program
+                    Source program
                   </label>
                   <select
                     value={sourceProgram}
@@ -1001,14 +1001,14 @@ export default function GeneratePage() {
                 {sourceProgram && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Source Grade Level
+                      Source grade level
                     </label>
                     <select
                       value={sourceGradeLevel}
                       onChange={(e) => setSourceGradeLevel(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Select grade level...</option>
+                      <option value="">Select grade level…</option>
                       {sourceGradeLevels.map(grade => (
                         <option key={grade.id} value={grade.id}>
                           {grade.name} ({grade.code})
@@ -1022,7 +1022,7 @@ export default function GeneratePage() {
             
             {/* Custom prompt */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Custom Instructions / Curriculum Outline</h2>
+              <h2 className="card-title mb-2">Custom Instructions / Curriculum Outline</h2>
               <p className="text-sm text-gray-500 mb-3">
                 Paste a curriculum outline or add specific requirements. The AI will follow this structure closely.
               </p>
@@ -1055,7 +1055,7 @@ Or add specific requirements like:
             {/* Topic Selection for Assignment with Search */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Select Topics</h2>
+                <h2 className="card-title">Select topics</h2>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1108,7 +1108,7 @@ Or add specific requirements like:
             {/* Student Selection with Search */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Assign to Students</h2>
+                <h2 className="card-title">Assign to students</h2>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1155,7 +1155,7 @@ Or add specific requirements like:
             
             {/* Assignment Details */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Assignment Details</h2>
+              <h2 className="card-title mb-4">Assignment details</h2>
               
               <div className="space-y-4">
                 <div>
@@ -1174,7 +1174,7 @@ Or add specific requirements like:
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Number of Questions
+                      Number of questions
                     </label>
                     <NumberInput
                       value={assignmentQuestionCount}
@@ -1206,7 +1206,7 @@ Or add specific requirements like:
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Due Date
+                      Due date
                     </label>
                     <input
                       type="datetime-local"
@@ -1234,7 +1234,7 @@ Or add specific requirements like:
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Instructions for Students
+                    Instructions for students
                   </label>
                   <textarea
                     value={assignmentInstructions}
@@ -1281,7 +1281,7 @@ Or add specific requirements like:
             
             {/* Question Source Options */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Question Source</h2>
+              <h2 className="card-title mb-4">Question source</h2>
               <p className="text-sm text-gray-600 mb-4">
                 Choose where questions come from. Generated questions are automatically saved to your Question Bank.
               </p>
@@ -1321,7 +1321,7 @@ Or add specific requirements like:
             
             {/* Advanced Options */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Advanced Options</h2>
+              <h2 className="card-title mb-4">Advanced options</h2>
               
               <div className="space-y-4">
                 {/* Split into sub-assignments */}
@@ -1360,7 +1360,7 @@ Or add specific requirements like:
             
             {/* Custom AI Prompt */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">AI Customization Prompt</h2>
+              <h2 className="card-title mb-2">AI Customization Prompt</h2>
               <p className="text-sm text-gray-500 mb-3">
                 Provide additional context or instructions for the AI when generating/selecting questions.
               </p>
@@ -1404,13 +1404,13 @@ Or add specific requirements like:
             {generating ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
-                {jobStatus === 'processing' ? 'Generating...' : 'Starting...'}
+                {jobStatus === 'processing' ? 'Generating…' : 'Starting…'}
               </span>
             ) : (
               <>
                 {generationType === 'questions' && `Generate ${questionCount} Question${questionCount !== 1 ? 's' : ''}`}
-                {generationType === 'topics' && (syllabusTopicCount ? `Generate ${syllabusTopicCount} Topic${syllabusTopicCount !== 1 ? 's' : ''}` : 'Generate Topics')}
-                {generationType === 'assignment' && 'Create Assignment'}
+                {generationType === 'topics' && (syllabusTopicCount ? `Generate ${syllabusTopicCount} Topic${syllabusTopicCount !== 1 ? 's' : ''}` : 'Generate topics')}
+                {generationType === 'assignment' && 'Create assignment'}
               </>
             )}
           </button>

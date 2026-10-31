@@ -1,22 +1,30 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Mathium design tokens
-   One type family (Manrope) with weight contrast; a warm paper canvas; deep
-   ink text; one confident teal for actions; amber "spark" for progress and
-   streaks; green/red only for right/wrong feedback. Tailwind's gray and blue
-   scales are remapped so the whole app follows these tokens.
+   Mathium design tokens: the exercise book.
+   Manrope for the interface, STIX Two (scientific publishing) for titles and
+   key numbers. A cool squared-paper canvas with a red margin rule, white
+   sheets with a stacked-paper edge, a deep ink cover for navigation, one
+   teal for actions and amber "spark" for progress and streaks; green/red
+   only for right/wrong. Tailwind's gray and blue scales are remapped so the
+   whole app follows these tokens.
 --------------------------------------------------------------------------- */
 @theme {
   --font-sans: var(--font-manrope), "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-manrope), "Manrope", system-ui, sans-serif;
+  --font-display: var(--font-stix), "STIX Two Text", "Iowan Old Style", Georgia, serif;
 
   /* Canvas and ink */
-  --color-paper: #f6f5f0;
-  --color-paper-deep: #efede6;
+  --color-paper: #f4f6f5;
+  --color-paper-deep: #e9eeed;
   --color-ink: #17202f;
   --color-ink-soft: #4b5563;
-  --color-line: #e3e0d6;
+  --color-line: #dde3e2;
+  /* Exercise book */
+  --color-grid: rgb(72 112 130 / 0.075);
+  --color-margin: #dc8f8a;
+  --color-cover: #16212e;
+  --color-cover-raised: #1f2c3b;
+  --color-cover-text: #c3ccd3;
 
   /* Brand teal (also mapped onto blue-*) */
   --color-brand-50: #eaf6f5;
@@ -40,16 +48,16 @@
   --color-spark-600: #c47214;
   --color-spark-700: #9c5a12;
 
-  /* Remap Tailwind neutrals to warm paper tones */
-  --color-gray-50: #f6f5f0;
-  --color-gray-100: #eeece5;
-  --color-gray-200: #e3e0d6;
-  --color-gray-300: #cfcbbf;
-  --color-gray-400: #9a978d;
-  --color-gray-500: #6f6d66;
-  --color-gray-600: #55534d;
-  --color-gray-700: #3d3c38;
-  --color-gray-800: #27272a;
+  /* Remap Tailwind neutrals to cool paper tones */
+  --color-gray-50: #f4f6f5;
+  --color-gray-100: #eaeeed;
+  --color-gray-200: #dde3e2;
+  --color-gray-300: #c4cccb;
+  --color-gray-400: #8d9897;
+  --color-gray-500: #64706f;
+  --color-gray-600: #4a5554;
+  --color-gray-700: #343e3e;
+  --color-gray-800: #232b2b;
   --color-gray-900: #17202f;
   --color-gray-950: #0f1520;
 
@@ -84,11 +92,14 @@
   --color-violet-50: #fff7e8;
 
   /* Radii: one rounded language */
+  /* Radii follow hierarchy: paper sheets have small corners, controls are
+     softer, tags are fully round */
+  --radius-sheet: 0.5rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
-  --radius-3xl: 1.75rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
 
   /* Shadows: soft, warm, used sparingly */
   --shadow-sm: 0 1px 2px rgb(23 32 47 / 0.04);
@@ -149,18 +160,34 @@ p {
 @utility bg-graph {
   background-color: var(--color-paper);
   background-image:
-    linear-gradient(to right, rgb(15 122 119 / 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(15 122 119 / 0.07) 1px, transparent 1px);
+    linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
+/* Inside the app the whole page is already squared paper, so hero bands
+   no longer paint their own grid */
 @utility bg-graph-fade {
+  background: transparent;
+}
+
+/* The exercise-book page: squared paper with a red margin rule on the left
+   (from md up). Content sits to the right of the rule. */
+@utility book-page {
   background-color: var(--color-paper);
   background-image:
-    linear-gradient(to bottom, transparent 0%, var(--color-paper) 85%),
-    linear-gradient(to right, rgb(15 122 119 / 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(15 122 119 / 0.08) 1px, transparent 1px);
-  background-size: 100% 100%, 24px 24px, 24px 24px;
+    linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+  @media (min-width: 768px) {
+    background-image:
+      linear-gradient(to right, transparent 3rem, var(--color-margin) 3rem, var(--color-margin) calc(3rem + 2px), transparent calc(3rem + 2px)),
+      linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+    background-size: 100% 100%, 24px 24px, 24px 24px;
+    background-repeat: no-repeat, repeat, repeat;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -176,10 +203,12 @@ p {
 }
 
 @layer components {
+  /* A sheet of paper: small corners and a second sheet peeking out below */
   .card {
     background-color: #ffffff;
     border: 1px solid var(--color-line);
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-sheet);
+    box-shadow: 0 1px 0 rgb(23 32 47 / 0.03), 0 4px 0 -1px #ffffff, 0 4px 0 0 var(--color-line);
   }
   .card-section {
     padding: 1.25rem 1.5rem;
@@ -193,8 +222,10 @@ p {
     border-bottom: 1px solid var(--color-line);
   }
   .card-title {
-    font-weight: 700;
-    font-size: 1rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.1875rem;
+    line-height: 1.5rem;
     color: var(--color-ink);
   }
 
@@ -268,7 +299,9 @@ p {
   .chip-good { background-color: #e3f3ea; color: #1f6b43; }
   .chip-bad { background-color: #fbe5e5; color: #9b2c2c; }
 
-  .page-title { font-size: 1.75rem; line-height: 2.125rem; font-weight: 800; color: var(--color-ink); }
+  .page-title { font-family: var(--font-display); font-size: 2.125rem; line-height: 2.5rem; font-weight: 600; letter-spacing: -0.012em; color: var(--color-ink); }
+  /* Key numbers set like a textbook */
+  .numeral { font-family: var(--font-display); font-weight: 600; font-variant-numeric: lining-nums tabular-nums; letter-spacing: -0.01em; }
   .page-subtitle { margin-top: 0.25rem; color: var(--color-gray-500); }
 
   .alert-error { border-radius: var(--radius-xl); background: #fbe5e5; border: 1px solid #f3c7c7; padding: 0.875rem 1rem; color: #9b2c2c; font-size: 0.9375rem; }

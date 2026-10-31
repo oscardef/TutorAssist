@@ -41,8 +41,10 @@ export async function getUserContext(): Promise<UserContext | null> {
     .maybeSingle()
 
   if (membershipError) {
+    // Fail loudly: returning null here would send an existing user to
+    // onboarding as if they had no workspace
     console.error('Error fetching workspace membership:', membershipError)
-    return null
+    throw new Error('Could not load your workspace')
   }
 
   if (!membership) {

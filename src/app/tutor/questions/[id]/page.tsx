@@ -270,9 +270,9 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
   if (!question) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900">Question not found</h2>
+        <h2 className="card-title text-[1.375rem] leading-7">Question not found</h2>
         <Link href="/tutor/questions" className="text-blue-600 hover:text-blue-800 mt-2 inline-block">
-          Back to Questions
+          Back to questions
         </Link>
       </div>
     )
@@ -287,7 +287,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
         >
           ← Back to Question Bank
         </Link>
-        <h1 className="page-title mt-2">Edit Question</h1>
+        <h1 className="page-title mt-2">Edit question</h1>
       </div>
       
       {error && (
@@ -347,7 +347,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           {/* Answer Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Answer Type
+              Answer type
             </label>
             <div className="flex gap-4">
               {(['exact', 'numeric', 'multiple_choice'] as const).map(type => (
@@ -436,7 +436,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Alternate Correct Answers
+                    Alternate correct answers
                   </label>
                   <span className="text-xs text-gray-500">
                     Accept these as correct in addition to the main answer
@@ -482,7 +482,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
-                  Add Alternate Answer
+                  Add alternate answer
                 </button>
               </div>
             </div>
@@ -506,7 +506,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           {/* Grade Level */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Grade Level
+              Grade level
             </label>
             <select
               value={gradeLevel || ''}
@@ -550,7 +550,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Study Program
+                Study program
               </label>
               <select
                 value={primaryProgramId}
@@ -570,7 +570,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Program Grade Level
+                Program grade level
               </label>
               <select
                 value={primaryGradeLevelId}
@@ -599,7 +599,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="active">Active</option>
-              <option value="needs_review">Needs Review</option>
+              <option value="needs_review">Needs review</option>
               <option value="archived">Archived</option>
             </select>
           </div>
@@ -658,14 +658,14 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
               onClick={() => setHints([...hints, ''])}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              + Add Hint
+              Add hint
             </button>
           </div>
           
           {/* Solution Steps */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Solution Steps
+              Solution steps
             </label>
             {solutionSteps.map((step, index) => (
               <div key={index} className="flex gap-2 mb-2">
@@ -695,7 +695,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
               onClick={() => setSolutionSteps([...solutionSteps, ''])}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              + Add Step
+              Add step
             </button>
           </div>
           
@@ -721,7 +721,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
             onClick={handleDelete}
             className="px-4 py-2 text-red-600 hover:text-red-800 font-medium"
           >
-            Delete Question
+            Delete question
           </button>
           <div className="flex gap-3">
             <Link
@@ -735,7 +735,7 @@ export default function EditQuestionPage({ params }: { params: Promise<{ id: str
               disabled={saving}
               className="btn btn-primary btn-sm"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Saving…' : 'Save changes'}
             </button>
           </div>
         </div>

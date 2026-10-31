@@ -170,12 +170,12 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
         {/* Profile Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Profile</h2>
+            <h2 className="card-title">Profile</h2>
             <p className="text-sm text-gray-500">Your personal information</p>
           </div>
           <div className="p-6 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -189,7 +189,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                   disabled={savingProfile || !hasProfileChanges}
                   className="btn btn-primary btn-sm"
                 >
-                  {savingProfile ? 'Saving...' : 'Save'}
+                  {savingProfile ? 'Saving…' : 'Save'}
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1.5">This is how you appear to students</p>
@@ -214,12 +214,12 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
         {/* Workspace Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Workspace</h2>
+            <h2 className="card-title">Workspace</h2>
             <p className="text-sm text-gray-500">Manage your tutoring workspace</p>
           </div>
           <div className="p-6 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Workspace Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Workspace name</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -233,14 +233,14 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                   disabled={savingWorkspace || !hasWorkspaceChanges}
                   className="btn btn-primary btn-sm"
                 >
-                  {savingWorkspace ? 'Saving...' : 'Save'}
+                  {savingWorkspace ? 'Saving…' : 'Save'}
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1.5">Visible to your students</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Student Invite Link</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Student invite link</label>
               {inviteUrl ? (
                 <div className="space-y-2">
                   <div className="flex gap-2">
@@ -266,7 +266,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                     disabled={generatingInvite}
                     className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
                   >
-                    {generatingInvite ? 'Generating...' : 'Generate new link'}
+                    {generatingInvite ? 'Generating…' : 'Generate new link'}
                   </button>
                 </div>
               ) : (
@@ -275,7 +275,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                   disabled={generatingInvite}
                   className="btn btn-primary btn-sm"
                 >
-                  {generatingInvite ? 'Generating...' : 'Generate Invite Link'}
+                  {generatingInvite ? 'Generating…' : 'Generate invite link'}
                 </button>
               )}
             </div>
@@ -285,7 +285,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
         {/* Google Calendar Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Google Calendar</h2>
+            <h2 className="card-title">Google calendar</h2>
             <p className="text-sm text-gray-500">Sync sessions with your calendar</p>
           </div>
           <div className="p-6">
@@ -350,13 +350,13 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
         {/* Account Card */}
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Account</h2>
+            <h2 className="card-title">Account</h2>
             <p className="text-sm text-gray-500">Manage your account</p>
           </div>
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-gray-900">Sign Out</div>
+                <div className="font-medium text-gray-900">Sign out</div>
                 <p className="text-sm text-gray-500">Sign out on this device</p>
               </div>
               <form action="/api/auth/signout" method="POST">
@@ -364,7 +364,7 @@ export function SettingsForms({ workspace, googleConnection, user, role }: Setti
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
-                  Sign Out
+                  Sign out
                 </button>
               </form>
             </div>

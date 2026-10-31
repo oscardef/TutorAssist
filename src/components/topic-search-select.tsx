@@ -30,7 +30,7 @@ export function TopicSearchSelect({
   selectedTopics,
   onChange,
   multiple = true,
-  placeholder = 'Search topics...',
+  placeholder = 'Search topics…',
   showQuestionCount = false,
   maxDisplayed = 6,
   className = '',
@@ -229,7 +229,7 @@ export function TopicSearchSelect({
         >
           {results.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500 text-center">
-              {query ? emptyMessage : 'Type to search topics...'}
+              {query ? emptyMessage : 'Type to search topics…'}
             </div>
           ) : (
             Object.entries(groupedResults).map(([group, groupTopics]) => (

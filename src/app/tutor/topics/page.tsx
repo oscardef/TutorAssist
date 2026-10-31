@@ -349,7 +349,7 @@ export default function TopicsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Topics</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -365,14 +365,14 @@ export default function TopicsPage() {
             {analyzing ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600" />
-                Analyzing...
+                Analyzing…
               </>
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
                 </svg>
-                Find Duplicates
+                Find duplicates
               </>
             )}
           </button>
@@ -387,7 +387,7 @@ export default function TopicsPage() {
             onClick={openCreateModal}
             className="btn btn-primary btn-sm"
           >
-            Create Topic
+            Create topic
           </button>
         </div>
       </div>
@@ -439,7 +439,7 @@ export default function TopicsPage() {
                 }
               `}
             >
-              All Programs
+              All programs
             </button>
           </nav>
         </div>
@@ -458,7 +458,7 @@ export default function TopicsPage() {
               }
             `}
           >
-            All Grades
+            All grades
           </button>
           {gradeLevels.map((grade) => (
             <button
@@ -556,7 +556,7 @@ export default function TopicsPage() {
               <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Create Topic Manually
+              Create topic manually
             </button>
             <Link
               href="/tutor/generate"
@@ -580,14 +580,14 @@ export default function TopicsPage() {
               <form onSubmit={handleSubmit}>
                 <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    {editingTopic ? 'Edit Topic' : 'Create Topic'}
+                    {editingTopic ? 'Edit topic' : 'Create topic'}
                   </h3>
                   
                   <div className="space-y-4">
                     {/* Program Selection */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Study Program
+                        Study program
                       </label>
                       <select
                         value={formProgramId}
@@ -610,14 +610,14 @@ export default function TopicsPage() {
                     {formProgramId && formGradeLevels.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Grade Level
+                          Grade level
                         </label>
                         <select
                           value={formGradeLevelId}
                           onChange={(e) => setFormGradeLevelId(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          <option value="">All Grades</option>
+                          <option value="">All grades</option>
                           {formGradeLevels.map(grade => (
                             <option key={grade.id} value={grade.id}>
                               {grade.code} - {grade.name}
@@ -662,7 +662,7 @@ export default function TopicsPage() {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Parent Topic
+                        Parent topic
                       </label>
                       <select
                         value={parentId}
@@ -701,7 +701,7 @@ export default function TopicsPage() {
                     disabled={saving}
                     className="btn btn-primary btn-sm inline-flex w-full sm:w-auto"
                   >
-                    {saving ? 'Saving...' : editingTopic ? 'Save Changes' : 'Create Topic'}
+                    {saving ? 'Saving…' : editingTopic ? 'Save changes' : 'Create topic'}
                   </button>
                   <button
                     type="button"
@@ -729,7 +729,7 @@ export default function TopicsPage() {
                     <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
                     </svg>
-                    Topic Analysis
+                    Topic analysis
                   </h3>
                   <button onClick={() => setShowAnalysis(false)} className="text-gray-400 hover:text-gray-600">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -757,7 +757,7 @@ export default function TopicsPage() {
                               disabled={merging}
                               className="btn btn-primary btn-sm"
                             >
-                              {merging ? 'Merging...' : 'Merge All'}
+                              {merging ? 'Merging…' : 'Merge all'}
                             </button>
                           </div>
                           <div className="space-y-1">
@@ -769,7 +769,7 @@ export default function TopicsPage() {
                                     <span className="ml-2 text-xs text-green-600">(kept)</span>
                                   )}
                                 </span>
-                                <span className="text-gray-400">{v.questionCount} questions</span>
+                                <span className="text-gray-400">{v.questionCount} question{v.questionCount === 1 ? '' : 's'}</span>
                               </div>
                             ))}
                           </div>

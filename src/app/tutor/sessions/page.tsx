@@ -250,11 +250,11 @@ export default function SessionsPage() {
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center gap-3">
                         <div>
-              <h3 className="font-medium text-blue-800">Google Calendar Integration</h3>
+              <h3 className="font-medium text-blue-800">Google calendar integration</h3>
               <p className="text-sm text-blue-700">
                 Connect your Google Calendar to auto-create events with Meet links.
                 <Link href="/tutor/settings" className="ml-2 underline">
-                  Connect in Settings
+                  Connect in settings
                 </Link>
               </p>
             </div>
@@ -268,7 +268,7 @@ export default function SessionsPage() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">✓</span>
               <div>
-                <h3 className="font-medium text-green-800">Google Calendar Connected</h3>
+                <h3 className="font-medium text-green-800">Google calendar connected</h3>
                 <p className="text-sm text-green-700">
                   Your calendar events are synced. Sessions with matching student emails appear below.
                 </p>
@@ -305,10 +305,10 @@ export default function SessionsPage() {
                     <h3 className="truncate font-extrabold text-ink">{session.student?.name || 'Unknown student'}</h3>
                     {cancelled && <span className="chip !py-0">Cancelled</span>}
                     {session.status === 'completed' && <span className="chip chip-good !py-0">Done</span>}
-                    {fromCalendar && <span className="chip chip-spark !py-0" title="From your Google calendar">{session.student ? 'Calendar' : 'Calendar · not linked'}</span>}
+                    {fromCalendar && <span className="chip chip-spark !py-0" title="From your Google calendar">{session.student ? 'Calendar' : 'Calendar, not linked'}</span>}
                   </div>
                   <p className={`text-sm text-gray-500 tnum ${cancelled ? 'line-through' : ''}`}>
-                    {formatDate(date)} · {time(date)} – {time(endTime)}
+                    {formatDate(date)}, {time(date)} – {time(endTime)}
                   </p>
                   {session.attendees && session.attendees.length > 0 && !session.student && (
                     <p className="mt-0.5 truncate text-xs text-gray-400">{session.attendees.join(', ')}</p>
@@ -337,7 +337,7 @@ export default function SessionsPage() {
                         className="input !min-h-9 !py-1 w-auto text-sm"
                         disabled={syncingCalendar}
                       >
-                        <option value="">Link to student...</option>
+                        <option value="">Link to student…</option>
                         {students.map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
@@ -366,8 +366,8 @@ export default function SessionsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 m-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Schedule Session
+            <h2 className="card-title mb-4">
+              Schedule session
             </h2>
             
             <form onSubmit={handleCreateSession} className="space-y-4">
@@ -381,7 +381,7 @@ export default function SessionsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   required
                 >
-                  <option value="">Select student...</option>
+                  <option value="">Select student…</option>
                   {students.map((student) => (
                     <option key={student.id} value={student.user_id || student.id}>
                       {student.name}

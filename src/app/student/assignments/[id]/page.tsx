@@ -445,7 +445,7 @@ export default function StudentAssignmentDetailPage() {
           <Back className="h-5 w-5" />
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-2xl font-extrabold text-ink">{assignment.title}</h1>
+          <h1 className="page-title truncate">{assignment.title}</h1>
           {assignment.description && <p className="mt-1 text-gray-600">{assignment.description}</p>}
         </div>
         {streak > 1 && (
@@ -457,7 +457,7 @@ export default function StudentAssignmentDetailPage() {
       <div className="card mb-5 p-5">
         <div className="mb-3 flex items-center justify-between text-sm">
           <span className="font-bold text-ink tnum">Question {currentIndex + 1} of {items.length}</span>
-          <span className="text-gray-600 tnum">{correctCount} correct · {answered} answered</span>
+          <span className="text-gray-600 tnum">{correctCount} of {answered} right</span>
         </div>
         <ProgressBar value={progress} tone={progress >= 100 ? 'good' : 'brand'} />
         <div className="mt-4">

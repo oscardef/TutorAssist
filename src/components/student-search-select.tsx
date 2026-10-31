@@ -29,7 +29,7 @@ export function StudentSearchSelect({
   selectedStudents,
   onChange,
   multiple = true,
-  placeholder = 'Search students...',
+  placeholder = 'Search students…',
   maxDisplayed = 6,
   className = '',
   disabled = false,
@@ -248,7 +248,7 @@ export function StudentSearchSelect({
                   )}
                 </div>
                 <span className="text-sm font-medium text-gray-700">
-                  {selectedStudents.length === students.length ? 'Deselect All' : 'Select All'} ({students.length})
+                  {selectedStudents.length === students.length ? 'Deselect all' : 'Select all'} ({students.length})
                 </span>
               </div>
             </div>
@@ -256,7 +256,7 @@ export function StudentSearchSelect({
 
           {results.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500 text-center">
-              {query ? emptyMessage : 'Type to search students...'}
+              {query ? emptyMessage : 'Type to search students…'}
             </div>
           ) : (
             Object.entries(groupedResults).map(([group, groupStudents]) => (

@@ -93,7 +93,7 @@ function getGradeLevelLabel(level: number | null): string {
 // Practice mode icons and colors
 const PRACTICE_MODES = {
   topic: {
-    title: 'Practice by Topic',
+    title: 'Practice by topic',
     description: 'Choose a specific topic to focus on',
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -104,7 +104,7 @@ const PRACTICE_MODES = {
     bgGradient: 'from-indigo-500 to-indigo-600',
   },
   browse: {
-    title: 'Choose Questions',
+    title: 'Choose questions',
     description: 'Browse and pick specific questions to practice',
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -115,7 +115,7 @@ const PRACTICE_MODES = {
     bgGradient: 'from-emerald-500 to-emerald-600',
   },
   review: {
-    title: 'Spaced Review',
+    title: 'Spaced review',
     description: 'Review questions based on your memory schedule',
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -126,7 +126,7 @@ const PRACTICE_MODES = {
     bgGradient: 'from-blue-500 to-blue-600',
   },
   weak: {
-    title: 'Strengthen Weak Areas',
+    title: 'Strengthen weak areas',
     description: 'Focus on topics where you need more practice',
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -758,7 +758,7 @@ export default function PracticePage() {
           <div className="animate-rise">
             <h1 className="page-title">Practice</h1>
             <p className="page-subtitle">
-              {studentProfile?.study_program?.name ? `${studentProfile.study_program.name} · pick a topic or a mode` : 'Pick a topic or a mode to start'}
+              Choose a topic, or a mode that picks the questions for you.
             </p>
           </div>
 
@@ -813,28 +813,29 @@ export default function PracticePage() {
                 <button type="button" onClick={() => setSelectedGradeLevel('')} className={`chip ${!selectedGradeLevel ? 'chip-brand' : ''}`} aria-pressed={!selectedGradeLevel}>All years</button>
                 {availableGradeLevels.map(grade => (
                   <button key={grade.id} type="button" onClick={() => setSelectedGradeLevel(grade.id)} className={`chip ${selectedGradeLevel === grade.id ? 'chip-brand' : ''}`} aria-pressed={selectedGradeLevel === grade.id} title={grade.name}>
-                    {grade.code}{studentProfile?.grade_level_id === grade.id ? ' ·' : ''}
+                    {grade.code}{studentProfile?.grade_level_id === grade.id && <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-spark-500 align-middle" aria-label="(your year)" />}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="p-5">
+          <div>
             {filteredTopics.length > 0 ? (
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              // Ruled cells, like a table in an exercise book
+              <ul className="-mb-px -mr-px grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredTopics.map(topic => {
                   const questionCount = topic.questions?.[0]?.count || 0
                   const stats = topicStats.find(s => s.topicId === topic.id)
                   const hasQuestions = questionCount > 0
                   const acc = stats && stats.total > 0 ? stats.accuracy : null
                   return (
-                    <li key={topic.id}>
+                    <li key={topic.id} className="border-b border-r border-line">
                       <button
                         type="button"
                         onClick={() => hasQuestions && startPractice('topic', topic.id)}
                         disabled={!hasQuestions}
-                        className={`group flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-colors ${hasQuestions ? 'border-line bg-white hover:border-brand-300 hover:bg-brand-50' : 'border-line bg-paper opacity-60'}`}
+                        className={`group flex h-full w-full items-center gap-3 px-5 py-4 text-left transition-colors ${hasQuestions ? 'bg-white hover:bg-brand-50' : 'bg-paper opacity-60'}`}
                       >
                         <TopicRing value={acc} />
                         <div className="min-w-0 flex-1">
@@ -902,7 +903,7 @@ export default function PracticePage() {
             <Back className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-extrabold text-ink">Pick questions</h1>
+            <h1 className="page-title">Pick questions</h1>
             <p className="mt-0.5 text-sm text-gray-600">Tick the ones you want, then start.</p>
           </div>
         </div>
@@ -1037,7 +1038,7 @@ export default function PracticePage() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
               </svg>
-              How Spaced Review Works
+              How spaced review works
             </h3>
             <ul className="text-sm text-blue-800 space-y-2">
               <li className="flex items-start gap-2">
@@ -1062,7 +1063,7 @@ export default function PracticePage() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
               </svg>
-              Areas for Improvement
+              Areas for improvement
             </h3>
             <ul className="text-sm text-amber-800 space-y-2">
               <li className="flex items-start gap-2">
@@ -1085,7 +1086,7 @@ export default function PracticePage() {
           onClick={backToSelection}
           className="btn btn-primary"
         >
-          Choose Another Practice Mode
+          Choose another practice mode
         </button>
       </div>
     )
@@ -1109,8 +1110,8 @@ export default function PracticePage() {
           <Back className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-2xl font-extrabold text-ink">{topicName}</h1>
-          <p className="mt-0.5 text-sm text-gray-600 tnum">Question {currentQuestionIndex + 1} of {questions.length}{sessionAccuracy !== null ? ` · ${sessionAccuracy}% so far` : ''}</p>
+          <h1 className="page-title truncate">{topicName}</h1>
+          <p className="mt-0.5 text-sm text-gray-600 tnum">Question {currentQuestionIndex + 1} of {questions.length}{sessionAccuracy !== null ? `, ${sessionAccuracy}% so far` : ''}</p>
         </div>
         {streak > 1 && <span className="chip chip-spark"><Flame className="h-3.5 w-3.5" /> {streak}</span>}
       </div>
@@ -1228,13 +1229,13 @@ export default function PracticePage() {
 
 function ModeTile({ icon, title, body, onClick, disabled, primary, tip }: { icon: React.ReactNode; title: string; body: string; onClick: () => void; disabled?: boolean; primary?: boolean; tip?: string }) {
   return (
-    <span className="relative block">
+    <span className="relative block h-full">
     {tip && <span className="absolute right-3 top-3 z-10 text-gray-500"><InfoTip text={tip} /></span>}
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+      className={`flex h-full w-full items-center gap-4 rounded-lg border p-4 pr-9 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         primary ? 'border-brand-600 bg-brand-600 text-white hover:bg-brand-700' : 'border-line bg-white text-ink hover:border-brand-300 hover:bg-brand-50'
       }`}
     >
@@ -1258,7 +1259,7 @@ function TopicRing({ value }: { value: number | null }) {
       {value !== null && (
         <circle cx="22" cy="22" r={r} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - value / 100)} transform="rotate(-90 22 22)" />
       )}
-      <text x="22" y="26" textAnchor="middle" fontSize="11" fontWeight="800" fill="var(--color-ink)">{value === null ? '·' : value}</text>
+      <text x="22" y="26" textAnchor="middle" fontSize="11" fontWeight="800" fill="var(--color-ink)">{value === null ? '' : value}</text>
     </svg>
   )
 }

@@ -7,6 +7,7 @@ import { CancelSessionButton } from '@/components/cancel-session-button'
 import LatexRenderer from '@/components/latex-renderer'
 import { isPast } from 'date-fns'
 import { userTimeZone, zoned } from '@/lib/tz'
+import { dayStreak } from '@/lib/streak'
 
 interface AssignmentWithItems {
   id: string
@@ -219,24 +220,10 @@ export default async function StudentDashboard() {
   })
   
   // Calculate streak (using already-fetched streakData)
-  let currentStreak = 0
-  if (streakData && streakData.length > 0) {
-    const now = new Date()
-    const dates = new Set(
-      streakData.map(a => fmt(new Date(a.submitted_at!), 'yyyy-MM-dd'))
-    )
-    const today = fmt(now, 'yyyy-MM-dd')
-    const yesterdayDate = new Date(now.getTime() - 86400000)
-    const yesterday = fmt(yesterdayDate, 'yyyy-MM-dd')
-    
-    if (dates.has(today) || dates.has(yesterday)) {
-      let checkDate = dates.has(today) ? now : yesterdayDate
-      while (dates.has(fmt(checkDate, 'yyyy-MM-dd'))) {
-        currentStreak++
-        checkDate = new Date(checkDate.getTime() - 86400000)
-      }
-    }
-  }
+  const currentStreak = dayStreak(
+    (streakData || []).map(a => fmt(new Date(a.submitted_at!), 'yyyy-MM-dd')),
+    fmt(new Date(), 'yyyy-MM-dd'),
+  )
   
   const accuracy = totalAttempts && totalAttempts > 0
     ? Math.round((correctAttempts || 0) / totalAttempts * 100)
@@ -283,9 +270,9 @@ export default async function StudentDashboard() {
       {/* Hero: greeting + today's goal card */}
       <section className="bg-graph-fade -mx-4 -mt-6 px-4 pb-6 pt-8 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-10">
         <div className="grid gap-6 lg:grid-cols-[1fr_minmax(300px,380px)] lg:items-stretch">
-          <div className="animate-rise flex flex-col justify-between">
+          <div className="animate-rise flex flex-col justify-center">
             <div>
-              <h1 className="text-[1.75rem] font-extrabold leading-tight text-ink sm:text-[2.125rem]">{greeting}, {firstName}</h1>
+              <h1 className="font-display text-[2.25rem] font-semibold leading-[1.1] tracking-[-0.015em] text-ink sm:text-[3rem]">{greeting}, {firstName}</h1>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {profile?.study_programs && <span className="chip chip-brand">{profile.study_programs.name}</span>}
                 {profile?.grade_levels && <span className="chip">{profile.grade_levels.name}</span>}
@@ -294,11 +281,11 @@ export default async function StudentDashboard() {
                 {nextUp
                   ? <>Pick up <span className="font-bold text-ink">{nextUp.title}</span>{nextUp.due ? `, due ${nextUp.due}` : ''}.</>
                   : dueItems && dueItems.length > 0
-                  ? <>{dueItems.length} question{dueItems.length === 1 ? '' : 's'} are ready to review before they fade.</>
+                  ? <>{dueItems.length} {dueItems.length === 1 ? 'question is' : 'questions are'} ready to review before they fade.</>
                   : <>Nothing is due. A short practice keeps the streak alive.</>}
               </p>
             </div>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-3">
               {nextUp ? (
                 <Link href={nextUp.href} className="btn btn-primary btn-lg"><Practice className="h-5 w-5" /> Continue</Link>
               ) : (
@@ -416,7 +403,7 @@ export default async function StudentDashboard() {
                         <div className="truncate text-sm font-bold text-ink">{question?.topics?.name || 'Practice question'}</div>
                         <div className="text-xs text-gray-500 tnum">
                           {fmt(new Date(attempt.submitted_at!), 'd MMM, HH:mm')}
-                          {attempt.time_spent_seconds ? ` · ${formatTime(attempt.time_spent_seconds)}` : ''}
+                          {attempt.time_spent_seconds ? `, ${formatTime(attempt.time_spent_seconds)}` : ''}
                         </div>
                       </div>
                       {question?.difficulty && (
@@ -519,18 +506,17 @@ function GoalCard({ today, goal, streak, week, accuracy, answered }: { today: nu
   const c = 2 * Math.PI * r
   const Flame = Icons.flame
   return (
-    <div className="animate-rise-2 relative overflow-hidden rounded-3xl bg-ink p-6 text-white shadow-lg">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-600/30" aria-hidden="true" />
+    <div className="animate-rise-2 relative overflow-hidden rounded-xl bg-cover p-6 text-white shadow-[0_6px_0_-2px_var(--color-cover-raised)]">
       <div className="relative flex items-center gap-5">
         <svg width="132" height="132" viewBox="0 0 132 132" aria-label={`${today} of ${goal} questions today`}>
           <circle cx="66" cy="66" r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="12" />
           <circle cx="66" cy="66" r={r} fill="none" stroke="#f2a541" strokeWidth="12" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} transform="rotate(-90 66 66)" />
-          <text x="66" y="62" textAnchor="middle" fontSize="30" fontWeight="800" fill="#fff">{today}</text>
+          <text x="66" y="64" textAnchor="middle" fontSize="36" fontWeight="600" fill="#fff" style={{ fontFamily: 'var(--font-display)' }}>{today}</text>
           <text x="66" y="84" textAnchor="middle" fontSize="12" fontWeight="600" fill="rgba(255,255,255,0.7)">of {goal} today</text>
         </svg>
         <div className="min-w-0 flex-1">
           <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/70">Streak <InfoTip text="Days in a row with at least one question answered. Today counts once you answer one." label="What is a streak?" /></p>
-          <p className="mt-0.5 flex items-center gap-2 text-3xl font-extrabold tnum"><Flame className={`h-7 w-7 ${streak > 0 ? 'text-spark-400' : 'text-white/30'}`} /> {streak} <span className="text-base font-semibold text-white/60">day{streak === 1 ? '' : 's'}</span></p>
+          <p className="numeral mt-0.5 flex items-center gap-2 text-[2.25rem] leading-none"><Flame className={`h-7 w-7 ${streak > 0 ? 'text-spark-400' : 'text-white/30'}`} /> {streak} <span className="font-sans text-base font-semibold text-white/60">day{streak === 1 ? '' : 's'}</span></p>
           <ol className="mt-3 flex gap-1.5" aria-label="Last seven days">
             {week.map((d, i) => (
               <li key={i} className="flex flex-col items-center gap-1">
@@ -542,8 +528,8 @@ function GoalCard({ today, goal, streak, week, accuracy, answered }: { today: nu
         </div>
       </div>
       <dl className="relative mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm">
-        <div><dt className="text-white/60">Accuracy</dt><dd className="text-xl font-extrabold tnum">{accuracy}%</dd></div>
-        <div><dt className="text-white/60">Answered</dt><dd className="text-xl font-extrabold tnum">{answered}</dd></div>
+        <div><dt className="text-white/60">Accuracy</dt><dd className="numeral text-2xl">{accuracy}%</dd></div>
+        <div><dt className="text-white/60">Answered</dt><dd className="numeral text-2xl">{answered}</dd></div>
       </dl>
     </div>
   )

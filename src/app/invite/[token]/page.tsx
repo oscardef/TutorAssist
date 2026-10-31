@@ -177,13 +177,13 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
               </svg>
             </div>
-            <h1 className="page-title mt-4">Invalid Invite</h1>
+            <h1 className="page-title mt-4">Invalid invite</h1>
             <p className="mt-2 text-gray-600">{error || 'This invite link is not valid.'}</p>
             <Link
               href="/login"
               className="btn btn-primary mt-6"
             >
-              Go to Login
+              Go to login
             </Link>
           </div>
         </div>
@@ -203,7 +203,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               </svg>
             </div>
             <h1 className="page-title mt-4">
-              {inviteInfo.isUsed ? 'Invite Already Used' : 'Invite Expired'}
+              {inviteInfo.isUsed ? 'Invite already used' : 'Invite expired'}
             </h1>
             <p className="mt-2 text-gray-600">
               {inviteInfo.isUsed
@@ -214,7 +214,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               href="/login"
               className="btn btn-primary mt-6"
             >
-              Go to Login
+              Go to login
             </Link>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h1 className="page-title mt-4">Account Already Set Up</h1>
+            <h1 className="page-title mt-4">Account already set up</h1>
             <p className="mt-2 text-gray-600">
               Your account is ready! Please log in to continue.
             </p>
@@ -241,7 +241,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               href="/login"
               className="btn btn-primary mt-6"
             >
-              Go to Login
+              Go to login
             </Link>
           </div>
         </div>
@@ -295,7 +295,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                 </svg>
                 <div className="text-sm">
-                  <p className="font-medium text-amber-800">Email Mismatch</p>
+                  <p className="font-medium text-amber-800">Email mismatch</p>
                   <p className="mt-1 text-amber-700">
                     This invite is for <span className="font-medium">{inviteInfo?.expectedEmail}</span> but you&apos;re signed in as <span className="font-medium">{currentUserEmail}</span>.
                   </p>
@@ -325,10 +325,10 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Joining...
+                    Joining…
                   </span>
                 ) : (
-                  'Join Workspace'
+                  'Join workspace'
                 )}
               </button>
             </div>
@@ -358,7 +358,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
               <div className="mb-4">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Create Password
+                  Create password
                 </label>
                 <input
                   id="password"
@@ -374,7 +374,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
               <div className="mb-6">
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Confirm Password
+                  Confirm password
                 </label>
                 <input
                   id="confirmPassword"
@@ -399,7 +399,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Creating Account...
+                    Creating Account…
                   </span>
                 ) : (
                   'Create Account & Join'

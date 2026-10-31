@@ -274,7 +274,7 @@ export default function QuestionBankClient({
       return
     }
     
-    if (action === 'delete' && !confirm(`Delete ${selectedQuestions.size} questions? This cannot be undone.`)) {
+    if (action === 'delete' && !confirm(`Delete ${selectedQuestions.size} question${selectedQuestions.size === 1 ? '' : 's'}? This cannot be undone.`)) {
       return
     }
     
@@ -336,19 +336,19 @@ export default function QuestionBankClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="page-title">Question Bank</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {stats.total} questions
+          <h1 className="page-title">Question bank</h1>
+          <p className="page-subtitle">
+            {stats.total} question{stats.total === 1 ? '' : 's'} written or saved in this workspace
           </p>
         </div>
         <div className="flex gap-2">
           <Link
             href="/tutor/questions/new"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary"
           >
-            + Add Question
+            Add question
           </Link>
         </div>
       </div>
@@ -360,16 +360,16 @@ export default function QuestionBankClient({
         </svg>
         <input
           type="text"
-          placeholder="Search questions by content, topic, or tags..."
+          placeholder="Search by wording, topic or tag"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-12 pr-4 py-3 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="input pl-12 text-base"
         />
       </div>
       
       {/* Difficulty Quick Filters */}
       <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-sm font-medium text-gray-700 mr-2">Difficulty:</span>
+        <span className="mr-1 text-sm font-semibold text-gray-600">Difficulty</span>
         {difficultyLabels.map((label, index) => {
           const level = index + 1
           const isSelected = selectedDifficulties.includes(level)
@@ -401,20 +401,15 @@ export default function QuestionBankClient({
       <div className="flex items-center justify-between">
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-            showFilters || activeFilterCount > 0
-              ? 'bg-blue-50 border-blue-200 text-blue-700'
-              : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-          }`}
+          aria-expanded={showFilters}
+          className={`btn btn-sm ${showFilters || activeFilterCount > 0 ? 'btn-secondary border-brand-300 text-brand-700' : 'btn-secondary'}`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
           </svg>
           Filters
           {activeFilterCount > 0 && (
-            <span className="btn btn-primary btn-sm">
-              {activeFilterCount}
-            </span>
+            <span className="chip chip-brand">{activeFilterCount}</span>
           )}
         </button>
         
@@ -434,22 +429,23 @@ export default function QuestionBankClient({
               setSortField(field)
               setSortOrder(order)
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Sort questions"
+            className="input w-auto py-2 text-sm"
           >
-            <option value="created_at-desc">Newest First</option>
-            <option value="created_at-asc">Oldest First</option>
-            <option value="difficulty-asc">Easiest First</option>
-            <option value="difficulty-desc">Hardest First</option>
-            <option value="topic-asc">Topic A-Z</option>
-            <option value="success_rate-desc">Highest Success</option>
-            <option value="success_rate-asc">Lowest Success</option>
+            <option value="created_at-desc">Newest first</option>
+            <option value="created_at-asc">Oldest first</option>
+            <option value="difficulty-asc">Easiest first</option>
+            <option value="difficulty-desc">Hardest first</option>
+            <option value="topic-asc">Topic, A to Z</option>
+            <option value="success_rate-desc">Most often right</option>
+            <option value="success_rate-asc">Least often right</option>
           </select>
         </div>
       </div>
       
       {/* Collapsible Filter Panel */}
       {showFilters && (
-        <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200">
+        <div className="card space-y-4 p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Topics Multi-Select */}
             <div>
@@ -475,7 +471,7 @@ export default function QuestionBankClient({
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">All Programs</option>
+                <option value="">All programmes</option>
                 {programs.map(program => (
                   <option key={program.id} value={program.id}>{program.name}</option>
                 ))}
@@ -484,14 +480,14 @@ export default function QuestionBankClient({
             
             {/* Grade Level Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Grade level</label>
               <select
                 value={selectedGradeLevel}
                 onChange={(e) => setSelectedGradeLevel(e.target.value)}
                 disabled={!selectedProgram}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
               >
-                <option value="">All Grades</option>
+                <option value="">All years</option>
                 {availableGradeLevels.map(grade => (
                   <option key={grade.id} value={grade.id}>{grade.code} - {grade.name}</option>
                 ))}
@@ -501,18 +497,11 @@ export default function QuestionBankClient({
         </div>
       )}
       
-      {/* Results count */}
-      <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>
-          Showing {filteredQuestions.length} of {stats.total} questions
-        </span>
-      </div>
-      
       {/* Bulk Actions Bar */}
       {showBulkActions && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between sticky top-0 z-10">
-          <span className="text-blue-800 font-medium">
-            {selectedQuestions.size} questions selected
+        <div className="sticky top-2 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-cover px-4 py-3 text-white shadow-lg">
+          <span className="font-semibold">
+            {selectedQuestions.size} question{selectedQuestions.size === 1 ? '' : 's'} selected
           </span>
           <div className="flex gap-2">
             <button
@@ -522,11 +511,11 @@ export default function QuestionBankClient({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Create Assignment
+              Create assignment
             </button>
             <button
               onClick={() => handleBulkAction('archive')}
-              className="px-3 py-1.5 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700"
+              className="btn btn-secondary btn-sm"
             >
               Archive
             </button>
@@ -541,7 +530,7 @@ export default function QuestionBankClient({
                 setSelectedQuestions(new Set())
                 setShowBulkActions(false)
               }}
-              className="px-3 py-1.5 text-gray-600 hover:text-gray-800"
+              className="btn btn-sm text-white/80 hover:bg-white/10 hover:text-white"
             >
               Cancel
             </button>
@@ -551,16 +540,17 @@ export default function QuestionBankClient({
       
       {/* Questions List */}
       {filteredQuestions.length > 0 ? (
-        <div className="space-y-3">
-          {/* Select All */}
-          <div className="flex items-center gap-2 px-2">
+        <div className="card">
+          {/* Select all */}
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
             <input
               type="checkbox"
               checked={selectedQuestions.size === filteredQuestions.length && filteredQuestions.length > 0}
               onChange={selectAll}
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-500">Select all</span>
+            <span className="text-sm font-semibold text-gray-500">Select all</span>
+            <span className="ml-auto text-sm text-gray-500 tnum">{filteredQuestions.length} shown</span>
           </div>
           
           {filteredQuestions.map((question) => {
@@ -573,10 +563,8 @@ export default function QuestionBankClient({
             return (
               <div
                 key={question.id}
-                className={`bg-white rounded-xl border transition-all ${
-                  selectedQuestions.has(question.id) 
-                    ? 'ring-2 ring-blue-500 border-blue-300' 
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                className={`border-b border-line last:border-b-0 transition-colors ${
+                  selectedQuestions.has(question.id) ? 'bg-brand-50' : 'hover:bg-paper/60'
                 }`}
               >
                 <div className="p-4">
@@ -656,14 +644,14 @@ export default function QuestionBankClient({
                           {/* Similar Questions */}
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <h4 className="text-sm font-medium text-gray-700">Similar Questions</h4>
+                              <h4 className="text-sm font-medium text-gray-700">Similar questions</h4>
                               {!questionSimilar && (
                                 <button
                                   onClick={() => loadSimilarQuestions(question.id)}
                                   disabled={loadingSimilar === question.id}
                                   className="text-xs text-blue-600 hover:text-blue-700"
                                 >
-                                  {loadingSimilar === question.id ? 'Loading...' : 'Find similar'}
+                                  {loadingSimilar === question.id ? 'Loading…' : 'Find similar'}
                                 </button>
                               )}
                             </div>
@@ -708,7 +696,7 @@ export default function QuestionBankClient({
                     </div>
                     
                     {/* Actions */}
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-shrink-0 flex-col items-stretch gap-1.5 sm:flex-row sm:items-start">
                       <Link
                         href={`/tutor/questions/${question.id}`}
                         className="btn btn-secondary btn-sm"
@@ -720,7 +708,9 @@ export default function QuestionBankClient({
                       {/* Variant dropdown */}
                       <div className="relative group">
                         <button
-                          className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 w-full flex items-center justify-center gap-1"
+                          className="btn btn-secondary btn-sm w-full"
+                          aria-haspopup="menu"
+                          title="Generate a variant with AI"
                           disabled={generatingVariant === question.id}
                         >
                           {generatingVariant === question.id ? (
@@ -737,7 +727,7 @@ export default function QuestionBankClient({
                             </>
                           )}
                         </button>
-                        <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border py-1 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all min-w-[120px]">
+                        <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border py-1 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all min-w-[120px]">
                           <button
                             onClick={() => generateVariant(question.id, 'similar')}
                             className="w-full px-3 py-1.5 text-sm text-left hover:bg-gray-50"
@@ -795,7 +785,7 @@ export default function QuestionBankClient({
                 href="/tutor/questions/new"
                 className="btn btn-secondary btn-sm inline-flex"
               >
-                Add Manually
+                Add manually
               </Link>
               <Link
                 href="/tutor/generate"

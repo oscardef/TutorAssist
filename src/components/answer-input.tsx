@@ -104,7 +104,7 @@ export function AnswerInput({
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Your Answer
+          Your answer
         </label>
         <textarea
           value={value}
@@ -128,7 +128,7 @@ export function AnswerInput({
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        Your Answer
+        Your answer
       </label>
       <div className="flex rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
         <input
@@ -162,11 +162,11 @@ export function AnswerInput({
 
 export function getAnswerTypeLabel(answerType: string): string {
   const labels: Record<string, string> = {
-    'multiple_choice': 'Multiple Choice',
-    'short_answer': 'Short Answer',
-    'long_answer': 'Long Answer',
+    'multiple_choice': 'Multiple choice',
+    'short_answer': 'Short answer',
+    'long_answer': 'Long answer',
     'true_false': 'True/False',
-    'fill_blank': 'Fill in the Blank',
+    'fill_blank': 'Fill in the blank',
     'matching': 'Matching',
   }
   return labels[answerType] || answerType

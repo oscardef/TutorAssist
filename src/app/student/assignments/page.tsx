@@ -242,7 +242,7 @@ export default async function StudentAssignmentsPage() {
             <p className="page-subtitle tnum">
               {pendingAssignments.length === 0
                 ? 'All caught up.'
-                : `${pendingAssignments.length} to do · ${pendingQuestions} question${pendingQuestions === 1 ? '' : 's'} left`}
+                : `${pendingAssignments.length} to do, ${pendingQuestions} question${pendingQuestions === 1 ? '' : 's'} left`}
             </p>
           </div>
           {pendingAssignments.length === 0 && (
@@ -252,7 +252,7 @@ export default async function StudentAssignmentsPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-gray-500">To do</h2>
+        <h2 className="mb-3 text-sm font-bold text-gray-500">To do</h2>
         {pendingAssignments.length > 0 ? (
           <div className="grid gap-4">
             {pendingAssignments.map((assignment, idx) => (
@@ -269,7 +269,7 @@ export default async function StudentAssignmentsPage() {
 
       {completedAssignments.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-extrabold uppercase tracking-wide text-gray-500">Done</h2>
+          <h2 className="mb-3 text-sm font-bold text-gray-500">Done</h2>
           <div className="grid gap-3">
             {completedAssignments.map(assignment => (
               <CompletedAssignmentCard key={assignment.id} assignment={assignment} />
@@ -351,7 +351,7 @@ function AssignmentCard({ assignment, featured }: { assignment: AssignmentWithPr
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-ink">{child.title}</span>
-                    <span className="block text-xs text-gray-500 tnum">{child.completedQuestions} of {child.totalQuestions}{child.completedQuestions > 0 ? ` · ${child.correctQuestions} correct` : ''}</span>
+                    <span className="block text-xs text-gray-500 tnum">{child.completedQuestions} of {child.totalQuestions}{child.completedQuestions > 0 ? `, ${child.correctQuestions} correct` : ''}</span>
                   </span>
                   <Arrow className="h-4 w-4 flex-shrink-0 text-gray-300" />
                 </Link>
@@ -377,7 +377,7 @@ function CompletedAssignmentCard({ assignment }: { assignment: AssignmentWithPro
         <Ring value={score} size={48} done={score >= 100} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-bold text-ink">{assignment.title}</h3>
-          <p className="text-sm text-gray-500 tnum">{totalQuestions} questions · {score}%{when ? ` · ${when}` : ''}{hasChildren ? ` · ${assignment.children.length} parts` : ''}</p>
+          <p className="text-sm text-gray-500 tnum">{totalQuestions} question{totalQuestions === 1 ? '' : 's'}, {score}%{when ? `, ${when}` : ''}{hasChildren ? `, ${assignment.children.length} parts` : ''}</p>
         </div>
         {!hasChildren && (
           <div className="flex items-center gap-1.5">

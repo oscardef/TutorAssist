@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { Icons } from '@/components/ui/icons'
 import { requireUser, getUserContext } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
+import { userTimeZone, zoned } from '@/lib/tz'
+import { dayStreak, previousDay } from '@/lib/streak'
+import { Ledger, LedgerItem } from '@/components/ui/ledger'
 
 interface QuestionData {
   topic_id: string
@@ -72,60 +75,38 @@ export default async function StudentProgressPage() {
     if (attempt.is_correct) difficultyStats[category].correct += 1
   })
   
-  // Get recent activity (last 7 days)
-  const dailyActivity = new Map<string, { total: number; correct: number }>()
-  for (let i = 0; i < 7; i++) {
-    const date = new Date()
-    date.setDate(date.getDate() - i)
-    const key = date.toISOString().split('T')[0]
-    dailyActivity.set(key, { total: 0, correct: 0 })
-  }
-  
-  attempts?.forEach((attempt) => {
-    const date = new Date(attempt.submitted_at!).toISOString().split('T')[0]
-    const existing = dailyActivity.get(date)
-    if (existing) {
-      existing.total += 1
-      if (attempt.is_correct) existing.correct += 1
-    }
-  })
-
-  // Calculate streak
-  let currentStreak = 0
-  const sortedDays = Array.from(dailyActivity.entries()).sort((a, b) => b[0].localeCompare(a[0]))
-  for (const [, stats] of sortedDays) {
-    if (stats.total > 0) currentStreak++
-    else break
-  }
-  
-  // Activity heat: last 12 weeks, Monday-first columns
+  // Days are counted in the student's time zone, the same way as on Home
+  const { dayKey } = zoned(await userTimeZone())
   const dayCounts = new Map<string, number>()
   attempts?.forEach(a => {
     if (!a.submitted_at) return
-    const key = new Date(a.submitted_at).toISOString().split('T')[0]
+    const key = dayKey(a.submitted_at)
     dayCounts.set(key, (dayCounts.get(key) || 0) + 1)
   })
-  const today = new Date()
-  const start = new Date(today)
-  start.setDate(today.getDate() - 83 - ((today.getDay() + 6) % 7))
+  const todayKey = dayKey(new Date())
+  const currentStreak = dayStreak(dayCounts.keys(), todayKey)
+
+  // Activity heat: last 12 weeks plus this one, Monday-first columns
+  const nextDay = (key: string) => {
+    const d = new Date(`${key}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + 1)
+    return d.toISOString().slice(0, 10)
+  }
+  const weekday = (new Date(`${todayKey}T12:00:00Z`).getUTCDay() + 6) % 7
+  let cursor = todayKey
+  for (let i = 0; i < 84 + weekday; i++) cursor = previousDay(cursor)
   const weeks: { key: string; count: number; future: boolean }[][] = []
   for (let w = 0; w < 13; w++) {
     const col: { key: string; count: number; future: boolean }[] = []
     for (let d = 0; d < 7; d++) {
-      const date = new Date(start)
-      date.setDate(start.getDate() + w * 7 + d)
-      const key = date.toISOString().split('T')[0]
-      col.push({ key, count: dayCounts.get(key) || 0, future: date > today })
+      col.push({ key: cursor, count: dayCounts.get(cursor) || 0, future: cursor > todayKey })
+      cursor = nextDay(cursor)
     }
     weeks.push(col)
   }
   const maxDay = Math.max(1, ...Array.from(dayCounts.values()))
   const activeDays = weeks.flat().filter(d => !d.future && d.count > 0).length
   const topics = Array.from(topicStats.entries()).map(([id, t]) => ({ id, ...t, accuracy: Math.round((t.correct / t.total) * 100) })).sort((a, b) => b.total - a.total)
-  const Target = Icons.target
-  const Flame = Icons.flame
-  const Book = Icons.book
-  const Questions = Icons.questions
   const Practice = Icons.practice
 
   return (
@@ -135,12 +116,12 @@ export default async function StudentProgressPage() {
           <h1 className="page-title">Progress</h1>
           <p className="page-subtitle">{totalAttempts > 0 ? `${totalAttempts} questions answered across ${topicStats.size} topic${topicStats.size === 1 ? '' : 's'}` : 'Your first answers will show up here'}</p>
         </div>
-        <dl className="animate-rise-2 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Tile icon={<Questions className="h-5 w-5" />} label="Answered" value={totalAttempts} />
-          <Tile icon={<Target className="h-5 w-5" />} label="Accuracy" value={`${overallAccuracy}%`} />
-          <Tile icon={<Book className="h-5 w-5" />} label="Topics" value={topicStats.size} />
-          <Tile icon={<Flame className="h-5 w-5" />} label="Day streak" value={currentStreak} spark />
-        </dl>
+        <Ledger className="animate-rise-2 mt-6">
+          <LedgerItem label="Answered" value={totalAttempts} />
+          <LedgerItem label="Right" value={`${overallAccuracy}%`} />
+          <LedgerItem label="Topics practised" value={topicStats.size} />
+          <LedgerItem label="Day streak" value={currentStreak} tone={currentStreak > 0 ? 'spark' : undefined} />
+        </Ledger>
       </section>
 
       {totalAttempts === 0 ? (
@@ -206,7 +187,7 @@ export default async function StudentProgressPage() {
                           <span className="inline-flex gap-0.5" aria-hidden="true">{Array.from({ length: 5 }).map((_, i) => <span key={i} className={`h-2 w-2 rounded-full ${i < dots ? 'bg-brand-500' : 'bg-paper-deep'}`} />)}</span>
                           {label}
                         </span>
-                        <span className="text-gray-500 tnum">{acc === null ? 'Not yet' : `${d.correct}/${d.total} · ${acc}%`}</span>
+                        <span className="text-gray-500 tnum">{acc === null ? 'Not yet' : `${d.correct}/${d.total}, ${acc}%`}</span>
                       </div>
                       <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-paper-deep"><div className="h-full rounded-full bg-brand-500" style={{ width: `${acc ?? 0}%` }} /></div>
                     </li>
@@ -228,14 +209,6 @@ export default async function StudentProgressPage() {
   )
 }
 
-function Tile({ icon, label, value, spark }: { icon: React.ReactNode; label: string; value: string | number; spark?: boolean }) {
-  return (
-    <div className="card flex items-center gap-3 px-4 py-3">
-      <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${spark ? 'bg-spark-100 text-spark-700' : 'bg-brand-100 text-brand-700'}`}>{icon}</span>
-      <div><dt className="text-xs font-semibold text-gray-500">{label}</dt><dd className="text-xl font-extrabold text-ink tnum">{value}</dd></div>
-    </div>
-  )
-}
 
 function TopicRing({ value }: { value: number }) {
   const r = 16

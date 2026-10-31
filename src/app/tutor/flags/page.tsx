@@ -407,7 +407,7 @@ export default function FlagsPage() {
                     <li key={idx} className="flex items-start gap-3 py-3">
                       <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${ins.severity === 'high' ? 'bg-[#d64545]' : ins.severity === 'medium' ? 'bg-spark-400' : 'bg-brand-400'}`} aria-hidden="true" />
                       <div className="min-w-0">
-                        <p className="font-bold text-ink">{ins.title} <span className="font-normal text-gray-500 tnum">· {ins.affectedCount}</span></p>
+                        <p className="font-bold text-ink">{ins.title} <span className="font-normal text-gray-500 tnum">({ins.affectedCount})</span></p>
                         <p className="text-sm text-gray-600">{ins.description}</p>
                         {ins.actionSuggestion && <p className="mt-1 text-sm font-semibold text-brand-700">{ins.actionSuggestion}</p>}
                       </div>
@@ -468,7 +468,7 @@ export default function FlagsPage() {
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       <span className={`chip ${type.cls}`}>{type.label}</span>
                       <span className={`chip ${status.cls}`}>{status.label}</span>
-                      <span className="text-gray-500">{flag.student?.name || 'Student'} · {format(new Date(flag.created_at), 'd MMM')}</span>
+                      <span className="text-gray-500">{flag.student?.name || 'Student'}, {format(new Date(flag.created_at), 'd MMM')}</span>
                     </div>
                     <p className="mt-2 text-ink"><LatexRenderer content={flag.questions?.prompt_latex || flag.questions?.prompt_text || ''} /></p>
                     <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
@@ -528,7 +528,7 @@ export default function FlagsPage() {
               <div className="mt-3 rounded-xl bg-paper px-3 py-2 text-sm">
                 <span className="text-gray-500">Student answered </span><span className="font-semibold text-ink"><LatexRenderer content={reviewingFlag.student_answer} /></span>
                 {reviewingFlag.questions?.correct_answer_json?.value !== undefined && (
-                  <><span className="text-gray-500"> · expected </span><span className="font-semibold text-[#1f6b43]"><LatexRenderer content={String(reviewingFlag.questions.correct_answer_json.value)} /></span></>
+                  <><span className="text-gray-500">, expected </span><span className="font-semibold text-[#1f6b43]"><LatexRenderer content={String(reviewingFlag.questions.correct_answer_json.value)} /></span></>
                 )}
               </div>
             )}

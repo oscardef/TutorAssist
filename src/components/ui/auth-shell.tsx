@@ -2,34 +2,35 @@ import { LogoMark } from '@/components/ui/brand'
 import Link from 'next/link'
 
 /**
- * Two-panel frame for sign-in, sign-up, invites and onboarding. The left
- * panel carries the brand on graph paper; the right holds the form. On small
- * screens the panel collapses to a compact header.
+ * Two-panel frame for sign-in, sign-up, invites and onboarding, in the
+ * app's exercise-book language: the ink cover on the left carries the brand,
+ * the squared page on the right holds the form. On small screens the cover
+ * collapses to a compact header.
  */
 export function AuthShell({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-paper lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-      <aside className="bg-graph-fade relative hidden overflow-hidden border-r border-line lg:flex lg:flex-col lg:justify-between lg:p-10">
+    <div className="min-h-screen bg-cover lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <aside className="relative hidden overflow-hidden text-cover-text lg:flex lg:flex-col lg:justify-between lg:p-10">
         <Link href="/" className="inline-flex items-center gap-3" aria-label="Mathium home">
           <LogoMark size={40} />
-          <span className="text-2xl font-extrabold tracking-tight text-ink">Mathium</span>
+          <span className="text-2xl font-extrabold tracking-tight text-white">Mathium</span>
         </Link>
         <div className="max-w-md">
           {aside ?? (
             <>
-              <p className="text-[2rem] font-extrabold leading-[1.15] text-ink">
+              <p className="font-display text-[2.5rem] font-semibold leading-[1.12] tracking-[-0.015em] text-white">
                 Practice that fits the syllabus. Progress you can see.
               </p>
-              <p className="mt-4 text-base text-gray-600">
+              <p className="mt-5 text-base leading-relaxed text-cover-text">
                 Questions tagged to the exact topic, instant checking, spaced review before exams, and the tools tutors use to run it all.
               </p>
             </>
           )}
         </div>
-        <p className="text-sm text-gray-500">School maths from primary to pre-university.</p>
+        <p className="text-sm text-cover-text/70">School maths from primary to pre-university.</p>
       </aside>
 
-      <div className="flex min-h-screen flex-col lg:min-h-0">
+      <div className="book-page flex min-h-screen flex-col lg:min-h-0 lg:rounded-l-2xl">
         <header className="flex items-center justify-between px-5 py-4 lg:hidden">
           <Link href="/" className="inline-flex items-center gap-2" aria-label="Mathium home">
             <LogoMark size={32} />
@@ -47,7 +48,7 @@ export function AuthShell({ children, aside }: { children: React.ReactNode; asid
 export function AuthHeading({ title, subtitle }: { title: string; subtitle?: React.ReactNode }) {
   return (
     <div className="mb-8">
-      <h1 className="text-[1.75rem] font-extrabold leading-tight text-ink">{title}</h1>
+      <h1 className="page-title">{title}</h1>
       {subtitle && <p className="mt-2 text-base text-gray-600">{subtitle}</p>}
     </div>
   )

@@ -471,7 +471,7 @@ describe('StudentSearchSelect Component', () => {
     fireEvent.focus(input)
     
     await waitFor(() => {
-      expect(screen.getByText(/Select All/)).toBeInTheDocument()
+      expect(screen.getByText(/Select all/)).toBeInTheDocument()
     })
   })
 
@@ -490,7 +490,7 @@ describe('StudentSearchSelect Component', () => {
     fireEvent.focus(input)
     
     await waitFor(() => {
-      const selectAll = screen.getByText(/Select All/)
+      const selectAll = screen.getByText(/Select all/)
       fireEvent.click(selectAll.closest('[class*="cursor-pointer"]')!)
     })
     

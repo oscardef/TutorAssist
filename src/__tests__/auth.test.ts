@@ -206,15 +206,14 @@ describe('Auth Library', () => {
       expect(context?.role).toBe('platform_owner')
     })
 
-    it('should handle membership query error gracefully', async () => {
+    it('throws on a membership query error instead of reporting no workspace', async () => {
+      // Returning null would send an existing user to onboarding
       mockAuthGetUser.mockResolvedValue({ user: mockUser, session: {} })
 
       mockMembershipResult = { data: null, error: { message: 'Database error', code: '500' } }
 
       const { getUserContext } = await import('@/lib/auth')
-      const context = await getUserContext()
-
-      expect(context).toBeNull()
+      await expect(getUserContext()).rejects.toThrow('Could not load your workspace')
     })
   })
 
